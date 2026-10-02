@@ -4,6 +4,7 @@ import { Ionicons } from './Icon';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import LayeredCard from './LayeredCard';
 import HapticPressable from './HapticPressable';
+import { haptics } from '../utils/haptics';
 
 export function GroupedListSection({ header, footer, children }) {
   const childArray = React.Children.toArray(children);
@@ -59,13 +60,9 @@ export function GroupedListItem({
     >
       <View style={styles.itemInner}>
         {icon ? (
-          <View
-            style={[
-              styles.iconBox,
-              { backgroundColor: iconBg || (destructive ? COLORS.dangerMuted : 'transparent') },
-            ]}
-          >
-            {React.isValidElement(icon) ? icon : <Ionicons name={icon} size={20} color={destructive ? COLORS.danger : iconColor} illustrated={!destructive && iconColor === COLORS.textSecondary} />}
+          <View style={styles.iconBox}>
+            {React.isValidElement(icon) ? React.cloneElement(icon, { size: 22, color: destructive ? COLORS.danger : iconColor, illustrated: false })
+              : <Ionicons name={icon} size={22} color={destructive ? COLORS.danger : iconColor} illustrated={false} />}
           </View>
         ) : null}
         <View style={styles.itemContent}>
@@ -86,7 +83,7 @@ export function GroupedListItem({
         {hasSwitch ? (
           <Switch
             value={switchValue}
-            onValueChange={onSwitchChange}
+            onValueChange={value => { haptics.selection(); onSwitchChange?.(value); }}
             trackColor={{ false: COLORS.primaryMuted, true: COLORS.primary }}
             thumbColor={COLORS.white}
             ios_backgroundColor={COLORS.primaryMuted}
@@ -102,13 +99,13 @@ export function GroupedListItem({
           />
         ) : null}
       </View>
-      {!isLast && <View style={styles.separator} />}
+      {!isLast && <View style={[styles.separator, !icon && styles.separatorWithoutIcon]} />}
     </View>
   );
 
   if (onPress && !hasSwitch) {
     return (
-      <HapticPressable onPress={onPress} haptic="light" testID={testID} accessibilityLabel={accessibilityLabel || title} accessibilityRole={accessibilityRole || 'button'}>
+      <HapticPressable onPress={onPress} haptic={null} scaleDown={1} pressedBackgroundColor={COLORS.cardHover} testID={testID} accessibilityLabel={accessibilityLabel || title} accessibilityRole={accessibilityRole || 'button'}>
         {content}
       </HapticPressable>
     );
@@ -159,9 +156,8 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   iconBox: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: SPACING.md,
@@ -187,9 +183,10 @@ const styles = StyleSheet.create({
   chevron: {
     marginLeft: SPACING.xs,
   },
+  separatorWithoutIcon: { marginLeft: SPACING.lg },
   separator: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: COLORS.separator,
-    marginLeft: SPACING.lg + 30 + SPACING.md,
+    marginLeft: SPACING.lg + 22 + SPACING.md,
   },
 });

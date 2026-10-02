@@ -1,6 +1,6 @@
-import ListingTypeIcon from '../components/ListingTypeIcon';
+import ShimmerImage from '../components/ShimmerImage';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, ActivityIndicator, Platform, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Platform, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import TextInput from '../components/AppTextInput';
@@ -101,7 +101,6 @@ export default function ReturnHelpScreen({route,navigation}) {
   const showSecondary=guidance?.canMessage||!exchangeFirst;
   const renderForm=()=>form&&<LayeredCard style={styles.card}>
     <View style={styles.statusHeading}>
-      {editingDate&&<View style={styles.iconTile}><Ionicons name="calendar-outline" size={28} color={COLORS.primary}/></View>}
       <Text style={styles.statusTitle}>{form.kind==='report'?'Item not returned':editingDate?'Give more time':form.kind==='appeal'?'Appeal this decision':form.kind==='review'?'Review this report':'Your response'}</Text>
     </View>
     {editingDate?<>
@@ -147,8 +146,8 @@ export default function ReturnHelpScreen({route,navigation}) {
     refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} enabled={!busy&&!form} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}>
     {transaction?.listing ? <LayeredCard radius={RADIUS.xl}>
       <View style={styles.itemSummary}>
-        {transaction.listing.photos?.[0] ? <Image source={{uri:transaction.listing.photos[0]}} style={styles.itemPhoto} resizeMode="cover" />
-          : <View style={[styles.itemPhoto,styles.placeholder]}><ListingTypeIcon listing={transaction} size={36} /></View>}
+        <ShimmerImage source={transaction.listing.photos?.[0] ? { uri: transaction.listing.photos[0] } : null}
+          category={transaction.listing.category} title={transaction.listing.title} style={styles.itemPhoto} />
         <View style={styles.itemCopy}>
           <Text style={styles.eyebrow}>{transaction.isLender?'Your item':'You borrowed'}</Text>
           <Text style={styles.heading}>{transaction.listing.title}</Text>
@@ -156,7 +155,6 @@ export default function ReturnHelpScreen({route,navigation}) {
         </View>
       </View>
     </LayeredCard> : !transactionId&&<View style={styles.pageHeading}>
-      <View style={styles.iconTile}><Ionicons name="return-down-back-outline" size={28} color={COLORS.primary} /></View>
       <Text style={styles.heading}>{admin?'Return reviews':'Return help'}</Text>
     </View>}
     {loading&&!guidance&&!data.reports.length&&<ActivityIndicator color={COLORS.spinner} accessibilityLabel="Loading return details"/>}
@@ -168,7 +166,7 @@ export default function ReturnHelpScreen({route,navigation}) {
     {guidance&&!form&&<>
       <View style={[styles.returnStatus,guidance.overdue&&styles.overdueStatus]}>
         <View style={styles.statusHeading}>
-          <Ionicons name={guidance.icon} size={28} color={guidance.overdue?COLORS.warning:COLORS.primary}/>
+          <Ionicons name={guidance.icon} size={22} color={guidance.overdue?COLORS.warning:COLORS.primary}/>
           <Text style={styles.statusTitle}>{guidance.title}</Text>
         </View>
         {guidance.overdue&&!!guidance.dueLabel&&<Text maxFontSizeMultiplier={1.4} style={styles.dueDate}>Was due {guidance.dueLabel}</Text>}
@@ -178,13 +176,12 @@ export default function ReturnHelpScreen({route,navigation}) {
       </View>
       {showOptions&&<View style={styles.section}>
         <Text maxFontSizeMultiplier={1.4} style={styles.sectionLabel}>Return options</Text>
-        <LayeredCard>
-          {guidance.canExtend&&<ActionRow label="Give more time" description="Agree on a later return date" icon="calendar-outline" disabled={busy||loading} onPress={()=>begin('extend')}/>}
-          {guidance.canRequestTime&&guidance.canMessage&&<ActionRow label="Need more time?" description="Ask the owner about a new date" icon="calendar-outline" disabled={busy||loading||messaging} onPress={messageNeighbor}/>}
-          {(guidance.canExtend||guidance.canRequestTime)&&showSecondary&&<View style={styles.divider}/>}
-          {exchangeFirst&&guidance.canMessage?<ActionRow label={guidance.messageLabel} description="Keep return arrangements in one place" icon="chatbubble-outline" disabled={busy||loading||messaging} onPress={messageNeighbor}/>
-            :!exchangeFirst?<ActionRow label="View exchange" description={guidance.exchangeDescription} icon="receipt-outline" disabled={busy||loading} onPress={viewExchange}/>:null}
-          {guidance.canReport&&!existingReport&&<><View style={styles.divider}/><ActionRow label="Item not returned" description="Ask for help with a missing return" icon="flag-outline" variant="danger" style={styles.reportRow} disabled={busy||loading} onPress={()=>begin('report')}/></>}
+        <LayeredCard style={styles.groupedActions}>
+          {guidance.canExtend&&<ActionRow label="Give more time" description="Agree on a later return date" icon="calendar-outline" disabled={busy||loading} onPress={()=>begin('extend')} isLast={!(guidance.canRequestTime&&guidance.canMessage)&&!showSecondary&&!(guidance.canReport&&!existingReport)}/>}
+          {guidance.canRequestTime&&guidance.canMessage&&<ActionRow label="Need more time?" description="Ask the owner about a new date" icon="calendar-outline" disabled={busy||loading||messaging} onPress={messageNeighbor} isLast={!showSecondary&&!(guidance.canReport&&!existingReport)}/>}
+          {exchangeFirst&&guidance.canMessage?<ActionRow label={guidance.messageLabel} description="Keep return arrangements in one place" icon="chatbubble-outline" disabled={busy||loading||messaging} onPress={messageNeighbor} isLast={!(guidance.canReport&&!existingReport)}/>
+            :!exchangeFirst?<ActionRow label="View exchange" description={guidance.exchangeDescription} icon="receipt-outline" disabled={busy||loading} onPress={viewExchange} isLast={!(guidance.canReport&&!existingReport)}/>:null}
+          {guidance.canReport&&!existingReport&&<ActionRow label="Item not returned" description="Ask for help with a missing return" icon="flag-outline" variant="danger" style={styles.reportRow} disabled={busy||loading} onPress={()=>begin('report')} isLast/>}
         </LayeredCard>
       </View>}
     </>}
@@ -258,13 +255,12 @@ const styles=StyleSheet.create({
   statusTitle:{ ...TYPOGRAPHY.title3, color:COLORS.primary, flexShrink:1 },
   dueDate:{ ...TYPOGRAPHY.footnote, color:COLORS.warning },
   sectionLabel:{ ...TYPOGRAPHY.headline, color:COLORS.primary },
-  divider:{height:1,backgroundColor:COLORS.border,marginHorizontal:SPACING.lg},
+  groupedActions:{overflow:'hidden'},
   reportRow:{borderWidth:0},
   quietStatus:{flex:1,flexDirection:'row',alignItems:'center',gap:SPACING.sm},
   quietStatusText:{flex:1},
   policyButton:{minHeight:44,flexDirection:'row',alignItems:'center',gap:SPACING.sm},
   policyLabel:{ ...TYPOGRAPHY.buttonCaption, color:COLORS.textSecondary, flex:1 },
-  iconTile:{width:48,height:48,borderRadius:RADIUS.md,backgroundColor:COLORS.primaryMuted,alignItems:'center',justifyContent:'center'},
   pageHeading:{flexDirection:'row',alignItems:'center',gap:SPACING.md},
   currentDate:{paddingHorizontal:SPACING.sm,gap:SPACING.xs},
   dateLabel:{ ...TYPOGRAPHY.buttonCaption, color:COLORS.textSecondary },

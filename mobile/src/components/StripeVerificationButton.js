@@ -12,7 +12,8 @@ export default function StripeVerificationButton({ onPress, loading = false, dis
     <HapticPressable
       onPress={onPress}
       disabled={unavailable}
-      haptic="medium"
+      haptic={null}
+      scaleDown={0.97}
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}

@@ -105,7 +105,7 @@ export default function DisputesScreen({ navigation }) {
         key={typeKey}
         style={[styles.typeChip, isActive && styles.typeChipActive]}
         onPress={() => setTypeFilter(isActive ? null : typeKey)}
-        haptic="light"
+        haptic="selection"
       >
         <Ionicons
           name={config.icon}
@@ -126,7 +126,7 @@ export default function DisputesScreen({ navigation }) {
     return (
       <HapticPressable
         onPress={() => navigation.navigate('DisputeDetail', { id: item.id })}
-        haptic="light"
+        haptic={null}
       >
         <View style={[styles.card, styles.cardBox]}>
           <View style={styles.cardContent}>
@@ -214,7 +214,7 @@ export default function DisputesScreen({ navigation }) {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="shield-checkmark-outline" size={64} color={COLORS.textMuted} />
+            <Ionicons illustrated={true} name="shield-checkmark-outline" size={64} color={COLORS.textMuted} />
             <Text style={styles.emptyTitle}>No disputes</Text>
             <Text style={styles.emptySubtitle}>
               {statusFilter || typeFilter

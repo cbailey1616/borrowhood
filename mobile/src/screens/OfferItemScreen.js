@@ -1,4 +1,5 @@
-import ListingTypeIcon from '../components/ListingTypeIcon';
+import ItemPhotoPlaceholder from '../components/ItemPhotoPlaceholder';
+import ShimmerImage from '../components/ShimmerImage';
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import useNavigationTask from '../hooks/useNavigationTask';
@@ -55,16 +56,16 @@ export default function OfferItemScreen({ route, navigation }) {
   return <View style={[styles.container, { paddingBottom: insets.bottom }]}>
     <Text style={styles.heading}>Choose one item to offer</Text>
     <Text style={styles.hint}>For “{request.title}”. Nothing else in your inventory is shared.</Text>
-    {loading ? <ActivityIndicator color={COLORS.spinner} /> : error ?
-      <HapticPressable onPress={load} style={styles.row}><Text>{error} Tap to retry.</Text></HapticPressable> :
+    {loading ? <ActivityIndicator size="large" color={COLORS.spinner} /> : error ?
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover} onPress={load} style={styles.row}><Text>{error} Tap to retry.</Text></HapticPressable> :
       <FlatList data={items} keyExtractor={item => item.id}
         ListEmptyComponent={<Text style={styles.hint}>No available items yet. Add one privately below.</Text>}
-        renderItem={({ item }) => <HapticPressable style={styles.row} disabled={Boolean(sending)} onPress={() => offer(item)}>
-          {item.photoUrl || item.photos?.[0] ? <Image source={{ uri: item.photoUrl || item.photos[0] }} accessibilityLabel={item.title} style={{ width: 52, height: 52, borderRadius: 12 }} /> : <ListingTypeIcon listing={item} size={36} />}
+        renderItem={({ item }) => <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.row} disabled={Boolean(sending)} onPress={() => offer(item)}>
+          {item.photoUrl || item.photos?.[0] ? <ShimmerImage source={{ uri: item.photoUrl || item.photos[0] }} category={item.category} title={item.title} accessibilityLabel={item.title} style={{ width: 52, height: 52, borderRadius: 12 }} /> : <ItemPhotoPlaceholder category={item.category} title={item.title} style={{ width: 52, height: 52, borderRadius: 12 }} />}
           <Text style={styles.itemTitle}>{item.title}</Text>
           {sending === item.id ? <ActivityIndicator color={COLORS.spinner} /> : <Ionicons name="chevron-forward" size={20} />}
         </HapticPressable>} />}
-    <HapticPressable style={styles.row} disabled={Boolean(sending) || !canOffer} onPress={() => navigation.navigate('CreateListing', { requestMatch: request })}>
+    <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.row} disabled={Boolean(sending) || !canOffer} onPress={() => navigation.navigate('CreateListing', { requestMatch: request })}>
       <Ionicons name="add-circle" size={24} /><Text style={styles.itemTitle}>Add a new item privately</Text>
     </HapticPressable>
   </View>;

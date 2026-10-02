@@ -9,6 +9,7 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config'
 import { haptics } from '../utils/haptics';
 import HapticPressable from './HapticPressable';
 import Icon from './Icon';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 const segmentLabel = segment => typeof segment==='string'?segment:segment.label;
 function SegmentLabel({segment,style}) {
@@ -26,6 +27,7 @@ export default function SegmentedControl({
   testID,
   variant,
 }) {
+  const reduceMotion = useReduceMotion();
   const containerWidth = useSharedValue(0);
   const segmentCount = segments.length;
 
@@ -42,7 +44,7 @@ export default function SegmentedControl({
       width: Math.max(0, width),
       transform: [
         {
-          translateX: withSpring(
+          translateX: reduceMotion ? selectedIndex * width : withSpring(
             selectedIndex * width,
             ANIMATION.spring.default
           ),

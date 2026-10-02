@@ -96,7 +96,7 @@ export default function DamageClaimScreen({ navigation, route }) {
       <View style={styles.container}>
         <View style={styles.centeredContent}>
           <View style={styles.successCircle}>
-            <Ionicons name="checkmark-circle" size={64} color={COLORS.primary} />
+            <Ionicons illustrated={true} name="checkmark-circle" size={64} color={COLORS.primary} />
           </View>
           <Text style={styles.title}>Claim Submitted</Text>
           <Text style={styles.subtitle}>
@@ -107,7 +107,7 @@ export default function DamageClaimScreen({ navigation, route }) {
           <HapticPressable
             style={styles.primaryButton}
             onPress={() => navigation.goBack()}
-            haptic="light"
+            haptic={null}
           >
             <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>Done</Text>
           </HapticPressable>
@@ -213,7 +213,7 @@ export default function DamageClaimScreen({ navigation, route }) {
                   <HapticPressable
                     style={styles.removePhoto}
                     onPress={() => removePhoto(index)}
-                    haptic="light"
+                    haptic={null}
                   >
                     <Ionicons name="close-circle" size={22} color={COLORS.danger} />
                   </HapticPressable>
@@ -227,7 +227,7 @@ export default function DamageClaimScreen({ navigation, route }) {
                   accessibilityRole="button"
                   style={styles.addPhotoButton}
                   onPress={pickPhotos}
-                  haptic="light"
+                  haptic={null}
                 >
                   <Ionicons name="camera-outline" size={28} color={COLORS.textSecondary} />
                   <Text style={styles.addPhotoText}>Add</Text>
@@ -256,7 +256,7 @@ export default function DamageClaimScreen({ navigation, route }) {
           ]}
           onPress={handleSubmit}
           disabled={!isValid || submitting}
-          haptic="medium"
+          haptic="light"
         >
           {submitting ? (
             <ActivityIndicator color={COLORS.white} />

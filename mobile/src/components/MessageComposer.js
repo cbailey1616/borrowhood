@@ -43,7 +43,8 @@ const MessageComposer = forwardRef(function MessageComposer({
         keyboardAppearance="light"
       />
       <HapticPressable
-        haptic="medium"
+        haptic="light"
+        scaleDown={0.97}
         accessibilityRole="button"
         accessibilityLabel={sendAccessibilityLabel}
         accessibilityState={{ disabled: unavailable, busy: loading }}
@@ -53,7 +54,7 @@ const MessageComposer = forwardRef(function MessageComposer({
         onPress={() => { if (!unavailable) onSend?.(); }}
       >
         {loading ? <ActivityIndicator size="small" color={COLORS.spinner} />
-          : <Ionicons name="arrow-up" size={23} color={dark ? unavailable ? COLORS.messageDark.secondary : COLORS.white : unavailable ? COLORS.textMuted : COLORS.surface} />}
+          : <Ionicons name="arrow-up" size={22} color={dark ? unavailable ? COLORS.messageDark.secondary : COLORS.white : unavailable ? COLORS.textMuted : COLORS.surface} illustrated={false} selected={false} />}
       </HapticPressable>
     </View>
   );

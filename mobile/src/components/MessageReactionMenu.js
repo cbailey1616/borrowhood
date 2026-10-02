@@ -3,12 +3,14 @@ import { Modal, View, Pressable, StyleSheet, useWindowDimensions, Platform } fro
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import EmojiReactionPicker from './EmojiReactionPicker';
 import { reactionPickerHeight } from '../utils/reactions';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 // Window coordinates belong in a modal. A nested thread/header must not clip
 // the toolbar or subtract its own layout offset from the long-press position.
 export default function MessageReactionMenu({ visible, position, onClose, onSelect, onMore, options, colors }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
   const pendingMore = useRef(null);
   const finishDismissal = () => { const action = pendingMore.current; pendingMore.current = null; action?.(); };
   useEffect(() => { if (!visible && Platform.OS !== 'ios') finishDismissal(); }, [visible]);
@@ -17,7 +19,7 @@ export default function MessageReactionMenu({ visible, position, onClose, onSele
   const more = () => { pendingMore.current = onMore; onClose(); };
   const pickerHeight = reactionPickerHeight(options?.length, !!onMore);
   const top = Math.max(insets.top + 12, Math.min((position?.y ?? height * .4) - pickerHeight, height - insets.bottom - pickerHeight - 16));
-  return <Modal visible={!!visible} transparent animationType="fade" onRequestClose={close} onDismiss={finishDismissal}>
+  return <Modal visible={!!visible} transparent animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={close} onDismiss={finishDismissal}>
     <View style={StyleSheet.absoluteFill}>
       <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close reactions" />
       <EmojiReactionPicker options={options} colors={colors} onSelect={onSelect} onMore={onMore ? more : undefined}

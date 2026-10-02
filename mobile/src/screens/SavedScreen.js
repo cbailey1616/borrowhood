@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import { listingIcon } from '../utils/listingPresentation';
 import { useState, useEffect, useCallback } from 'react';
 import ListingOffer from '../components/ListingOffer';
@@ -29,23 +30,24 @@ import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '..
 const GRID_GAP = SPACING.md;
 
 function HeartButton({ onUnsave, title }) {
+  const reduceMotion = useReduceMotion();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [{ scale: reduceMotion ? 1 : scale.value }],
   }));
 
   const handlePress = useCallback((event) => {
     event?.stopPropagation?.();
-    haptics.light();
-    scale.value = withSequence(
+    haptics.selection();
+    scale.value = reduceMotion ? 1 : withSequence(
       withSpring(1.3, ANIMATION.spring.bouncy),
       withSpring(1, ANIMATION.spring.default)
     );
     onUnsave();
-  }, [onUnsave]);
+  }, [onUnsave, reduceMotion, scale]);
 
   return (
-    <HapticPressable onPress={handlePress} haptic={null} style={styles.heartButton} accessibilityRole="button" accessibilityLabel={`Unsave ${title}`}>
+    <HapticPressable onPress={handlePress}  style={styles.heartButton} accessibilityRole="button" accessibilityLabel={`Unsave ${title}`}>
       <Animated.View style={animStyle}>
         <Ionicons name="heart" size={24} color={COLORS.saved} illustrated={false} selected />
       </Animated.View>
@@ -103,14 +105,14 @@ export default function SavedScreen({ navigation, embedded = false }) {
 
   const renderItem = ({ item, index }) => (
     <LayeredCard style={[styles.cardWrap, { width: cardWidth }, index % columns !== columns - 1 ? { marginRight: GRID_GAP } : null]}>
-      <HapticPressable
+      <HapticPressable scaleDown={item.photoUrl ? 0.97 : 1}
         onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-        haptic="light"
+
         style={styles.card}
       >
         <View style={styles.imageWrap}>
           <ShimmerImage
-            source={{ uri: item.photoUrl || null }} placeholderIcon={listingIcon(item)}
+            source={{ uri: item.photoUrl || null }} placeholderIcon={listingIcon(item)} category={item.category} title={item.title}
             style={styles.cardImage}
           />
           <HeartButton title={item.title} onUnsave={() => handleUnsave(item.id)} />
@@ -162,10 +164,10 @@ export default function SavedScreen({ navigation, embedded = false }) {
               <Text style={styles.emptySubtitle}>
                 Tap the heart on any listing to save it here
               </Text>
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={styles.browseButton}
                 onPress={() => navigation.navigate('Feed')}
-                haptic="medium"
+
               >
                 <Text maxFontSizeMultiplier={1.4} style={styles.browseButtonText}>Browse Items</Text>
               </HapticPressable>
@@ -202,9 +204,7 @@ const styles = StyleSheet.create({
   // Image
   imageWrap: {
     position: 'relative',
-    margin: SPACING.sm,
-    marginBottom: 0,
-    borderRadius: RADIUS.md,
+    borderRadius: 0,
     overflow: 'hidden',
   },
   cardImage: {

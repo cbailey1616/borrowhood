@@ -1,4 +1,4 @@
-import ListingTypeIcon from '../components/ListingTypeIcon';
+import ItemPhotoPlaceholder from '../components/ItemPhotoPlaceholder';
 import { listingIcon } from '../utils/listingPresentation';
 import RequestTypeIcon from '../components/RequestTypeIcon';
 import { requestPresentation } from '../utils/requestPresentation';
@@ -85,17 +85,15 @@ export default function BrowseScreen({ navigation }) {
 
   const renderListingItem = ({ item, index }) => (
     <View style={styles.cardAnimated}>
-      <HapticPressable
+      <HapticPressable scaleDown={item.photoUrl ? 0.97 : 1}
         style={styles.card}
         onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-        haptic="light"
+        haptic={null}
       >
         {item.photoUrl ? (
-          <ShimmerImage source={{ uri: item.photoUrl }} placeholderIcon={listingIcon(item)} style={styles.cardImage} />
+          <ShimmerImage category={item.category} title={item.title} source={{ uri: item.photoUrl }} placeholderIcon={listingIcon(item)} style={styles.cardImage} />
         ) : (
-          <View style={[styles.cardImage, styles.imagePlaceholder]}>
-            <ListingTypeIcon listing={item} size={32} />
-          </View>
+          <ItemPhotoPlaceholder category={item.category} title={item.title} style={styles.cardImage} />
         )}
         <View style={styles.cardContent}>
           <ListingOffer listing={item} />
@@ -140,10 +138,10 @@ export default function BrowseScreen({ navigation }) {
   const renderRequestItem = ({ item, index }) => (
     <View>
       <View style={[styles.cardBox, styles.requestCardOuter]}>
-        <HapticPressable
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover}
           style={styles.requestCard}
           onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
-          haptic="light"
+          haptic={null}
         >
           <View style={styles.requestHeader}>
             {item.requester.profilePhotoUrl ? (
@@ -197,7 +195,6 @@ export default function BrowseScreen({ navigation }) {
           <HapticPressable
             style={styles.haveThisButton}
             onPress={() => {
-              haptics.medium();
               setSelectedRequest(item);
             }}
             haptic={null}
@@ -247,7 +244,7 @@ export default function BrowseScreen({ navigation }) {
             returnKeyType="search"
           />
           {search.length > 0 && (
-            <HapticPressable onPress={() => { setSearch(''); }} haptic="light">
+            <HapticPressable onPress={() => { setSearch(''); }} haptic={null}>
               <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
             </HapticPressable>
           )}
@@ -303,7 +300,7 @@ export default function BrowseScreen({ navigation }) {
           ListEmptyComponent={
             !isLoading && (
               <View style={styles.emptyContainer}>
-                <RequestTypeIcon size={64} />
+                <RequestTypeIcon illustrated={true} size={64} />
                 <Text style={styles.emptyTitle}>No items found</Text>
                 <Text style={styles.emptySubtitle}>
                   {search ? 'Try a different search term' : 'Be the first to list an item!'}
@@ -330,7 +327,7 @@ export default function BrowseScreen({ navigation }) {
           ListEmptyComponent={
             !isLoading && (
               <View style={styles.emptyContainer}>
-                <Ionicons name="search-outline" size={64} color={COLORS.gray[700]} />
+                <Ionicons illustrated={true} name="search-outline" size={64} color={COLORS.gray[700]} />
                 <Text style={styles.emptyTitle}>No wanted posts</Text>
                 <Text style={styles.emptySubtitle}>
                   {search ? 'Try a different search term' : 'No one is looking for anything yet'}

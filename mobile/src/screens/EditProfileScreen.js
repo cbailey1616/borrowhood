@@ -196,7 +196,7 @@ export default function EditProfileScreen({ navigation }) {
                 Legal name and location are locked after verification.
               </Text>
               <HapticPressable
-                haptic="light"
+                haptic={null}
                 onPress={() => {
                   showError({
                     type: 'verification',
@@ -292,7 +292,7 @@ export default function EditProfileScreen({ navigation }) {
             </View>
             {!isVerified && (
               <HapticPressable
-                haptic="light"
+                haptic={null}
                 style={styles.locationButton}
                 onPress={handleGetLocation}
                 disabled={isGettingLocation}
@@ -349,8 +349,8 @@ export default function EditProfileScreen({ navigation }) {
         </View>
 
       <View style={styles.footer}>
-        <HapticPressable
-          haptic="medium"
+        <HapticPressable scaleDown={0.97}
+          haptic={null}
           style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={isLoading}

@@ -73,10 +73,10 @@ export default function NotificationsScreen({ navigation }) {
       await api.markAllNotificationsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
-      haptics.success();
+
     } catch (error) {
       console.error('Failed to mark all as read:', error);
-      haptics.error();
+
     }
   };
 
@@ -84,7 +84,7 @@ export default function NotificationsScreen({ navigation }) {
     if (!notification.isRead) {
       handleMarkRead(notification);
     }
-    haptics.light();
+
 
     const destination = notificationDestination(notification);
     if (destination) navigation.navigate(destination.name, destination.params);
@@ -105,12 +105,12 @@ export default function NotificationsScreen({ navigation }) {
 
   const renderItem = ({ item, index }) => (
     <AnimatedCard index={index}>
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={[styles.card, !item.isRead && styles.cardUnread]}
         onPress={() => handleNotificationPress(item)}
         haptic={null}
       >
-        <NotificationIcon notification={item} size={40} />
+        <NotificationIcon notification={item} size={22} />
         <View style={styles.cardContent}>
           <Text style={[styles.title, !item.isRead && styles.titleUnread]}>
             {item.title}
@@ -128,9 +128,9 @@ export default function NotificationsScreen({ navigation }) {
       {unreadCount > 0 && (
         <View style={styles.header}>
           <Text maxFontSizeMultiplier={1.4} style={styles.unreadLabel}>{unreadCount} unread</Text>
-          <HapticPressable
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover}
             onPress={handleMarkAllRead}
-            haptic="light"
+            haptic={null}
           >
             <Text style={styles.markAllRead}>Mark all read</Text>
           </HapticPressable>
@@ -156,6 +156,7 @@ export default function NotificationsScreen({ navigation }) {
             </View>
           )
         }
+
       />
 
       <ActionSheet

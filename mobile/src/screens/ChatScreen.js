@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import { StatusBar } from 'expo-status-bar';
 import ContentSafetyActions from '../components/ContentSafetyActions';
 import ListingTypeIcon from '../components/ListingTypeIcon';
@@ -59,6 +60,7 @@ export default function ChatScreen(props) {
 }
 
 function ChatConversation({ route, navigation }) {
+  const reduceMotion = useReduceMotion();
   const { conversationId, recipientId, recipient, threadContext, listingId, listing: passedListing } = route.params || {};
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
@@ -267,7 +269,7 @@ function ChatConversation({ route, navigation }) {
 
       // Scroll to bottom
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToEnd({ animated: !reduceMotion });
       }, 100);
       // Local cleanup follows the server acknowledgement. Its failure must not
       // label a delivered message as unsent or offer a second send.
@@ -373,7 +375,6 @@ function ChatConversation({ route, navigation }) {
 
   const handleCopyMessage = useCallback(async (content) => {
     await Clipboard.setStringAsync(content);
-    haptics.light();
   }, []);
 
   const handlePickImage = async (camera = false) => {
@@ -524,7 +525,7 @@ function ChatConversation({ route, navigation }) {
           </View>}
           <Animated.View
             ref={ref => { if (ref) messageRefs.current[item.id] = ref; }}
-            entering={FadeInUp.duration(160)}
+            entering={reduceMotion ? undefined : FadeInUp.duration(160)}
             style={styles.compactRow}
           >
             {!isRoot && (startsGroup ? <HapticPressable onPress={item.isOwnMessage ? undefined : openProfile} disabled={item.isOwnMessage || !profileId}
@@ -544,7 +545,7 @@ function ChatConversation({ route, navigation }) {
             ) : (
               <HapticPressable
                 onLongPress={() => handleMessageLongPress(item)}
-                haptic="medium"
+                haptic={null}
                 accessible={false}
                 accessibilityRole={undefined}
                 style={styles.compactMessage}
@@ -557,7 +558,7 @@ function ChatConversation({ route, navigation }) {
                   {!!context.replyText && <Text style={styles.messageQuote}>“{context.replyText}”</Text>}
                 </View>}
                 {item.imageUrl && (
-                  <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic="light">
+                  <HapticPressable onPress={() => setFullscreenImage(item.imageUrl)} haptic={null}>
                     <ShimmerImage source={{ uri: item.imageUrl }} style={[styles.messageImage, isRoot && { width: '100%', height: 210 }]} accessibilityLabel="Chat photo" />
                   </HapticPressable>
                 )}
@@ -646,7 +647,7 @@ function ChatConversation({ route, navigation }) {
         <Text style={styles.blockedText}>Messaging is blocked.</Text>
         <HapticPressable onPress={openProfile} style={styles.profileLink}><Text maxFontSizeMultiplier={1.4} style={styles.profileLinkText}>View profile</Text></HapticPressable>
       </View>}
-      {showNewMessages && <HapticPressable accessibilityRole="button" onPress={() => { nearBottom.current = true; setShowNewMessages(false); flatListRef.current?.scrollToEnd({ animated: true }); }} style={{ alignSelf: 'center', padding: 14, minHeight: 44, backgroundColor: COLORS.primaryMuted, borderRadius: 22, margin: 8 }}><Text maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.buttonSmall, color: COLORS.primary }}>New messages ↓</Text></HapticPressable>}
+      {showNewMessages && <HapticPressable accessibilityRole="button" onPress={() => { nearBottom.current = true; setShowNewMessages(false); flatListRef.current?.scrollToEnd({ animated: !reduceMotion }); }} style={{ alignSelf: 'center', padding: 14, minHeight: 44, backgroundColor: COLORS.primaryMuted, borderRadius: 22, margin: 8 }}><Text maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.buttonSmall, color: COLORS.primary }}>New messages ↓</Text></HapticPressable>}
       {!!chatError && <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: COLORS.warningMuted }}>
         <Text accessibilityRole="alert" style={{ color: COLORS.text, ...TYPOGRAPHY.bodySmall, lineHeight: 20 }}>{chatError}</Text>
         {!!conversationId && <ActionButton onPress={() => fetchMessages()} label="Refresh conversation" style={{ marginTop: 8 }} />}
@@ -715,7 +716,7 @@ function ChatConversation({ route, navigation }) {
       <Modal
         visible={!!fullscreenImage}
         transparent
-        animationType="fade"
+        animationType={reduceMotion ? 'none' : 'fade'}
         onRequestClose={() => setFullscreenImage(null)}
       >
         <Pressable style={styles.fullscreenOverlay} onPress={() => setFullscreenImage(null)}>

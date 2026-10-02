@@ -1,6 +1,9 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
+
+let mockReduceMotion = false;
+jest.mock('../../../src/hooks/useReduceMotion', () => ({ __esModule: true, default: () => mockReduceMotion }));
 
 jest.mock('../../../src/context/AuthContext', () => ({
   useAuth: () => ({ user: null }),
@@ -12,7 +15,39 @@ jest.mock('../../../src/context/ErrorContext', () => ({
 const { haptics } = require('../../../src/utils/haptics');
 
 describe('HapticPressable', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => { jest.clearAllMocks(); mockReduceMotion = false; });
+
+  it('keeps normal taps and long presses quiet by default', () => {
+    const HapticPressable = require('../../../src/components/HapticPressable').default;
+    const onLongPress = jest.fn();
+    const screen = render(<HapticPressable onPress={() => {}} onLongPress={onLongPress}><Text>Quiet row</Text></HapticPressable>);
+    fireEvent.press(screen.getByText('Quiet row'));
+    fireEvent(screen.getByText('Quiet row'), 'longPress');
+    expect(onLongPress).toHaveBeenCalledTimes(1);
+    Object.values(haptics).forEach(feedback => expect(feedback).not.toHaveBeenCalled());
+  });
+
+  it('uses explicit long-press feedback without adding feedback to a normal tap', () => {
+    const HapticPressable = require('../../../src/components/HapticPressable').default;
+    const screen = render(<HapticPressable onPress={() => {}} onLongPress={() => {}} longPressHaptic="selection"><Text>Reactions</Text></HapticPressable>);
+    fireEvent.press(screen.getByText('Reactions'));
+    expect(haptics.selection).not.toHaveBeenCalled();
+    fireEvent(screen.getByText('Reactions'), 'longPress');
+    expect(haptics.selection).toHaveBeenCalledTimes(1);
+  });
+
+  it('highlights a pressed row and respects Reduce Motion for an opted-in scale', () => {
+    const HapticPressable = require('../../../src/components/HapticPressable').default;
+    const spring = jest.spyOn(require('react-native-reanimated'), 'withSpring');
+    mockReduceMotion = true;
+    const screen = render(<HapticPressable testID="row" scaleDown={0.97} pressedBackgroundColor="sage" style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}><Text>Row</Text></HapticPressable>);
+    fireEvent(screen.getByTestId('row'), 'pressIn');
+    expect(StyleSheet.flatten(screen.getByTestId('row').props.style)).toMatchObject({ backgroundColor: 'sage', opacity: 0.9 });
+    expect(spring).not.toHaveBeenCalled();
+    fireEvent(screen.getByTestId('row'), 'pressOut');
+    expect(StyleSheet.flatten(screen.getByTestId('row').props.style).opacity).toBe(1);
+    spring.mockRestore();
+  });
 
   it('fires onPress callback', () => {
     const HapticPressable = require('../../../src/components/HapticPressable').default;

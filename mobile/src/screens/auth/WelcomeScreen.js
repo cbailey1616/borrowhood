@@ -21,7 +21,6 @@ import WoodlandBackdrop from '../../components/WoodlandBackdrop';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import useBiometrics from '../../hooks/useBiometrics';
-import { haptics } from '../../utils/haptics';
 import { CARD_SURFACE, BASE_URL, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 export default function WelcomeScreen({ navigation, showBackButton = false }) {
@@ -78,7 +77,6 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
         const credentials = await getStoredCredentials();
         if (credentials) {
           await login(credentials.email, credentials.password);
-          haptics.success();
         } else {
           showError({
             type: 'auth',
@@ -100,13 +98,11 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
   const signInWithPassword = async (loginEmail, loginPassword, link) => {
     if (link) await login(loginEmail, loginPassword, link);
     else await login(loginEmail, loginPassword);
-    haptics.success();
   };
 
   const handleLogin = async () => {
     if (signInLock.current || socialBusy) return;
     if (!email.trim() || !password) {
-      haptics.warning();
       setLoginError('Please enter your email and password.');
       return;
     }
@@ -117,7 +113,6 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
     try {
       await signInWithPassword(email.trim(), password);
     } catch (error) {
-      haptics.error();
       setLoginError(error.message || 'Incorrect email or password. Please try again.');
     } finally {
       signInLock.current = false;
@@ -146,10 +141,10 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
               <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
             </HapticPressable>}
             <View style={styles.logoContainer}>
-              <View style={styles.logoBadge}>
+              <View style={styles.brandRow}>
                 <Image source={require('../../../assets/logo.png')} style={styles.logo} accessible={false} />
+                <Text maxFontSizeMultiplier={1.4} accessibilityRole="header" style={styles.wordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>Borrowhood</Text>
               </View>
-              <Text maxFontSizeMultiplier={1.4} accessibilityRole="header" style={styles.wordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>Borrowhood</Text>
               <Text style={styles.authTitle}>Sign in to your account</Text>
             </View>
 
@@ -182,7 +177,7 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
                       style={[styles.biometricAction, (isLoading || socialBusy) && styles.loginButtonDisabled]}
                       onPress={handleBiometricLogin}
                       disabled={isLoading || socialBusy}
-                      haptic="medium"
+
                       testID="Welcome.button.biometric"
                       accessibilityLabel={`Sign in with ${biometricType}`}
                       accessibilityHint="Sign in using your saved account"
@@ -227,7 +222,7 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
                   <HapticPressable
                     onPress={() => setShowPassword(!showPassword)}
                     style={styles.eyeButton}
-                    haptic="light"
+                    haptic="selection"
                     disabled={isLoading || socialBusy}
                     accessibilityRole="button"
                     accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
@@ -246,11 +241,11 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
                 </View>
               )}
 
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={[styles.loginButton, (isLoading || socialBusy) && styles.loginButtonDisabled]}
                 onPress={handleLogin}
                 disabled={isLoading || socialBusy}
-                haptic="medium"
+
                 testID="Welcome.button.signIn"
                 accessibilityLabel="Sign in"
                 accessibilityRole="button"
@@ -278,7 +273,7 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>New here?</Text>
-              <HapticPressable disabled={socialBusy || isLoading} onPress={() => navigation.navigate('Register')} haptic="light" testID="Welcome.link.createAccount" accessibilityLabel="Create an account" accessibilityRole="link" style={styles.createAccountLink}>
+              <HapticPressable disabled={socialBusy || isLoading} onPress={() => navigation.navigate('Register')}  testID="Welcome.link.createAccount" accessibilityLabel="Create an account" accessibilityRole="link" style={styles.createAccountLink}>
                 <Text maxFontSizeMultiplier={1.4} style={styles.footerLink}>Create an account</Text>
               </HapticPressable>
             </View>
@@ -325,34 +320,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoContainer: {
-    alignItems: 'center',
+    alignItems: 'stretch',
     marginBottom: SPACING.xl,
   },
   backButton: { minWidth: 44, minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', marginBottom: SPACING.sm },
-  logoBadge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.md,
-  },
-  logo: { width: 62, height: 62, resizeMode: 'contain' },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginBottom: SPACING.sm },
+  logo: { width: 48, height: 48, resizeMode: 'contain' },
   wordmark: {
     ...TYPOGRAPHY.largeTitle,
     lineHeight: 44,
     letterSpacing: -1,
     color: COLORS.primary,
-    textAlign: 'center',
+    textAlign: 'left',
+    flex: 1,
     maxWidth: '100%',
     marginBottom: SPACING.xs,
     fontFamily: 'Fraunces_600SemiBold',
     fontWeight: '600',
   },
-  authTitle: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center' },
+  authTitle: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'left' },
   biometricAction: {
     alignItems: 'center',
     justifyContent: 'center',

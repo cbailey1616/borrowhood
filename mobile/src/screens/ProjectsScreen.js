@@ -130,7 +130,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
       refreshing={refreshing} onRefresh={()=>{setRefreshing(true);load();}}>
       {!embedded&&<View style={[styles.hero,{height:insets.top+(creating?64:88)}]}>
         <FeedWoodlandBackdrop width={width} height={Math.max(creating?136:176,insets.top+(creating?84:130))} topOffset={-32} sceneIndex={feedWoodlandScene}/>
-        <HapticPressable accessibilityRole="button" accessibilityLabel="Back" style={[styles.back,{top:insets.top+8}]}
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" accessibilityLabel="Back" style={[styles.back,{top:insets.top+8}]}
           onPress={()=>navigation.canGoBack?.() !== false ? navigation.goBack() : navigation.navigate('Main')}>
           <Icon name="chevron-back" size={24}/>
         </HapticPressable>
@@ -140,20 +140,21 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
         {!embedded&&<Text accessibilityRole="header" style={styles.title}>{creating?'New plan':isPlan?data.name:'Ideas'}</Text>}
         {!isPlan?<>
           <Text style={styles.subtitle}>Make a plan. Borrow from neighbors.</Text>
-          <ActionButton label="Create your own plan" icon="history-ledger" onPress={()=>navigation.push('Projects',{custom:true})}/>
+          <ActionButton label='Create your own plan' icon="history-ledger" onPress={()=>navigation.push('Projects',{custom:true})}/>
           {data[1].length>0&&<>
             <Text style={styles.heading}>Your plans</Text>
-            {data[1].map(project=><PlanSwipeRow key={project.id} label={project.name} disabled={busy} onRemove={()=>setSheet({type:'removeSaved',project})}><HapticPressable style={styles.saved} accessibilityRole="button"
+            {data[1].map(project=><PlanSwipeRow key={project.id} label={project.name} disabled={busy} onRemove={()=>setSheet({type:'removeSaved',project})}><HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.saved} accessibilityRole="button"
               onPress={()=>navigation.push('Projects',{id:project.id})}>
               <Icon name="history-ledger" size={26}/><Text maxFontSizeMultiplier={1.4} style={[styles.label,{flex:1}]}>{project.name}</Text><Icon name="chevron-forward" size={18}/>
             </HapticPressable></PlanSwipeRow>)}
           </>}
           {data[1].length>0&&<Text style={styles.heading}>Ideas</Text>}
           <View style={styles.ideas}>
+
             {data[0].map(idea=> {
               const essentials=idea.items;
               const count=essentials.filter(i=>i.matches.length).length;
-              return <HapticPressable key={idea.id} disabled={busy} accessibilityRole="button" accessibilityLabel={`View ${idea.name}`}
+              return <HapticPressable pressedBackgroundColor={COLORS.cardHover} key={idea.id} disabled={busy} accessibilityRole="button" accessibilityLabel={`View ${idea.name}`}
                 onPress={()=>{const saved=data[1].find(p=>p.templateId===idea.id);navigation.push('Projects',saved?{id:saved.id}:{templateId:idea.id});}} style={styles.idea}>
                 <View style={styles.ideaText}>
                   <Text style={styles.headingText}>{idea.name}</Text>
@@ -170,7 +171,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
           {creating&&<View style={styles.nameField}><Text maxFontSizeMultiplier={1.4} style={styles.label}>Plan name</Text><TextInput accessibilityLabel="Plan name" value={planName} onChangeText={setPlanName} maxLength={80} placeholder="e.g. Backyard cookout" placeholderTextColor={COLORS.textMuted} style={styles.input}/></View>}
           <View style={creating?styles.builderHeading:styles.summary}>
             <View style={styles.summaryHeading}><Text style={[styles.headingText,{flex:1}]}>{creating?'What you’ll need':'Your checklist'}</Text>
-              {!!data.items.length&&<HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={editing?'Finish editing checklist':'Edit checklist'} onPress={()=>setEditing(!editing)} style={styles.editControl}><Icon name={editing?'selection-check':'pencil'} size={17}/><Text maxFontSizeMultiplier={1.4} style={styles.editText}>{editing?'Done':'Edit list'}</Text></HapticPressable>}
+              {!!data.items.length&&<HapticPressable haptic="selection" pressedBackgroundColor={COLORS.cardHover} disabled={busy} accessibilityRole="button" accessibilityLabel={editing?'Finish editing checklist':'Edit checklist'} onPress={()=>setEditing(!editing)} style={styles.editControl}><Icon name={editing?'selection-check':'pencil'} size={17}/><Text maxFontSizeMultiplier={1.4} style={styles.editText}>{editing?'Done':'Edit list'}</Text></HapticPressable>}
             </View>
             {!data.items.length?<Text style={styles.body}>Add what you need for this plan.</Text>:<>
             <View style={styles.progressRow}><Text style={styles.body}>{progress.covered} ready{progress.waiting?` · ${progress.waiting} waiting`:''} · {progress.total-progress.covered-progress.waiting} to find</Text><Text style={styles.hint}>{progress.covered} of {progress.total}</Text></View>
@@ -189,35 +190,35 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
                   <TextInput accessibilityLabel="Checklist item name" value={editedLabel} onChangeText={setEditedLabel} maxLength={60} autoFocus style={styles.input}/>
                   <View style={styles.editorActions}>
                     <ActionButton label="Cancel" disabled={busy} onPress={()=>{Keyboard.dismiss();setEditedItem(null);}} style={styles.editorButton}/>
-                    <ActionButton label="Save item" variant="primary" disabled={busy||!editedLabel.trim()} onPress={saveItem} style={styles.editorButton}/>
+                    <ActionButton haptic="light" label="Save item" variant="primary" disabled={busy||!editedLabel.trim()} onPress={saveItem} style={styles.editorButton}/>
                   </View>
                 </View>:<>
                 <View style={styles.row}>
-                  <HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={`Options for ${item.label}`} onPress={()=>setSheet({type:'item',item})} style={styles.itemPicture}><ProjectItemIllustration label={item.label} icon={item.icon} size={66}/></HapticPressable>
+                  <HapticPressable pressedBackgroundColor={COLORS.cardHover} disabled={busy} accessibilityRole="button" accessibilityLabel={`Options for ${item.label}`} onPress={()=>setSheet({type:'item',item})} style={styles.itemPicture}><ProjectItemIllustration label={item.label} icon={item.icon} size={66}/></HapticPressable>
                   <View style={styles.itemText}>
-                    <HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={`Edit or remove ${item.label}`} onPress={()=>setSheet({type:'item',item})} style={styles.itemName}>
-                      <Text maxFontSizeMultiplier={1.4} style={[styles.label,{flex:1}]}>{item.label}</Text><View style={styles.itemEditIcon}><Icon name="pencil" size={17}/></View>
+                    <HapticPressable pressedBackgroundColor={COLORS.cardHover} disabled={busy} accessibilityRole="button" accessibilityLabel={`Edit or remove ${item.label}`} onPress={()=>setSheet({type:'item',item})} style={styles.itemName}>
+                      <Text maxFontSizeMultiplier={1.4} style={[styles.label,{flex:1}]}>{item.label}</Text><View style={styles.itemEditIcon}><Icon name='pencil' size={17}/></View>
                     </HapticPressable>
                     {!creating&&<Text style={[styles.body,state.covered&&styles.readyText]}>{state.label}</Text>}
                     {item.endDate&&['approved','paid','picked_up'].includes(item.transactionStatus)&&<Text style={styles.hint}>Return by {formatCalendarDate(item.endDate,{month:'short',day:'numeric'})}</Text>}
-                    {hasExchange&&<HapticPressable accessibilityRole="button" accessibilityLabel={`View exchange for ${item.label}`}
+                    {hasExchange&&<HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" accessibilityLabel={`View exchange for ${item.label}`}
                       onPress={()=>navigation.navigate('TransactionDetail',{id:item.transactionId})}><Text style={styles.textLink}>View exchange</Text></HapticPressable>}
                   </View>
-                  {editing&&<HapticPressable disabled={busy} accessibilityRole="button" accessibilityLabel={`Remove ${item.label}`} style={styles.checkControl}
+                  {editing&&<HapticPressable pressedBackgroundColor={COLORS.cardHover} disabled={busy} accessibilityRole="button" accessibilityLabel={`Remove ${item.label}`} style={styles.checkControl}
                     onPress={()=>requestRemoveItem(item)}><Icon name="trash" size={24}/></HapticPressable>}
                   {hasExchange&&<Icon name={state.covered?'selection-check':'time'} size={24}/>}
                 </View>
                 {!creating&&!editing&&!hasExchange&&<View style={[styles.itemActions,compact&&styles.compactActions]}>
                   {!item.owned&&<ActionButton label={item.matches.length?'Browse nearby':'Ask neighbors'} icon={item.matches.length?'search':'chatbubble'}
                     accessibilityLabel={item.matches.length?`Find ${item.label}`:`Ask neighbors for ${item.label}`} disabled={busy} onPress={()=>openMatches(item)} style={styles.findButton}/>}
-                  <HapticPressable disabled={busy} accessibilityRole="checkbox" accessibilityState={{checked:!!item.owned}}
+                  <HapticPressable haptic="selection" pressedBackgroundColor={COLORS.cardHover} disabled={busy} accessibilityRole="checkbox" accessibilityState={{checked:!!item.owned}}
                     accessibilityLabel={`I have ${item.label}`} onPress={()=>setOwned(item,!item.owned)} style={[styles.haveOption,item.owned&&styles.haveOptionSelected]}>
                     <Icon name={item.owned?'selection-check':'selection-check-empty'} size={20} illustrated={false}/>
                     <Text maxFontSizeMultiplier={1.4} style={styles.haveText}>I have this</Text>
                   </HapticPressable>
                 </View>}
 
-                {!editing&&state.ended&&<HapticPressable disabled={busy} accessibilityRole="button" style={styles.retryItem}
+                {!editing&&state.ended&&<HapticPressable pressedBackgroundColor={COLORS.cardHover} disabled={busy} accessibilityRole="button" style={styles.retryItem}
                   onPress={()=>mutate(()=>api.resetProjectItem(id,item.id))}><Text style={styles.textLink}>Find another</Text></HapticPressable>}
                 </>}
               </View></PlanSwipeRow>;
@@ -227,17 +228,17 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
             {!creating&&<Text maxFontSizeMultiplier={1.4} style={styles.label}>Add an item</Text>}
             <TextInput accessibilityLabel="Add a checklist item" placeholder="e.g. Folding chairs" placeholderTextColor={COLORS.textMuted}
               value={custom} onChangeText={setCustom} maxLength={60} returnKeyType="done" onSubmitEditing={()=>!busy&&custom.trim()&&addItem()} style={styles.input}/>
-            <ActionButton disabled={busy||!custom.trim()} label="Add item" icon="add" onPress={addItem}/>
+            <ActionButton haptic="light" disabled={busy||!custom.trim()} label="Add item" icon="add" onPress={addItem}/>
           </View>}
           </View>
-          {!id&&<ActionButton testID="Projects.savePlan" disabled={busy||(newCustom&&!planName.trim())} loading={busy} label="Save plan" variant="primary" style={styles.planButton} onPress={save}/>}
+          {!id&&<ActionButton haptic="light" testID="Projects.savePlan" disabled={busy||(newCustom&&!planName.trim())} loading={busy} label="Save plan" variant="primary" style={styles.planButton} onPress={save}/>}
           {id&&<><ActionButton label="View pickup & return plan" variant="primary" style={styles.planButton} onPress={()=>setSheet({type:'plan'})}/>
-          <HapticPressable accessibilityRole="button" style={styles.remove} onPress={()=>setSheet({type:'remove'})}><Text style={styles.hint}>Remove plan</Text></HapticPressable></>}
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" style={styles.remove} onPress={()=>setSheet({type:'remove'})}><Text style={styles.hint}>Remove plan</Text></HapticPressable></>}
         </>}
       </View>
     </BorrowhoodRefreshScrollView>
     <ActionSheet key={sheet?.type||'closed'} variant={sheet?.type==='item'?'item':'menu'} icon={sheet?.type==='item'?<ProjectItemIllustration label={sheet.item.label} icon={sheet.item.icon} size={56}/>:undefined} isVisible={!!sheet} onClose={()=>setSheet(null)} title={['matches','item','exchanges'].includes(sheet?.type)?sheet.item.label:sheet?.type==='plan'?'Pickup & return plan':sheet?.type==='removeItem'?`Remove ${sheet.item.label}?`:'Remove this plan?'} message={sheet?.type==='exchanges'?sheet.exchanges.length?'Choose the borrow for this checklist item.':'No active borrows yet.':sheet?.type==='item'&&sheet.item.transactionId?'Removing this item keeps its request or exchange active in Your exchanges.':sheet?.type==='removeItem'?'This removes it from your checklist. Its request or exchange stays active in Your exchanges.':['remove','removeSaved'].includes(sheet?.type)?'This removes your checklist. Existing requests and exchanges stay active.':sheet?.type==='matches'&&!sheet.item.matches.length?'No matching items right now. Check again later or ask your neighbors in Wanted.':sheet?.type==='plan'&&!data.items?.some(i=>i.transactionId)?'Your requests will appear here after you choose an item and send a request.':undefined}
-      actions={sheet?.type==='item'?[...(sheet.item.transactionId?[{label:'View exchange',icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:sheet.item.transactionId})}]:[{label:'Edit item',icon:<Icon name="pencil" size={28}/>,onPress:()=>editItem(sheet.item)},...(!sheet.item.owned?[{label:'Use an existing exchange',icon:<Icon name="handshake" size={28}/>,onPress:()=>openExchanges(sheet.item)}]:[])]),{label:'Remove item',destructive:true,icon:<Icon name="trash" size={27} color={COLORS.danger} fillColor={COLORS.dangerMuted} illustrated/>,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='exchanges'?sheet.exchanges.map(exchange=>({label:`${exchange.listing.title} · ${projectItemState({transactionId:exchange.id,transactionStatus:exchange.status}).label}`,icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>linkExchange(sheet.item,exchange)})):sheet?.type==='matches'?sheet.item.matches.map(listing=>({label:listing.title,icon:<ShimmerImage source={{uri:listing.photoUrl}} placeholderIcon={sheet.item.icon} style={{width:36,height:36,borderRadius:8}}/>,onPress:()=>navigation.navigate('ListingDetail',{id:listing.id,...planContext(sheet.item)})})):sheet?.type==='plan'?(data.items||[]).filter(i=>i.transactionId).map(item=>({label:`${item.label} · ${projectItemState(item).label}${item.endDate && ['approved','paid','picked_up'].includes(item.transactionStatus) ? ` · Return by ${formatCalendarDate(item.endDate,{month:'short',day:'numeric'})}` : ''}`,icon:<ProjectItemIllustration label={item.label} icon={item.icon} size={34}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:item.transactionId})})):sheet?.type==='removeItem'?[{label:'Remove from checklist',destructive:true,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='removeSaved'?[{label:'Remove plan',destructive:true,onPress:()=>mutate(()=>api.deleteProject(sheet.project.id))}]:sheet?.type==='remove'?[{label:'Remove checklist',destructive:true,onPress:()=>{const isCurrent=startNavigationTask();return mutate(async()=>{await api.deleteProject(id);if(isCurrent())navigation.goBack();});}}]:[]}/>
+      actions={sheet?.type==='item'?[...(sheet.item.transactionId?[{label:'View exchange',icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:sheet.item.transactionId})}]:[{label:'Edit item',icon:<Icon name='pencil' size={28}/>,onPress:()=>editItem(sheet.item)},...(!sheet.item.owned?[{label:'Use an existing exchange',icon:<Icon name="handshake" size={28}/>,onPress:()=>openExchanges(sheet.item)}]:[])]),{label:'Remove item',destructive:true,icon:<Icon name="trash" size={27} color={COLORS.danger} illustrated={false}/>,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='exchanges'?sheet.exchanges.map(exchange=>({label:`${exchange.listing.title} · ${projectItemState({transactionId:exchange.id,transactionStatus:exchange.status}).label}`,icon:<Icon name="swap-horizontal" size={24}/>,onPress:()=>linkExchange(sheet.item,exchange)})):sheet?.type==='matches'?sheet.item.matches.map(listing=>({label:listing.title,icon:<ShimmerImage source={{uri:listing.photoUrl}} placeholderIcon={sheet.item.icon} category={listing.category} title={listing.title} style={{width:36,height:36,borderRadius:8}}/>,onPress:()=>navigation.navigate('ListingDetail',{id:listing.id,...planContext(sheet.item)})})):sheet?.type==='plan'?(data.items||[]).filter(i=>i.transactionId).map(item=>({label:`${item.label} · ${projectItemState(item).label}${item.endDate && ['approved','paid','picked_up'].includes(item.transactionStatus) ? ` · Return by ${formatCalendarDate(item.endDate,{month:'short',day:'numeric'})}` : ''}`,icon:<ProjectItemIllustration label={item.label} icon={item.icon} size={34}/>,onPress:()=>navigation.navigate('TransactionDetail',{id:item.transactionId})})):sheet?.type==='removeItem'?[{label:'Remove from checklist',destructive:true,onPress:()=>removeItem(sheet.item)}]:sheet?.type==='removeSaved'?[{label:'Remove plan',destructive:true,onPress:()=>mutate(()=>api.deleteProject(sheet.project.id))}]:sheet?.type==='remove'?[{label:'Remove checklist',destructive:true,onPress:()=>{const isCurrent=startNavigationTask();return mutate(async()=>{await api.deleteProject(id);if(isCurrent())navigation.goBack();});}}]:[]}/>
   </>;
 }
 const styles=StyleSheet.create({

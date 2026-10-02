@@ -16,7 +16,6 @@ import HapticPressable from '../../components/HapticPressable';
 import BlurCard from '../../components/BlurCard';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
-import { haptics } from '../../utils/haptics';
 import { COLORS, BASE_URL, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../../utils/config';
 
 export default function RegisterScreen({ navigation }) {
@@ -74,7 +73,6 @@ export default function RegisterScreen({ navigation }) {
     try {
       const challenge = await register({ firstName, lastName, email, phone: phone || undefined, password, referralCode: formData.referralCode || undefined });
       if (!isCurrent()) return;
-      haptics.success();
       navigation.navigate('VerifySignupEmail', challenge);
     } catch (error) {
       showError({
@@ -99,7 +97,7 @@ export default function RegisterScreen({ navigation }) {
           <HapticPressable
             style={styles.backButton}
             onPress={() => navigation.goBack()}
-            haptic="light"
+
           >
             <Text maxFontSizeMultiplier={1.4} style={styles.backButtonText}>{'\u2039'}</Text>
           </HapticPressable>
@@ -186,7 +184,7 @@ export default function RegisterScreen({ navigation }) {
                   <HapticPressable
                     onPress={() => setShowPassword(!showPassword)}
                     style={styles.eyeButton}
-                    haptic="light"
+                    haptic="selection"
                   >
                     <Text maxFontSizeMultiplier={1.4} style={styles.eyeButtonText}>
                       {showPassword ? 'Hide' : 'Show'}
@@ -228,11 +226,11 @@ export default function RegisterScreen({ navigation }) {
                 </View>
               )}
 
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
                 onPress={handleRegister}
                 disabled={isLoading}
-                haptic="medium"
+
                 testID="Register.button.createAccount"
                 accessibilityLabel="Create account"
                 accessibilityRole="button"
@@ -259,7 +257,7 @@ export default function RegisterScreen({ navigation }) {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
-            <HapticPressable onPress={() => navigation.navigate('Login')} haptic="light">
+            <HapticPressable onPress={() => navigation.navigate('Login')} >
               <Text maxFontSizeMultiplier={1.4} style={styles.footerLink}>Sign in</Text>
             </HapticPressable>
           </View>

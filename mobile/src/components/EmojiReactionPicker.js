@@ -7,32 +7,33 @@ import ReactionIcon from './ReactionIcon';
 import { REACTION_OPTIONS, REACTION_PICKER_COLUMNS, REACTION_PICKER_CELL_HEIGHT, REACTION_PICKER_PADDING } from '../utils/reactions';
 import { haptics } from '../utils/haptics';
 import { COLORS, CARD_SURFACE } from '../utils/config';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 export { REACTION_OPTIONS as EMOJI_OPTIONS } from '../utils/reactions';
 
 export default function EmojiReactionPicker({ onSelect, onMore, style, options = REACTION_OPTIONS, colors = COLORS }) {
   const { width } = useWindowDimensions();
+  const reduceMotion = useReduceMotion();
   const handleSelect = useCallback(emoji => {
-    haptics.light();
+    haptics.selection();
     onSelect?.(emoji);
   }, [onSelect]);
   const handleMore = useCallback(() => {
-    haptics.light();
     onMore?.();
   }, [onMore]);
 
-  return <Animated.View entering={FadeIn.duration(150)} style={[styles.container, style]}>
+  return <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(150)} style={[styles.container, style]}>
     <View style={[styles.card, { width: Math.min(340, width - 32), backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.grid}>
         {options.map(item => <HapticPressable key={item.key} accessibilityRole="button"
-          accessibilityLabel={`React: ${item.label}`} haptic={null} style={styles.emojiButton}
+          accessibilityLabel={`React: ${item.label}`} haptic={null} scaleDown={1} style={styles.emojiButton}
           onPress={() => handleSelect(item.emoji)}>
           <ReactionIcon emoji={item.emoji} size={25} />
         </HapticPressable>)}
       </View>
       {!!onMore && <HapticPressable accessibilityRole="button" accessibilityLabel="More message actions"
-        haptic={null} onPress={handleMore} style={styles.moreButton}>
-        <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
+        haptic={null} scaleDown={1} onPress={handleMore} style={styles.moreButton}>
+        <Ionicons name="ellipsis-horizontal" size={22} color={colors.textSecondary} illustrated={false} selected={false} />
       </HapticPressable>}
     </View>
   </Animated.View>;

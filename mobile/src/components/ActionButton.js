@@ -9,7 +9,7 @@ export default function ActionButton({ label, onPress, disabled = false, loading
   const color = destructive ? COLORS.danger : COLORS.primary;
   const filled = variant === 'primary';
   const foreground = filled ? COLORS.surface : color;
-  return <HapticPressable {...props} accessibilityRole="button" accessibilityLabel={accessibilityLabel || label}
+  return <HapticPressable scaleDown={filled ? 0.97 : 1} {...props} accessibilityRole="button" accessibilityLabel={accessibilityLabel || label}
     accessibilityState={{ ...accessibilityState, disabled: disabled || loading, busy: loading }}
     disabled={disabled || loading} onPress={onPress}
     style={[styles.button, { borderColor: color }, filled && { minHeight: 52, backgroundColor: color }, style, (disabled || loading) && styles.disabled]}>

@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import { listingIcon } from '../utils/listingPresentation';
 import RequestTypeIcon from '../components/RequestTypeIcon';
 import { listingAvailability } from '../utils/listingAvailability';
@@ -85,6 +86,7 @@ const visibleOnHome = (item, userId) => {
 };
 
 export default function FeedScreen({ navigation, route }) {
+  const reduceMotion = useReduceMotion();
   const markFeedSeen = useContext(FeedSeenContext);
   const insets = useSafeAreaInsets();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
@@ -104,7 +106,7 @@ export default function FeedScreen({ navigation, route }) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
-  const feedHeader = useFeedHeader({ pinned: searchFocused, columns });
+  const feedHeader = useFeedHeader({ pinned: searchFocused || reduceMotion, columns });
   const [activeFilters, setActiveFilters] = useState([]);
   const consumedBrowse = useRef(route?.params?.browseItems);
   const [neighborhood, setNeighborhood] = useState(route?.params?.neighborhoodItems || null);
@@ -327,10 +329,10 @@ export default function FeedScreen({ navigation, route }) {
 
   useEffect(() => navigation.addListener('tabPress', () => {
     if (!navigation.isFocused?.()) return;
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    listRef.current?.scrollToOffset({ offset: 0, animated: !reduceMotion });
     fetchActiveDisputes();
     fetchBannerData();
-  }), [navigation, fetchBannerData, fetchActiveDisputes]);
+  }), [navigation, fetchBannerData, fetchActiveDisputes, reduceMotion]);
 
   const onRefresh = () => {
     setIsRefreshing(true);
@@ -417,13 +419,13 @@ export default function FeedScreen({ navigation, route }) {
     {
       label: 'List an Item',
       testID: 'Feed.create.listing',
-      icon: <Ionicons name="basket" size={32} illustrated />,
+      icon: <Ionicons name="basket" size={22}  />,
       onPress: () => navigation.navigate('CreateListing'),
     },
     {
       label: 'Post in Wanted',
       testID: 'Feed.create.request',
-      icon: <Ionicons name="request-note" size={32} illustrated />,
+      icon: <Ionicons name="request-note" size={22}  />,
       onPress: () => navigation.navigate('CreateRequest'),
     },
   ];
@@ -455,7 +457,7 @@ export default function FeedScreen({ navigation, route }) {
       onPress={() => navigation.navigate('ListingDiscussion', item.type === 'request'
         ? { requestId: item.id }
         : { listingId: item.id })}
-      scaleDown={0.99}
+      scaleDown={1}
       style={[styles.publicReplies, compact && styles.ribbonReplies]}
     >
       <Ionicons name="chatbubbles-outline" size={20} color={COLORS.primary} />
@@ -470,10 +472,10 @@ export default function FeedScreen({ navigation, route }) {
     return (
       <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
         <View style={styles.tile}>
-          <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID="FeedCard">
+          <HapticPressable onPress={() => openFeedItem(item)} haptic={null} scaleDown={item.photoUrl ? 0.97 : 1} style={styles.tile} testID="FeedCard">
             <View style={styles.tilePhotoFrame}>
               <View style={styles.tileThumb}>
-                <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
+                <ShimmerImage category={item.category} title={item.title} source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
                 {!item.ownerMasked && (
                   <HapticPressable
                     testID={`Feed.save.${item.id}`}
@@ -506,7 +508,7 @@ export default function FeedScreen({ navigation, route }) {
   const renderRibbonRequest = item => (
     <LayeredCard radius={RADIUS.xl} style={{ marginBottom: SPACING.sm }}>
       <View style={[styles.tile, styles.requestTile, { height: 152 * Math.max(1, fontScale || 1) }]} testID={`Feed.ribbon.card.${item.id}`}>
-        <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99}
+        <HapticPressable onPress={() => openFeedItem(item)} haptic={null} scaleDown={item.photoUrl ? 0.97 : 1}
           style={[styles.tile, styles.ribbonContent]} testID={`Feed.request.${item.id}`}>
           <View style={styles.ribbonCopy}>
             <View style={styles.ribbonLabel}>
@@ -516,11 +518,11 @@ export default function FeedScreen({ navigation, route }) {
             </View>
             <Text maxFontSizeMultiplier={1.4} style={styles.ribbonTitle} numberOfLines={2}>{item.title}</Text>
           </View>
-          {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo"
+          {!!item.photoUrl && <ShimmerImage category={item.category} title={item.title} source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo"
             contentFit="cover" style={styles.ribbonPhoto} />}
         </HapticPressable>
         <View style={styles.ribbonFooter}>
-          <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99}
+          <HapticPressable onPress={() => openFeedItem(item)} haptic={null} scaleDown={1}
             style={styles.ribbonAuthorButton} accessibilityLabel={`View wanted post: ${item.title}`}>
             {renderAuthor(item, { compact: true, showTime: false })}
           </HapticPressable>
@@ -533,14 +535,14 @@ export default function FeedScreen({ navigation, route }) {
   const renderRequestItem = item => (
     <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
       <View style={[styles.tile, styles.requestTile]}>
-        <HapticPressable onPress={() => openFeedItem(item)} haptic="light" scaleDown={0.99} style={styles.tile} testID={`Feed.request.${item.id}`}>
+        <HapticPressable onPress={() => openFeedItem(item)} haptic={null} scaleDown={item.photoUrl ? 0.97 : 1} style={styles.tile} testID={`Feed.request.${item.id}`}>
           <View style={styles.tileContent}>
             <View style={styles.requestLabel}>
               <View style={styles.requestIcon}><RequestTypeIcon type={item.requestType} size={28} /></View>
               <Text maxFontSizeMultiplier={1.4} style={styles.requestLabelText}>{requestPresentation(item.requestType).label}</Text>
             </View>
             <Text style={[styles.tileTitle, styles.requestTitle]} numberOfLines={2}>{item.title}</Text>
-            {!!item.photoUrl && <ShimmerImage source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo" contentFit="contain" style={{ width: '100%', height: 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
+            {!!item.photoUrl && <ShimmerImage category={item.category} title={item.title} source={{ uri: item.photoUrl }} accessibilityLabel="Wanted item photo" contentFit="contain" style={{ width: '100%', height: 180, borderRadius: RADIUS.md, marginBottom: SPACING.md }} />}
             {!!item.description && <Text style={styles.tileDesc} numberOfLines={2}>{item.description}</Text>}
             {renderAuthor(item)}
           </View>
@@ -556,11 +558,11 @@ export default function FeedScreen({ navigation, route }) {
         needsYou={exchanges.filter(exchange => exchange.section === 'needs-you').length}
         onPress={() => navigation.navigate('Exchanges')} />
       {!!homeAction && <LayeredCard style={{ marginBottom: SPACING.md }}>
-        <HapticPressable testID="Feed.exchanges" accessibilityRole="button"
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover} testID="Feed.exchanges" accessibilityRole="button"
           accessibilityLabel={`${homeAction.title}. ${homeAction.label}`}
           onPress={() => navigation.navigate(homeAction.destination.name, homeAction.destination.params)}
           style={styles.exchangeCard}>
-          <Ionicons name={homeAction.icon} size={26} illustrated color={COLORS.primary} />
+          <Ionicons name={homeAction.icon} size={22}  color={COLORS.primary} />
           <View style={styles.exchangeContent}>
             <Text style={styles.exchangeSummary}>{homeAction.title}</Text>
             <Text maxFontSizeMultiplier={1.4} style={styles.exchangeActionText}>{homeAction.label}</Text>
@@ -627,7 +629,7 @@ export default function FeedScreen({ navigation, route }) {
             titleRowStyle={styles.feedTitleRow}
             leftElement={<Image source={require('../../assets/logo.png')} contentFit="contain" transition={0}
               style={styles.brandMark} accessible={false} />}
-            rightElement={<HapticPressable onPress={() => setShowActionSheet(true)} haptic="light" testID="Feed.button.create" accessibilityLabel="Create a post" style={styles.addButton}>
+            rightElement={<HapticPressable scaleDown={0.97} onPress={() => setShowActionSheet(true)} haptic={null} testID="Feed.button.create" accessibilityLabel="Create a post" style={styles.addButton}>
               <Ionicons name="add" size={18} color={COLORS.surface} />
               <Text maxFontSizeMultiplier={1.4} style={styles.addButtonText}>Post</Text>
             </HapticPressable>}
@@ -635,11 +637,11 @@ export default function FeedScreen({ navigation, route }) {
             {(feed.length > 0 || requestCards.length > 0 || hasFilters || feedError || !user?.city) && <>
               <View style={styles.searchRow}>
                 <SearchBar value={search} onChangeText={setSearch} onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)} placeholder="What do you need?" onSubmitEditing={handleSearch} testID="Feed.searchBar" accessibilityLabel="Search items" style={styles.headerSearchBar} />
-                <HapticPressable style={[styles.filtersButton, extraFilterCount > 0 && styles.filtersButtonActive]} onPress={() => setShowFiltersSheet(true)} testID="Feed.filters" accessibilityRole="button" accessibilityLabel="Filter posts" accessibilityValue={{ text: extraFilterCount ? `${extraFilterCount} filters selected` : 'Everyone, all categories' }}>
+                <HapticPressable haptic="selection" style={[styles.filtersButton, extraFilterCount > 0 && styles.filtersButtonActive]} onPress={() => setShowFiltersSheet(true)} testID="Feed.filters" accessibilityRole="button" accessibilityLabel="Filter posts" accessibilityValue={{ text: extraFilterCount ? `${extraFilterCount} filters selected` : 'Everyone, all categories' }}>
                   <Ionicons name="filter" size={22} illustrated={false} color={extraFilterCount ? COLORS.surface : COLORS.primary} />
                 </HapticPressable>
               </View>
-              {!!neighborhood && <HapticPressable style={styles.neighborhoodFilter} accessibilityRole="button" accessibilityLabel="Clear neighborhood filter"
+              {!!neighborhood && <HapticPressable haptic="selection" style={styles.neighborhoodFilter} accessibilityRole="button" accessibilityLabel="Clear neighborhood filter"
                 onPress={() => { setNeighborhood(null); setVisibilityFilters([]); }}>
                 <Ionicons name="people-outline" size={18} color={COLORS.primary} />
                 <Text maxFontSizeMultiplier={1.4} style={styles.neighborhoodFilterText} numberOfLines={1}>{neighborhood.name || 'Neighborhood'}</Text>
@@ -650,8 +652,8 @@ export default function FeedScreen({ navigation, route }) {
                   {FILTER_OPTIONS.map(option => {
                     const selected = option.key === 'all' ? activeFilters.length === 0 : activeFilters.includes(option.key);
                     const label = option.key === 'all' && neighborhood ? 'All items' : option.label;
-                    return <HapticPressable key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, fontScale > 1.2 && { minWidth: 72 * fontScale }]}>
-                      <Ionicons name={option.icon} size={26} illustrated color={COLORS.primary} accessible={false} />
+                    return <HapticPressable haptic="selection" key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, fontScale > 1.2 && { minWidth: 72 * fontScale }]}>
+                      <Ionicons name={option.icon} size={22}  color={COLORS.primary} accessible={false} />
                       <Text maxFontSizeMultiplier={1.4} numberOfLines={1} style={[styles.typeTabText, width < 400 && styles.typeTabTextCompact, selected && styles.typeTabTextActive]}>{label}</Text>
                       {selected && <View accessible={false} style={styles.typeTabIndicator} />}
                     </HapticPressable>;
@@ -711,7 +713,7 @@ export default function FeedScreen({ navigation, route }) {
               <View style={styles.feedEnd}>
                 <Text style={styles.feedEndText}>You’re all caught up</Text>
                 <HapticPressable accessibilityRole="button" accessibilityLabel="Back to top" style={styles.backToTop}
-                  onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}>
+                  onPress={() => listRef.current?.scrollToOffset({ offset: 0, animated: !reduceMotion })}>
                   <Ionicons name="arrow-up" size={18} color={COLORS.primary} />
                   <Text style={styles.backToTopText}>Back to top</Text>
                 </HapticPressable>
@@ -725,12 +727,13 @@ export default function FeedScreen({ navigation, route }) {
               <Text style={styles.welcomeSubtitle}>No posts nearby yet. Start by sharing or asking.</Text>
               <View style={styles.welcomeActions}>
                 <HapticPressable accessibilityRole="button" accessibilityLabel="List an item" style={styles.welcomeAction} onPress={() => navigation.navigate('CreateListing')}>
-                  <View style={styles.welcomeActionIcon}><Ionicons name="basket" size={36} color={COLORS.primary} /></View>
+                  <Ionicons name="basket" size={22} color={COLORS.primary} />
                   <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.4} style={styles.welcomeActionTitle}>List an item</Text><Text maxFontSizeMultiplier={1.4} style={styles.welcomeActionNote}>Share an item or service.</Text></View>
                   <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
                 </HapticPressable>
-                <HapticPressable accessibilityRole="button" accessibilityLabel="Post in Wanted" style={[styles.welcomeAction, styles.welcomeRequest]} onPress={() => navigation.navigate('CreateRequest')}>
-                  <View style={styles.welcomeActionIcon}><RequestTypeIcon size={36} /></View>
+                <View style={styles.welcomeSeparator} />
+                <HapticPressable accessibilityRole="button" accessibilityLabel="Post in Wanted" style={styles.welcomeAction} onPress={() => navigation.navigate('CreateRequest')}>
+                  <RequestTypeIcon size={22} />
                   <View style={{ flex: 1 }}><Text maxFontSizeMultiplier={1.4} style={styles.welcomeActionTitle}>Post in Wanted</Text><Text maxFontSizeMultiplier={1.4} style={styles.welcomeActionNote}>Let neighbors know what you need.</Text></View>
                   <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
                 </HapticPressable>
@@ -742,7 +745,7 @@ export default function FeedScreen({ navigation, route }) {
               <HeroIcon icon={feedError ? 'cloud-offline-outline' : hasFilters ? 'search-outline' : user?.city ? 'basket' : 'location-outline'} size={72} />
               <Text style={styles.emptyTitle}>{feedError ? 'Couldn’t load nearby items' : hasFilters ? 'No matching items yet' : user?.city ? 'Ask your town for what you need' : 'Choose your town'}</Text>
               <Text style={styles.emptySubtitle}>{feedError ? 'Check your connection and try again.' : hasFilters ? 'Try fewer filters, or ask your neighbors for what you need.' : user?.city ? 'Post what you’re looking for. Neighbors can offer to help.' : 'Add your town to discover items nearby.'}</Text>
-              <HapticPressable style={styles.emptyButton} accessibilityRole="button" onPress={() => {
+              <HapticPressable scaleDown={0.97} style={styles.emptyButton} accessibilityRole="button" onPress={() => {
                 if (feedError) return fetchFeed(1, false);
                 if (!user?.city) return navigation.navigate('EditProfile');
                 if (hasFilters) {
@@ -787,7 +790,7 @@ export default function FeedScreen({ navigation, route }) {
         onClose={() => setActiveDropdown(null)}
         title={
           visibilityFilters.length > 0
-            ? <>{'Visibility  '}<Text onPress={() => { setVisibilityFilters([]); setNeighborhood(null); haptics.light(); }} maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.buttonCaption, color: COLORS.primary }}>Clear</Text></>
+            ? <>{'Visibility  '}<Text onPress={() => { setVisibilityFilters([]); setNeighborhood(null); haptics.selection(); }} maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.buttonCaption, color: COLORS.primary }}>Clear</Text></>
             : 'Visibility'
         }
         multiSelect
@@ -816,7 +819,7 @@ export default function FeedScreen({ navigation, route }) {
         onClose={() => setActiveDropdown(null)}
         title={
           categoryFilters.length > 0
-            ? <>{'Category  '}<Text onPress={() => { setCategoryFilters([]); haptics.light(); }} maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.buttonCaption, color: COLORS.primary }}>Clear</Text></>
+            ? <>{'Category  '}<Text onPress={() => { setCategoryFilters([]); haptics.selection(); }} maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.buttonCaption, color: COLORS.primary }}>Clear</Text></>
             : 'Category'
         }
         multiSelect
@@ -872,9 +875,6 @@ export default function FeedScreen({ navigation, route }) {
         <View style={styles.overlay} testID="Feed.overlay.upgrade" accessibilityLabel="Upgrade to Plus overlay">
           <View style={styles.overlayCard}>
             <View style={styles.overlayCardInner}>
-              <View style={styles.overlayIconContainer}>
-                <Ionicons name="star" size={32} color={COLORS.primary} />
-              </View>
               <Text style={styles.overlayTitle}>See What's Happening Across Town</Text>
               <Text style={styles.overlayText}>
                 Verified members can see wanted posts and items explicitly shared in {user?.city || 'your town'}.
@@ -893,13 +893,13 @@ export default function FeedScreen({ navigation, route }) {
                   <Text style={styles.upgradeFeatureText}>Charge rental fees</Text>
                 </View>
               </View>
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={styles.overlayButton}
                 onPress={() => {
                   setShowUpgradePrompt(false);
                   navigation.navigate('Subscription', { source: 'town_browse', totalSteps: 2 });
                 }}
-                haptic="medium"
+                haptic={null}
                 testID="Feed.overlay.upgrade.button"
                 accessibilityLabel="See verification options"
                 accessibilityRole="button"
@@ -909,7 +909,7 @@ export default function FeedScreen({ navigation, route }) {
               <HapticPressable
                 style={styles.overlayDismiss}
                 onPress={() => setShowUpgradePrompt(false)}
-                haptic="light"
+                haptic={null}
               >
                 <Text style={styles.overlayDismissText}>Not Now</Text>
               </HapticPressable>
@@ -1010,26 +1010,16 @@ const styles = StyleSheet.create({
   overlayCardInner: {
     padding: 28,
   },
-  overlayIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.tints.secondary20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: SPACING.lg,
-  },
   overlayTitle: {
     ...TYPOGRAPHY.h2,
     color: COLORS.text,
-    textAlign: 'center',
+    textAlign: 'left',
     marginBottom: 10,
   },
   overlayText: {
     ...TYPOGRAPHY.subheadline,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
     lineHeight: 22,
     marginBottom: SPACING.xl,
   },
@@ -1739,10 +1729,9 @@ const styles = StyleSheet.create({
   },
   welcomeContainer: { alignItems: 'center', paddingTop: SPACING.xl, paddingBottom: SPACING.xxl },
   welcomeSubtitle: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center', marginTop: SPACING.sm, paddingHorizontal: SPACING.lg, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
-  welcomeActions: { alignSelf: 'stretch', marginTop: SPACING.xl, gap: SPACING.md },
-  welcomeAction: { ...CARD_SURFACE, flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.lg, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, minHeight: 92 },
-  welcomeRequest: { backgroundColor: COLORS.requestSurface },
-  welcomeActionIcon: { width: 44, alignItems: 'center' },
+  welcomeActions: { ...CARD_SURFACE, alignSelf: 'stretch', marginTop: SPACING.xl, overflow: 'hidden' },
+  welcomeAction: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.lg, minHeight: 72 },
+  welcomeSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.separator, marginLeft: SPACING.lg + 22 + SPACING.md },
   welcomeActionTitle: { ...TYPOGRAPHY.headline, color: COLORS.text },
   welcomeActionNote: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.xs, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   welcomePrivacy: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, marginTop: SPACING.lg, textAlign: 'center' },

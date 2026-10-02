@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import TextInput from '../components/AppTextInput';
 import { useFocusEffect } from '@react-navigation/native';
 import GiveawayOptions from '../components/GiveawayOptions';
@@ -34,6 +35,7 @@ const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 export default function EditListingScreen({ navigation, route }) {
+  const reduceMotion = useReduceMotion();
   const { listing } = route.params;
   const { user } = useAuth();
   const { showError } = useError();
@@ -156,7 +158,7 @@ export default function EditListingScreen({ navigation, route }) {
       // Scroll to the first field with an error
       const y = errors.photos ? fieldPositions.current.photos : fieldPositions.current.title;
       if (y != null && scrollRef.current) {
-        scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), true);
+        scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), !reduceMotion);
       }
 
       const missing = [];
@@ -280,7 +282,7 @@ export default function EditListingScreen({ navigation, route }) {
               <View key={`existing-${index}`} style={styles.photoWrapper}>
                 <Image source={{ uri: url }} style={styles.photo} />
                 <HapticPressable
-                  haptic="light"
+                  haptic={null}
                   style={styles.removePhoto}
                   onPress={() => handleRemoveExistingPhoto(url)}
                 >
@@ -293,7 +295,7 @@ export default function EditListingScreen({ navigation, route }) {
               <View key={`new-${index}`} style={styles.photoWrapper}>
                 <Image source={{ uri }} style={styles.photo} />
                 <HapticPressable
-                  haptic="light"
+                  haptic={null}
                   style={styles.removePhoto}
                   onPress={() => handleRemoveNewPhoto(index)}
                 >
@@ -303,11 +305,11 @@ export default function EditListingScreen({ navigation, route }) {
             ))}
             {totalPhotos < 10 && (
               <View style={styles.addPhotoButtons}>
-                <HapticPressable haptic="light" style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handlePickImage}>
+                <HapticPressable haptic={null} style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handlePickImage}>
                   <Ionicons name="images-outline" size={24} color={fieldErrors.photos ? COLORS.danger : COLORS.gray[400]} />
                   <Text style={styles.addPhotoText}>Gallery</Text>
                 </HapticPressable>
-                <HapticPressable haptic="light" style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handleTakePhoto}>
+                <HapticPressable haptic={null} style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handleTakePhoto}>
                   <Ionicons name="camera-outline" size={24} color={fieldErrors.photos ? COLORS.danger : COLORS.gray[400]} />
                   <Text style={styles.addPhotoText}>Camera</Text>
                 </HapticPressable>
@@ -356,7 +358,7 @@ export default function EditListingScreen({ navigation, route }) {
           {CONDITIONS.map((condition) => (
             <HapticPressable
               key={condition}
-              haptic="light"
+              haptic="selection"
               style={[styles.option, formData.condition === condition && styles.optionActive]}
               onPress={() => updateField('condition', condition)}
             >
@@ -443,8 +445,8 @@ export default function EditListingScreen({ navigation, route }) {
       </View>}
 
       {/* Submit */}
-      <HapticPressable
-        haptic="medium"
+      <HapticPressable scaleDown={0.97}
+        haptic="light"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}

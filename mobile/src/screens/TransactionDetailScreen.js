@@ -1,4 +1,6 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import ListingTypeIcon from '../components/ListingTypeIcon';
+import ShimmerImage from '../components/ShimmerImage';
 import PendingRequestCard from '../components/PendingRequestCard';
 import useNavigationTask from '../hooks/useNavigationTask';
 import ExchangeEndorsement from '../components/ExchangeEndorsement';
@@ -53,6 +55,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const { id } = route.params;
   const { user } = useAuth();
   const { showError, showToast } = useError();
+  const reduceMotion = useReduceMotion();
   const [transaction, setTransaction] = useState(null);
   const [fetchError, setFetchError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,7 +115,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
       haptics.success();
       showToast('Pickup confirmed!', 'success');
     } catch (error) {
-      haptics.error();
       showError({ message: error.message || 'Couldn\'t confirm the pickup right now. Please check your connection and try again.' });
     } finally {
       actionInProgress.current = false;
@@ -135,7 +137,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
         showToast(result.pendingOwner ? 'Return reported. Waiting for the owner.' : 'Return confirmed!', 'success');
       }
     } catch (error) {
-      haptics.error();
       showError({ message: error.message || 'Couldn\'t confirm the return right now. Please check your connection and try again.' });
     } finally {
       actionInProgress.current = false;
@@ -150,14 +151,12 @@ export default function TransactionDetailScreen({ route, navigation }) {
     setActionLoading(true);
     try {
       await api.cancelRental(id);
-      haptics.success();
       showToast(cancelAsRequest ? 'Request cancelled.' : 'Borrow cancelled.', 'success');
       if (isCurrent()) {
         if (needsPickupReview) viewQueue();
         else navigation.goBack();
       }
     } catch (error) {
-      haptics.error();
       showError({ message: error.message || 'Couldn\'t cancel right now. Please check your connection and try again.' });
     } finally {
       actionInProgress.current = false;
@@ -174,7 +173,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
       await api.extendPickup(id, transaction.pickupReview.dueAt);
       if (!isCurrent()) return;
       await fetchTransaction();
-      haptics.success();
       showToast('Pickup held for another 24 hours.', 'success');
     } catch (error) {
       if (isCurrent()) {
@@ -198,7 +196,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
   if (!transaction) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="receipt-outline" size={48} color={COLORS.textMuted} style={{ marginBottom: SPACING.md }} />
         <Text style={styles.errorTitle}>Exchange unavailable</Text>
         <Text style={styles.errorSubtext}>{fetchError || 'This exchange may have been removed or is no longer accessible.'}</Text>
         <HapticPressable accessibilityRole="button" style={styles.errorButton} onPress={fetchTransaction}>
@@ -288,7 +285,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         onContentSizeChange={() => {
           if (revealDetails.current) {
             revealDetails.current = false;
-            scrollRef.current?.scrollTo({ y: detailsY.current, animated: true });
+            scrollRef.current?.scrollTo({ y: detailsY.current, animated: !reduceMotion });
           }
         }}
         refreshControl={
@@ -301,10 +298,10 @@ export default function TransactionDetailScreen({ route, navigation }) {
           busy={actionLoading} error={fetchError} onRetry={fetchTransaction} /> : <>
         <LayeredCard radius={RADIUS.xl} accent>
           <View style={styles.detailCard}>
-            <HapticPressable haptic="light" accessibilityRole="button" accessibilityLabel={`View ${transaction.listing.title}`}
+            <HapticPressable scaleDown={transaction.listing.photos?.[0] ? 0.97 : 1}  accessibilityRole="button" accessibilityLabel={`View ${transaction.listing.title}`}
               style={styles.itemSummary} onPress={() => navigation.navigate('ListingDetail', { id: transaction.listing.id })}>
-              {transaction.listing.photos?.[0] ? <Image source={{ uri: transaction.listing.photos[0] }} style={styles.itemPhoto} />
-                : <View style={[styles.itemPhoto, styles.imagePlaceholder]}><ListingTypeIcon listing={transaction} size={46} /></View>}
+              <ShimmerImage source={transaction.listing.photos?.[0] ? { uri: transaction.listing.photos[0] } : null}
+                category={transaction.listing.category} title={transaction.listing.title} style={styles.itemPhoto} />
               <View style={{ flex: 1 }}>
                 <Text maxFontSizeMultiplier={1.4} style={styles.smallLabel}>{isSaleListing(transaction) ? 'For sale' : isGiveaway ? 'Giveaway' : transaction.isLender ? 'Lending' : 'Borrowing'}</Text>
                 <Text style={styles.itemName}>{transaction.listing.title}</Text>
@@ -363,12 +360,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </>}
         </LayeredCard>
 
-        {!showEndorsement && (showMessageRow || showReturnHelp) && <LayeredCard radius={RADIUS.xl}>
+        {!showEndorsement && (showMessageRow || showReturnHelp) && <LayeredCard radius={RADIUS.xl} style={styles.groupedActions}>
           {showMessageRow && <ActionRow label={`Message ${otherPerson.firstName}`} icon="chatbubble-outline"
-            accessibilityLabel={`Message ${otherPerson.firstName} privately`} onPress={messageNeighbor} />}
-          {showMessageRow && showReturnHelp && <View style={styles.actionDivider} />}
+            accessibilityLabel={`Message ${otherPerson.firstName} privately`} onPress={messageNeighbor} isLast={!showReturnHelp} />}
           {showReturnHelp && <ActionRow label={transaction.isLender && needsReturn ? 'Return options' : 'Return help'} icon="return-down-back-outline"
-            testID="Transaction.button.returnHelp" onPress={() => navigation.navigate('ReturnHelp', { transaction })} />}
+            testID="Transaction.button.returnHelp" onPress={() => navigation.navigate('ReturnHelp', { transaction })} isLast />}
         </LayeredCard>}
 
         {!isGiveaway && <LayeredCard radius={RADIUS.xl}><View style={styles.detailCard}>
@@ -389,11 +385,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
 
         <LayeredCard radius={RADIUS.xl}>
           <View style={styles.detailCard}>
-            <HapticPressable haptic="light" accessibilityRole="button" style={styles.neighborRow}
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover}  accessibilityRole="button" style={styles.neighborRow}
               accessibilityLabel={`View ${otherPerson.firstName}'s profile`}
               onPress={() => navigation.navigate('UserProfile', { id: otherPerson.id })}>
               {otherPerson.profilePhotoUrl ? <Image source={{ uri: otherPerson.profilePhotoUrl }} style={styles.neighborAvatar} />
-                : <View style={[styles.neighborAvatar, styles.avatarPlaceholder]}><Ionicons name="people" size={30} illustrated /></View>}
+                : <View style={[styles.neighborAvatar, styles.avatarPlaceholder]}><Ionicons name="person-outline" size={30} color={COLORS.primary} /></View>}
               <View style={{ flex: 1 }}>
                 <Text style={styles.detailText}>{roleLabel}</Text>
                 <Text style={styles.neighborName}>{otherPerson.firstName} {otherPerson.lastName}</Text>
@@ -409,7 +405,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         </LayeredCard>
 
         {!!hasDetails && <View style={styles.detailsSection} onLayout={event => { detailsY.current = event.nativeEvent.layout.y; }}>
-          <HapticPressable accessibilityRole="button" accessibilityLabel="Exchange details"
+          <HapticPressable haptic="selection" pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" accessibilityLabel="Exchange details"
             accessibilityState={{ expanded: detailsExpanded }} style={styles.detailsToggle}
             onPress={() => {
               revealDetails.current = !detailsExpanded;
@@ -474,7 +470,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         isVisible={moreTimeSheetVisible}
         onClose={() => setMoreTimeSheetVisible(false)}
         variant="confirmation"
-        icon={<Ionicons name="time-outline" size={28} illustrated />}
+        icon={<Ionicons name="time-outline" size={22} color={COLORS.primary} />}
         title="Give more time?"
         message={`Keep the item reserved. We’ll check again in 24 hours.${isGiveaway ? '' : ' The return date stays the same.'}`}
         actions={[{ label: 'Give 24 hours', testID: 'Transaction.confirmMoreTime', onPress: handleGiveMoreTime, primary: true }]}
@@ -511,7 +507,7 @@ const styles = StyleSheet.create({
   dueText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flexShrink: 1 },
   returnNeighbor: { ...TYPOGRAPHY.headline, color: COLORS.text },
   guidanceCopy: { gap: SPACING.sm },
-  actionDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: SPACING.lg, backgroundColor: COLORS.separator },
+  groupedActions: { overflow: 'hidden' },
   detailsSection: { borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, overflow: 'hidden' },
   detailsToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 48, padding: 16, gap: 12 },
   detailsBody: { padding: SPACING.lg, paddingTop: SPACING.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator, gap: SPACING.md },
@@ -586,7 +582,9 @@ const styles = StyleSheet.create({
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
+    padding: SPACING.xl,
+    gap: SPACING.sm,
     backgroundColor: COLORS.background,
   },
   errorTitle: {
@@ -597,8 +595,7 @@ const styles = StyleSheet.create({
   errorSubtext: {
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: SPACING.xxl,
+    textAlign: 'left',
     marginBottom: SPACING.xl,
   },
   errorButton: {

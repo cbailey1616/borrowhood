@@ -77,7 +77,7 @@ export default function OnboardingPlanScreen({ navigation }) {
         onPress={() => navigation.goBack()}
         haptic="light"
       >
-        <Ionicons name="chevron-back" size={24} color={COLORS.text} />
+        <Ionicons name="chevron-back" size={22} illustrated={false} color={COLORS.text} />
       </HapticPressable>
 
       <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner}>
@@ -117,13 +117,13 @@ export default function OnboardingPlanScreen({ navigation }) {
               <Text maxFontSizeMultiplier={1.4} style={styles.featureLabel}>{row.feature}</Text>
               <View style={styles.checkCol}>
                 {row.free ? (
-                  <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                  <Ionicons name="checkmark-circle-outline" size={22} illustrated={false} color={COLORS.primary} />
                 ) : (
-                  <Ionicons name="close-circle" size={20} color={COLORS.gray[700]} />
+                  <Ionicons name="close-circle-outline" size={22} illustrated={false} color={COLORS.gray[700]} />
                 )}
               </View>
               <View style={styles.checkCol}>
-                <Ionicons name="checkmark-circle" size={20} color={COLORS.warning} />
+                <Ionicons name="checkmark-circle-outline" size={22} illustrated={false} color={COLORS.warning} />
               </View>
             </View>
           ))}
@@ -131,7 +131,7 @@ export default function OnboardingPlanScreen({ navigation }) {
 
         {/* Plus requirements note */}
         <View style={styles.plusNote}>
-          <Ionicons name="information-circle-outline" size={16} color={COLORS.textMuted} />
+          <Ionicons name="information-circle-outline" size={22} illustrated={false} color={COLORS.textMuted} />
           <Text style={styles.plusNoteText}>
             Plus includes identity verification through Stripe so every owner and borrower is trustworthy.
           </Text>
@@ -140,12 +140,13 @@ export default function OnboardingPlanScreen({ navigation }) {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
         <HapticPressable
+          scaleDown={0.97}
           style={styles.plusButton}
           onPress={handleGoPlus}
           haptic="medium"
           testID="Onboarding.Plan.goPlus"
         >
-          <Ionicons name="star" size={18} color={COLORS.white} />
+          <Ionicons name="star-outline" size={22} illustrated={false} color={COLORS.white} />
           <Text style={styles.plusButtonText}>See verification options</Text>
         </HapticPressable>
         <HapticPressable

@@ -2,12 +2,13 @@ import WholeDollarInput from './WholeDollarInput';
 import React from 'react';
 import { View, Text, Switch, StyleSheet } from 'react-native';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import { haptics } from '../utils/haptics';
 
 export default function DirectFeePicker({ enabled, amount, onToggle, onAmountChange }) {
   return <View style={styles.container}>
     <View style={styles.row}>
       <Text maxFontSizeMultiplier={1.4} style={styles.label}>Charge a fee</Text>
-      <Switch accessibilityLabel="Charge a fee" value={enabled} onValueChange={onToggle}
+      <Switch accessibilityLabel="Charge a fee" value={enabled} onValueChange={value => { haptics.selection(); onToggle(value); }}
         trackColor={{ false: COLORS.illustration.mist, true: COLORS.primary }}
         ios_backgroundColor={COLORS.illustration.mist} thumbColor={COLORS.surface} />
     </View>

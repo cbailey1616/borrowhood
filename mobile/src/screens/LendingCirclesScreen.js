@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import TextInput from '../components/AppTextInput';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
@@ -21,6 +22,7 @@ import AnimatedCard from '../components/AnimatedCard';
 import ActionSheet from '../components/ActionSheet';
 
 export default function LendingCirclesScreen({ navigation }) {
+  const reduceMotion = useReduceMotion();
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -40,7 +42,7 @@ export default function LendingCirclesScreen({ navigation }) {
       const data = await api.getCircles();
       setCircles(data);
     } catch (err) {
-      haptics.error();
+
     } finally {
       setLoading(false);
     }
@@ -48,7 +50,6 @@ export default function LendingCirclesScreen({ navigation }) {
 
   const handleCreateCircle = async () => {
     if (!newCircle.name.trim()) {
-      haptics.warning();
       return;
     }
 
@@ -58,9 +59,9 @@ export default function LendingCirclesScreen({ navigation }) {
       setShowCreateModal(false);
       setNewCircle({ name: '', description: '' });
       loadCircles();
-      haptics.success();
+
     } catch (err) {
-      haptics.error();
+
     } finally {
       setCreating(false);
     }
@@ -70,9 +71,9 @@ export default function LendingCirclesScreen({ navigation }) {
     try {
       await api.joinCircle(circleId);
       loadCircles();
-      haptics.success();
+
     } catch (err) {
-      haptics.error();
+
     }
   };
 
@@ -86,9 +87,9 @@ export default function LendingCirclesScreen({ navigation }) {
     try {
       await api.leaveCircle(leaveTargetId);
       loadCircles();
-      haptics.success();
+
     } catch (err) {
-      haptics.error();
+
     }
   };
 
@@ -105,12 +106,12 @@ export default function LendingCirclesScreen({ navigation }) {
 
   const CircleCard = ({ circle, index }) => (
     <AnimatedCard index={index}>
-      <HapticPressable
-        style={styles.circleCardPressable}
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
+        style={[styles.cardBox,styles.circleCardPressable]}
         onPress={circle.isMember ? () => navigation.navigate('CircleDetail', { circleId: circle.id }) : undefined}
-        haptic="light"
+        haptic={null}
       >
-        <View style={[styles.cardBox, styles.circleCard]}>
+        <View style={styles.circleCard}>
           <View style={styles.circleHeader}>
             <Ionicons name="people" size={28} color={COLORS.primary} />
             <View style={styles.circleInfo}>
@@ -118,18 +119,18 @@ export default function LendingCirclesScreen({ navigation }) {
               <Text style={styles.circleMembers}>{circle.memberCount} members</Text>
             </View>
             {circle.isMember ? (
-              <HapticPressable
+              <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                 style={styles.leaveButton}
                 onPress={() => handleLeaveCircle(circle.id)}
-                haptic="warning"
+                haptic={null}
               >
                 <Text maxFontSizeMultiplier={1.4} style={styles.leaveButtonText}>Leave</Text>
               </HapticPressable>
             ) : circle.isInvited ? (
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={styles.joinButton}
                 onPress={() => handleJoinCircle(circle.id)}
-                haptic="medium"
+                haptic={null}
               >
                 <Text style={styles.joinButtonText}>Join</Text>
               </HapticPressable>
@@ -200,13 +201,13 @@ export default function LendingCirclesScreen({ navigation }) {
             </Text>
           </View>
         )}
+
       </ScrollView>
 
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={styles.fab}
         onPress={() => {
           setShowCreateModal(true);
-          haptics.medium();
         }}
         haptic={null}
       >
@@ -215,7 +216,7 @@ export default function LendingCirclesScreen({ navigation }) {
 
       <Modal
         visible={showCreateModal}
-        animationType="slide"
+        animationType={reduceMotion ? 'none' : "slide"}
         transparent
         onRequestClose={() => setShowCreateModal(false)}
       >
@@ -244,18 +245,18 @@ export default function LendingCirclesScreen({ navigation }) {
             />
 
             <View style={styles.modalButtons}>
-              <HapticPressable
+              <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                 style={styles.cancelButton}
                 onPress={() => setShowCreateModal(false)}
-                haptic="light"
+                haptic={null}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </HapticPressable>
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={styles.createButton}
                 onPress={handleCreateCircle}
                 disabled={creating}
-                haptic="medium"
+                haptic="light"
               >
                 {creating ? (
                   <ActivityIndicator size="small" color={COLORS.background} />

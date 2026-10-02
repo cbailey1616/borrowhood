@@ -1,3 +1,4 @@
+import { haptics } from '../utils/haptics';
 import TextInput from '../components/AppTextInput';
 import { useState } from 'react';
 import {
@@ -14,7 +15,6 @@ import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/conf
 import api from '../services/api';
 import HapticPressable from '../components/HapticPressable';
 import ActionSheet from '../components/ActionSheet';
-import { haptics } from '../utils/haptics';
 import * as ImagePicker from 'expo-image-picker';
 
 const TYPE_CONFIG = {
@@ -71,7 +71,6 @@ export default function RespondToDisputeScreen({ navigation, route }) {
 
     if (errors.description || errors.amount) {
       setFieldErrors(errors);
-      haptics.warning();
       return;
     }
 
@@ -79,6 +78,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
   };
 
   const handleSubmit = async () => {
+    haptics.light();
     setSubmitting(true);
     try {
       let responsePhotoUrls = [];
@@ -94,9 +94,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
       });
 
       setCompleted(true);
-      haptics.success();
     } catch (err) {
-      haptics.error();
       showError({
         message:
           err.message ||
@@ -114,16 +112,16 @@ export default function RespondToDisputeScreen({ navigation, route }) {
       <View style={styles.container}>
         <View style={styles.centeredContent}>
           <View style={styles.successCircle}>
-            <Ionicons name="checkmark-circle" size={64} color={COLORS.primary} />
+            <Ionicons name="checkmark-circle" size={64} illustrated={true} color={COLORS.primary} />
           </View>
           <Text style={styles.title}>{isCounter ? 'Counter Submitted' : 'Decline Submitted'}</Text>
           <Text style={styles.subtitle}>
             Your response has been recorded. An organizer will review the dispute.
           </Text>
-          <HapticPressable
+          <HapticPressable scaleDown={0.97}
             style={styles.primaryButton}
             onPress={() => navigation.goBack()}
-            haptic="light"
+
           >
             <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>Done</Text>
           </HapticPressable>
@@ -221,7 +219,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
                   <HapticPressable
                     style={styles.removePhoto}
                     onPress={() => removePhoto(index)}
-                    haptic="light"
+
                   >
                     <Ionicons name="close-circle" size={22} color={COLORS.danger} />
                   </HapticPressable>
@@ -235,7 +233,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
                   accessibilityRole="button"
                   style={styles.addPhotoButton}
                   onPress={pickPhotos}
-                  haptic="light"
+
                 >
                   <Ionicons name="camera-outline" size={28} color={COLORS.text} />
                   <Text style={styles.addPhotoText}>Add</Text>
@@ -246,7 +244,7 @@ export default function RespondToDisputeScreen({ navigation, route }) {
         </View>
 
         {/* Submit */}
-        <HapticPressable
+        <HapticPressable scaleDown={0.97}
           testID="RespondDispute.button.submit"
           accessibilityLabel={isCounter ? 'Submit counter proposal' : 'Submit decline'}
           accessibilityRole="button"
@@ -257,7 +255,6 @@ export default function RespondToDisputeScreen({ navigation, route }) {
           ]}
           onPress={handleSubmitPress}
           disabled={!isValid || submitting}
-          haptic="medium"
         >
           {submitting ? (
             <ActivityIndicator color={COLORS.white} />

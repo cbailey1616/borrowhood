@@ -32,12 +32,12 @@ export default function ThreadMessageButton({ author, currentUserId, navigation,
     finally { busy.current = false; setLoading(false); }
   };
   return <View>
-    <HapticPressable accessibilityRole="button" accessibilityLabel={`Message ${author.firstName || 'neighbor'} privately`}
+    <HapticPressable haptic={null} scaleDown={1} accessibilityRole="button" accessibilityLabel={`Message ${author.firstName || 'neighbor'} privately`}
       accessibilityHint="Opens private chat; does not post a reply" disabled={loading} onPress={open}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 48, paddingHorizontal: 8 }}>
-      <Ionicons name="chatbubble" size={18} color={COLORS.primary} illustrated />
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 48, paddingHorizontal: 8, opacity: 1 }}>
+      <Ionicons name="chatbubble" size={22} color={COLORS.primary} illustrated={false} selected={false} />
       <View style={{ maxWidth: 150 }}>
-        <Text maxFontSizeMultiplier={1.4} style={{ color: COLORS.primary, ...TYPOGRAPHY.buttonCaption }}>{loading ? 'Opening…' : failed ? 'Try message again' : 'Private message'}</Text>
+        <Text maxFontSizeMultiplier={1.4} style={{ color: loading ? COLORS.textSecondary : COLORS.primary, ...TYPOGRAPHY.buttonCaption }}>{loading ? 'Opening…' : failed ? 'Try message again' : 'Private message'}</Text>
         <Text maxFontSizeMultiplier={1.4} style={{ color: COLORS.textSecondary, ...TYPOGRAPHY.caption2 }} numberOfLines={1}>To {author.firstName || 'neighbor'}</Text>
       </View>
     </HapticPressable>

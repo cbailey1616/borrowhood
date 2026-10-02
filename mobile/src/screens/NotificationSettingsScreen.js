@@ -90,7 +90,7 @@ export default function NotificationSettingsScreen() {
       // Revert on error
       setPreferences(preferences);
       setSaveError(section);
-      haptics.error();
+
     } finally {
       savingRef.current = false;
       setIsSaving(false);
@@ -126,10 +126,10 @@ export default function NotificationSettingsScreen() {
       </View> : null}
       {notifsDenied && (
         <View style={styles.section}>
-          <HapticPressable
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover}
             style={styles.notifBanner}
             onPress={() => Linking.openSettings()}
-            haptic="light"
+            haptic={null}
           >
             <Ionicons name="notifications-off-outline" size={18} color={COLORS.warning} />
             <Text style={styles.notifBannerText}>
@@ -162,7 +162,7 @@ export default function NotificationSettingsScreen() {
             {CORE_SETTINGS.map(setting => <View key={setting.key}>
               <View style={[styles.cardBox, styles.settingsGroup]} testID={`Notifications.${setting.key}`}>
                 <View style={styles.requestHeading}>
-                  <Ionicons name={setting.icon} size={28} illustrated />
+                  <Ionicons name={setting.icon} size={22} color={COLORS.textSecondary} illustrated={false} />
                   <Text accessibilityRole="header" style={styles.requestTitle}>{setting.label}</Text>
                 </View>
                 {SOURCES.map((source, index) => <View key={source.key} style={[styles.settingRow, index < SOURCES.length - 1 && styles.settingRowBorder]}>

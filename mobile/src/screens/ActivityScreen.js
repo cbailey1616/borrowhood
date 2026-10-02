@@ -112,12 +112,12 @@ export default function ActivityScreen({ navigation }) {
 
     return (
       <AnimatedCard index={index}>
-        <HapticPressable
+        <HapticPressable scaleDown={item.listing?.photoUrl ? 0.97 : 1}
           style={styles.card}
           onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}
-          haptic="light"
+          haptic={null}
         >
-          <ShimmerImage
+          <ShimmerImage category={item.listing?.category} title={item.listing?.title}
             source={{ uri: item.listing?.photoUrl || null }}
             style={styles.cardImage}
           />
@@ -162,7 +162,7 @@ export default function ActivityScreen({ navigation }) {
       {unreadCount > 0 && (
         <View style={styles.unreadHeader}>
           <Text maxFontSizeMultiplier={1.4} style={styles.unreadLabel}>{unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}</Text>
-          <HapticPressable onPress={handleMarkAllRead} disabled={markingRead} haptic="light">
+          <HapticPressable onPress={handleMarkAllRead} disabled={markingRead} haptic={null}>
             <Text style={[styles.markAllRead, markingRead && { opacity: 0.5 }]}>Mark all read</Text>
           </HapticPressable>
         </View>
@@ -196,7 +196,7 @@ export default function ActivityScreen({ navigation }) {
         ListEmptyComponent={
           !isLoading && (
             <View style={styles.emptyContainer}>
-              <Ionicons name="swap-horizontal-outline" size={64} color={COLORS.gray[300]} />
+              <Ionicons illustrated={true} name="swap-horizontal-outline" size={64} color={COLORS.gray[300]} />
               <Text style={styles.emptyTitle}>No activity yet</Text>
               <Text style={styles.emptySubtitle}>
                 {activeTab === 'borrower'

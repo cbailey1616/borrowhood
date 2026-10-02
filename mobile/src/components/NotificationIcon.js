@@ -65,15 +65,15 @@ const APPEARANCE = {
   circle_invite: ['neighbor-invite', 'sage'],
 };
 
-// Read status is shown by the row and unread dot; the illustration keeps its color.
-export default function NotificationIcon({ notification = {}, size = 44 }) {
+// Read status belongs to the row and unread dot; the line drawing stays quiet.
+export default function NotificationIcon({ notification = {}, size = 22 }) {
   const [name, tone] = notification.queueListingId
     ? ['people', 'clay']
     : APPEARANCE[notification.type] || ['notifications', 'gold'];
-  const { backgroundColor, color = COLORS.primary, illustrated = true } = TONES[tone];
+  const { color = COLORS.primary } = TONES[tone];
   return (
-    <View style={[styles.container, { width: size, height: size, borderRadius: Math.round(size * 0.32), backgroundColor }]}>
-      <Icon name={name} size={Math.round(size * 0.6)} color={color} illustrated={illustrated} selected />
+    <View style={[styles.container, { width: size, height: size }]}>
+      <Icon name={name} size={Math.min(size, 22)} color={color} illustrated={false} />
     </View>
   );
 }

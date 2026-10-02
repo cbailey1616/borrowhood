@@ -34,20 +34,20 @@ export default function ExchangeEndorsement({ transaction, onSaved, embedded = f
   };
   return <View style={[styles.card, embedded && styles.embedded]}>
     {submitted ? <View style={styles.savedVote}>
-      <Ionicons name={savedChoice === null ? 'balance-scale' : savedChoice ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={26} illustrated color={COLORS.primary} />
+      <Ionicons name={savedChoice === null ? 'balance-scale' : savedChoice ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={22} illustrated={false} color={COLORS.primary} />
       <Text maxFontSizeMultiplier={1.4} style={styles.sentLabel}>Endorsement sent</Text>
       <Text maxFontSizeMultiplier={1.4} style={styles.savedLabel}>{savedChoice === null ? 'Neutral' : savedChoice ? 'Thumbs up' : 'Thumbs down'}</Text>
     </View> : <>
       <Text accessibilityRole="header" style={styles.title}>Leave an endorsement</Text>
       <View style={{ flexDirection:stackChoices ? 'column' : 'row',gap:12 }}>
-        {[true,null,false].map(positive => <HapticPressable key={String(positive)} accessibilityRole="button" accessibilityLabel={positive === null ? 'Neutral' : positive ? 'Thumbs up' : 'Thumbs down'}
+        {[true,null,false].map(positive => <HapticPressable haptic="selection" key={String(positive)} accessibilityRole="button" accessibilityLabel={positive === null ? 'Neutral' : positive ? 'Thumbs up' : 'Thumbs down'}
           accessibilityState={{ selected:choice === positive,disabled:saving }} disabled={saving} onPress={() => setSelection({ id: transaction.id, positive })}
           style={{ flexGrow:1,flexShrink:1,flexBasis:stackChoices ? 'auto' : 0,flexDirection:stackChoices ? 'row' : 'column',minHeight:stackChoices ? 56 : 88,gap:stackChoices ? 12 : 6,padding:12,alignItems:'center',justifyContent:stackChoices ? 'flex-start' : 'center',borderWidth:choice===positive ? 2 : 1,borderColor:choice===positive ? COLORS.primary : COLORS.borderBrown,borderRadius:RADIUS.md,backgroundColor:choice===positive ? COLORS.primaryMuted : COLORS.surface }}>
-          <Ionicons name={positive === null ? 'balance-scale' : positive ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={32} illustrated selected={choice===positive} color={COLORS.primary} />
+          <Ionicons name={positive === null ? 'balance-scale' : positive ? 'thumbs-up-outline' : 'thumbs-down-outline'} size={22} illustrated={false} selected={choice===positive} color={COLORS.primary} />
           <Text maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.buttonCaption,color:COLORS.primary,textAlign:stackChoices ? 'left' : 'center',flexShrink:1 }}>{positive === null ? 'Neutral' : positive ? 'Thumbs up' : 'Thumbs down'}</Text>
         </HapticPressable>)}
       </View>
-      <HapticPressable accessibilityRole="button" accessibilityLabel="Send endorsement" disabled={saving || choice===undefined} onPress={send}
+      <HapticPressable accessibilityRole="button" haptic="light" scaleDown={0.97} accessibilityLabel="Send endorsement" disabled={saving || choice===undefined} onPress={send}
         accessibilityState={{ disabled:saving || choice===undefined,busy:saving }}
         style={{ minHeight:48,padding:SPACING.sm,borderRadius:RADIUS.md,backgroundColor:COLORS.primary,opacity:choice===undefined ? 0.5 : 1,alignItems:'center',justifyContent:'center' }}>
         {saving ? <ActivityIndicator color={COLORS.surface} /> : <Text maxFontSizeMultiplier={1.4} style={{ ...TYPOGRAPHY.button,color:COLORS.surface,textAlign:'center' }}>Send endorsement</Text>}

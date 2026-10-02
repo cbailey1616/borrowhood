@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import TextInput from '../components/AppTextInput';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -23,6 +24,7 @@ import useNavigationTask from '../hooks/useNavigationTask';
 const NEEDS_LOCATION_MESSAGE = 'Set your location in your profile to discover neighborhoods nearby.';
 
 export default function JoinCommunityScreen({ navigation, route }) {
+  const reduceMotion = useReduceMotion();
   const startNavigationTask = useNavigationTask(navigation);
   const { user, refreshUser } = useAuth();
   const { showError } = useError();
@@ -67,16 +69,13 @@ export default function JoinCommunityScreen({ navigation, route }) {
       await api.joinCommunity(neighborhood.id);
       await refreshUser();
       if (!isCurrent()) return;
-      haptics.success();
       navigation.goBack();
     } catch (error) {
       if (!isCurrent()) return;
       if (error.code === 'REJOIN_APPROVAL_REQUIRED') {
         setNeighborhoods(items => items.map(item => item.id === neighborhood.id ? { ...item, isMember: false, rejoinStatus: 'pending' } : item));
-        haptics.success();
         return;
       }
-      haptics.error();
       showError({
         message: error.message || 'Couldn\'t join this neighborhood right now. Please check your connection and try again.',
         type: 'network',
@@ -105,11 +104,9 @@ export default function JoinCommunityScreen({ navigation, route }) {
       await api.joinCommunity(result.id);
       await refreshUser();
       setShowCreateModal(false);
-      haptics.success();
       if (isCurrent()) navigation.goBack();
     } catch (error) {
       if (!isCurrent()) return;
-      haptics.error();
       const errorCode = error.code || '';
       if (errorCode === 'LOCATION_REQUIRED') {
         setShowCreateModal(false);
@@ -173,11 +170,11 @@ export default function JoinCommunityScreen({ navigation, route }) {
             </View>
           </View>
         ) : (
-          <HapticPressable
+          <HapticPressable scaleDown={0.97}
             style={styles.joinButton}
             onPress={() => handleJoin(item)}
             disabled={joiningId === item.id}
-            haptic="medium"
+            haptic={null}
           >
             {joiningId === item.id ? (
               <ActivityIndicator size="small" color={COLORS.white} />
@@ -211,7 +208,7 @@ export default function JoinCommunityScreen({ navigation, route }) {
           placeholderTextColor={COLORS.textSecondary}
         />
         {searchQuery.length > 0 && (
-          <HapticPressable onPress={() => setSearchQuery('')} haptic="light">
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover} onPress={() => setSearchQuery('')} haptic={null}>
             <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
           </HapticPressable>
         )}
@@ -226,10 +223,10 @@ export default function JoinCommunityScreen({ navigation, route }) {
       </View>
 
       {/* Create Button */}
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         style={styles.createButton}
         onPress={() => setShowCreateModal(true)}
-        haptic="medium"
+        haptic={null}
       >
         <Ionicons name="add-circle-outline" size={22} color={COLORS.primary} />
         <Text style={styles.createButtonText}>Create New Neighborhood</Text>
@@ -253,22 +250,23 @@ export default function JoinCommunityScreen({ navigation, route }) {
                 : 'Be the first to create a neighborhood in your area!'}
             </Text>
             {needsLocation && (
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={styles.setLocationButton}
                 onPress={() => navigation.navigate('EditProfile')}
-                haptic="medium"
+                haptic={null}
               >
                 <Text style={styles.setLocationButtonText}>Set Location</Text>
               </HapticPressable>
             )}
           </View>
         }
+
       />
 
       {/* Create Modal */}
       <Modal
         visible={showCreateModal}
-        animationType="slide"
+        animationType={reduceMotion ? 'none' : "slide"}
         transparent={true}
         onRequestClose={() => setShowCreateModal(false)}
       >
@@ -279,7 +277,7 @@ export default function JoinCommunityScreen({ navigation, route }) {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create Neighborhood</Text>
-              <HapticPressable onPress={() => setShowCreateModal(false)} haptic="light">
+              <HapticPressable pressedBackgroundColor={COLORS.cardHover} onPress={() => setShowCreateModal(false)} haptic={null}>
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </HapticPressable>
             </View>
@@ -306,11 +304,11 @@ export default function JoinCommunityScreen({ navigation, route }) {
               maxLength={500}
             />
 
-            <HapticPressable
+            <HapticPressable scaleDown={0.97}
               style={[styles.modalButton, isCreating && styles.modalButtonDisabled]}
               onPress={handleCreate}
               disabled={isCreating}
-              haptic="medium"
+              haptic="light"
             >
               {isCreating ? (
                 <ActivityIndicator size="small" color={COLORS.white} />

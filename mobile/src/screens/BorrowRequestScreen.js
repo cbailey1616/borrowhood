@@ -206,7 +206,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
         <ScrollView contentContainerStyle={styles.promptContent}>
           {/* Item Preview */}
           <View style={[styles.cardBox, styles.promptItemCard]}>
-            <ShimmerImage
+            <ShimmerImage category={listing.category} title={listing.title}
               source={{ uri: listing.photos?.[0] || null }} placeholderIcon={listingIcon(listing)}
               style={styles.promptItemImage}
             />
@@ -218,9 +218,6 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
           {/* Upgrade Card */}
           <View style={[styles.cardBox, styles.promptCard]}>
-            <View style={styles.promptIconContainer}>
-              <Ionicons name="star" size={32} color={COLORS.primary} />
-            </View>
             <Text style={styles.promptTitle}>Verify to Unlock</Text>
             <Text style={styles.promptText}>
               {listing.isFree === false
@@ -243,8 +240,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
               </View>
             </View>
 
-            <HapticPressable
-              haptic="medium"
+            <HapticPressable scaleDown={0.97}
+              haptic={null}
               style={styles.promptButton}
               onPress={() => navigation.navigate('Subscription')}
             >
@@ -254,7 +251,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           </View>
 
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={styles.promptSecondaryButton}
             onPress={() => navigation.goBack()}
           >
@@ -272,7 +269,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
         <ScrollView contentContainerStyle={styles.promptContent}>
           {/* Item Preview */}
           <View style={[styles.cardBox, styles.promptItemCard]}>
-            <ShimmerImage
+            <ShimmerImage category={listing.category} title={listing.title}
               source={{ uri: listing.photos?.[0] || null }} placeholderIcon={listingIcon(listing)}
               style={styles.promptItemImage}
             />
@@ -284,9 +281,6 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
           {/* Verification Card */}
           <View style={[styles.cardBox, styles.promptCard]}>
-            <View style={styles.promptIconContainer}>
-              <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
-            </View>
             <Text style={styles.promptTitle}>Verify Your Identity</Text>
             <Text style={styles.promptText}>
               Town-wide sharing requires identity verification to keep everyone safe. This is a one-time process that only takes a minute.
@@ -307,8 +301,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
               </View>
             </View>
 
-            <HapticPressable
-              haptic="medium"
+            <HapticPressable scaleDown={0.97}
+              haptic={null}
               style={styles.promptButton}
               onPress={() => navigation.navigate('IdentityVerification', { source: 'town_browse', totalSteps: 2 })}
             >
@@ -318,7 +312,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           </View>
 
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={styles.promptSecondaryButton}
             onPress={() => navigation.goBack()}
           >
@@ -338,7 +332,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       {/* Item Summary */}
       <View style={[styles.cardBox, styles.itemCard]}>
-        <ShimmerImage
+        <ShimmerImage category={listing.category} title={listing.title}
           source={{ uri: listing.photos?.[0] || null }} placeholderIcon={listingIcon(listing)}
           style={styles.itemImage}
         />
@@ -361,7 +355,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
         <View style={styles.dateRow}>
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={[styles.dateButton, showStartPicker && styles.dateButtonActive]}
             onPress={() => { Keyboard.dismiss(); setShowStartPicker(!showStartPicker); setShowEndPicker(false); }}
           >
@@ -369,7 +363,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             <Text maxFontSizeMultiplier={1.4} style={styles.dateValue}>{formatDate(startDate)}</Text>
           </HapticPressable>
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={[styles.dateButton, showEndPicker && styles.dateButtonActive]}
             onPress={() => { Keyboard.dismiss(); setShowEndPicker(!showEndPicker); setShowStartPicker(false); }}
           >
@@ -393,7 +387,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             />
             {Platform.OS === 'ios' && (
               <HapticPressable
-                haptic="light"
+                haptic={null}
                 style={styles.pickerDoneButton}
                 onPress={() => setShowStartPicker(false)}
               >
@@ -419,7 +413,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
             />
             {Platform.OS === 'ios' && (
               <HapticPressable
-                haptic="light"
+                haptic={null}
                 style={styles.pickerDoneButton}
                 onPress={() => setShowEndPicker(false)}
               >
@@ -497,8 +491,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
     </ScrollView>
     <View style={[styles.submitFooter, { paddingBottom: keyboardVisible ? SPACING.md : Math.max(insets.bottom, SPACING.md) }]}>
       {/* Submit stays above the keyboard so no dismissal toolbar is needed. */}
-      <HapticPressable
-        haptic="medium"
+      <HapticPressable scaleDown={0.97}
+        haptic="light"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}
@@ -561,26 +555,16 @@ const styles = StyleSheet.create({
   promptCard: {
     padding: SPACING.xl,
   },
-  promptIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.tints.primary20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: SPACING.lg,
-  },
   promptTitle: {
     ...TYPOGRAPHY.h2,
     color: COLORS.text,
     marginBottom: SPACING.md,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   promptText: {
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
     marginBottom: SPACING.xl,
   },
   promptBenefits: {

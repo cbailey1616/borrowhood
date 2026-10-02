@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TextInput from '../../components/AppTextInput';
 import HapticPressable from '../../components/HapticPressable';
 import OnboardingLayout from '../../components/OnboardingLayout';
+import LayeredCard from '../../components/LayeredCard';
 import PopupLayer from '../../components/PopupLayer';
 import SheetDismissArea from '../../components/SheetDismissArea';
 import { Ionicons } from '../../components/Icon';
@@ -127,11 +128,11 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
       secondaryActions={<HapticPressable accessibilityRole="button" disabled={busy} onPress={() => proceed(true)} style={styles.linkButton}>
         <Text style={styles.link}>Not now</Text>
       </HapticPressable>}>
-      <View style={styles.location}><Ionicons name="location" size={18} color={COLORS.primary} />
+      <View style={styles.location}><Ionicons name="location-outline" size={22} illustrated={false} color={COLORS.primary} />
         <Text maxFontSizeMultiplier={1.4} style={styles.locationText}>{[user?.city, user?.state].filter(Boolean).join(', ')}</Text></View>
       {loading ? <ActivityIndicator style={styles.loading} color={COLORS.spinner} accessibilityLabel="Finding neighborhoods" />
         : loadError ? <View style={styles.emptyCard}>
-          <Ionicons name="refresh-outline" size={34} color={COLORS.primary} />
+          <Ionicons name="refresh-outline" size={22} illustrated={false} color={COLORS.primary} />
           <Text style={styles.emptyTitle}>Couldn’t load neighborhoods</Text>
           <Text style={styles.detail} accessibilityRole="alert">{loadError}</Text>
         </View> : empty ? <View style={styles.emptyCard}>
@@ -140,20 +141,23 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
           <Text style={styles.detail}>Start one and invite your neighbors.</Text>
         </View> : <>
           <View style={styles.search}>
-            <Ionicons name="search" size={20} color={COLORS.primary} />
+            <Ionicons name="search" size={22} illustrated={false} color={COLORS.primary} />
             <TextInput accessibilityLabel="Search neighborhoods" placeholder="Search neighborhoods" placeholderTextColor={COLORS.textMuted}
               value={search} onChangeText={setSearch} editable={!busy} style={styles.searchInput} autoCorrect={false} />
           </View>
           {!matches.length && <Text style={styles.noMatch}>No matching neighborhoods. Try another name.</Text>}
-          {matches.map(item => <HapticPressable key={item.id} accessibilityRole="radio"
+          {!!matches.length && <LayeredCard style={styles.listPanel}><View style={styles.listRows}>
+          {matches.map((item, index) => <HapticPressable key={item.id} accessibilityRole="radio" scaleDown={1}
             accessibilityLabel={`${item.name}, ${item.memberCount || 0} neighbors${item.isMember ? ', joined' : item.rejoinStatus === 'pending' ? ', approval requested' : item.rejoinStatus === 'removed' ? ', steward approval required' : ''}`}
             accessibilityState={{ checked: item.id === selectedId, disabled: busy }} disabled={busy}
+            pressedBackgroundColor={COLORS.cardHover}
             onPress={() => setSelectedId(item.id)} style={[styles.row, item.id === selectedId && styles.selected]}>
-            <View style={styles.rowIcon}><Ionicons name="home" size={32} illustrated /></View>
+            <Ionicons name="home-outline" size={22} illustrated={false} color={COLORS.primary} />
             <View style={styles.rowContent}><Text style={styles.rowTitle}>{item.name}</Text>
               <Text style={styles.detail}>{item.memberCount || 0} neighbors{item.isMember ? ' · Joined' : item.rejoinStatus === 'pending' ? ' · Approval requested' : item.rejoinStatus === 'removed' ? ' · Steward approval required' : ''}</Text></View>
-            <Ionicons name={item.id === selectedId ? 'checkmark-circle' : 'ellipse-outline'} size={26} color={COLORS.primary} />
-          </HapticPressable>)}
+            <Ionicons name={item.id === selectedId ? 'checkmark-circle-outline' : 'ellipse-outline'} size={22} illustrated={false} color={COLORS.primary} />
+            {index < matches.length - 1 && <View style={styles.rowSeparator} />}
+          </HapticPressable>)}</View></LayeredCard>}
           {selected?.rejoinStatus === 'pending' && <Text style={styles.detail} accessibilityLiveRegion="polite">Waiting for a neighborhood steward. You can continue setting up your account.</Text>}
           <HapticPressable accessibilityRole="button" disabled={busy} onPress={openCreate} style={styles.linkButton}>
             <Text style={styles.link}>Create a neighborhood</Text>
@@ -168,7 +172,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
             <SheetDismissArea onDismiss={closeCreate}>
               <View style={styles.sheetHeader}><Text accessibilityRole="header" style={styles.sheetTitle}>Create a neighborhood</Text>
                 <HapticPressable accessibilityRole="button" accessibilityLabel="Close" disabled={busy} onPress={closeCreate} style={styles.close}>
-                  <Ionicons name="close" size={22} color={COLORS.primary} /></HapticPressable></View>
+                  <Ionicons name="close" size={22} illustrated={false} color={COLORS.primary} /></HapticPressable></View>
             </SheetDismissArea>
             <Text style={styles.detail}>{[user?.city, user?.state].filter(Boolean).join(', ')}</Text>
             <Text maxFontSizeMultiplier={1.4} style={styles.fieldLabel}>Neighborhood name</Text>
@@ -178,7 +182,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
             <TextInput accessibilityLabel="Description (optional)" value={description} onChangeText={setDescription} editable={!busy}
               maxLength={1000} multiline style={[styles.input, styles.description]} placeholder="Tell neighbors about your area" placeholderTextColor={COLORS.textMuted} />
             {!!createError && <Text accessibilityRole="alert" style={styles.error}>{createError}</Text>}
-            <HapticPressable accessibilityRole="button" accessibilityLabel="Create neighborhood" disabled={busy}
+            <HapticPressable accessibilityRole="button" accessibilityLabel="Create neighborhood" disabled={busy} scaleDown={0.97}
               accessibilityState={{ disabled: busy, busy }} onPress={create} style={styles.createButton}>
               {busy ? <ActivityIndicator color={COLORS.surface} /> : <Text maxFontSizeMultiplier={1.4} style={styles.createLabel}>Create neighborhood</Text>}
             </HapticPressable>
@@ -198,9 +202,11 @@ const styles = StyleSheet.create({
   emptyTitle: { ...TYPOGRAPHY.title3, color: COLORS.primary, textAlign: 'center' },
   detail: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   noMatch: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, paddingVertical: 24, textAlign: 'center' },
-  row: { ...CARD_SURFACE, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 10, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
-  selected: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryMuted },
-  rowIcon: { width: 50, height: 50, borderRadius: RADIUS.md, backgroundColor: COLORS.accentMuted, alignItems: 'center', justifyContent: 'center' },
+  listPanel: { marginBottom: 12 },
+  listRows: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 68 },
+  selected: { backgroundColor: COLORS.primaryMuted },
+  rowSeparator: { position: 'absolute', left: 50, right: 0, bottom: 0, height: StyleSheet.hairlineWidth, backgroundColor: COLORS.separator },
   rowContent: { flex: 1, gap: 5 },
   rowTitle: { ...TYPOGRAPHY.headline, color: COLORS.primary },
   linkButton: { alignItems: 'center', justifyContent: 'center', minHeight: 48, padding: 10 },

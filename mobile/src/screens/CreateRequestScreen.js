@@ -214,7 +214,7 @@ export default function CreateRequestScreen({ navigation, route }) {
         <HapticPressable
           style={styles.communityHint}
           onPress={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
-          haptic="light"
+          haptic={null}
         >
           <Ionicons name="home-outline" size={18} color={COLORS.primary} />
           <Text style={styles.communityHintText}>
@@ -240,7 +240,7 @@ export default function CreateRequestScreen({ navigation, route }) {
                 accessibilityRole="radio"
                 accessibilityState={{ checked: isSelected }}
                 onPress={() => updateField('type', opt.value)}
-                haptic="light"
+                haptic="selection"
               >
                 <RequestTypeIcon type={opt.value} size={32} />
                 <Text style={styles.typeTitle}>
@@ -301,7 +301,7 @@ export default function CreateRequestScreen({ navigation, route }) {
         <View style={styles.section}>
           <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category</Text>
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
             onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
           >
@@ -328,9 +328,9 @@ export default function CreateRequestScreen({ navigation, route }) {
       <View style={styles.section}>
         <Text maxFontSizeMultiplier={1.4} style={styles.label}>When do you need it?</Text>
         <View style={styles.options}>
-          {[['today', 'Today'], ['weekend', 'This weekend']].map(([key, label]) => <HapticPressable key={key} style={styles.option} onPress={() => setFormData(prev => ({ ...prev, ...requestDatePreset(key) }))}><Text maxFontSizeMultiplier={1.4} style={styles.optionText}>{label}</Text></HapticPressable>)}
-          <HapticPressable style={styles.option} onPress={() => setRangePicker('neededFrom')}><Text maxFontSizeMultiplier={1.4} style={styles.optionText}>Choose dates</Text></HapticPressable>
-          <HapticPressable accessibilityRole="button" accessibilityState={{ selected: !formData.neededFrom && !formData.neededUntil }} style={[styles.option, !formData.neededFrom && !formData.neededUntil && styles.optionActive]} onPress={() => { setRangePicker(null); setFormData(prev => ({ ...prev, neededFrom: '', neededUntil: '' })); }}><Text maxFontSizeMultiplier={1.4} style={[styles.optionText, !formData.neededFrom && !formData.neededUntil && styles.optionTextActive]}>Flexible</Text></HapticPressable>
+          {[['today', 'Today'], ['weekend', 'This weekend']].map(([key, label]) => <HapticPressable haptic="selection" key={key} style={styles.option} onPress={() => setFormData(prev => ({ ...prev, ...requestDatePreset(key) }))}><Text maxFontSizeMultiplier={1.4} style={styles.optionText}>{label}</Text></HapticPressable>)}
+          <HapticPressable haptic="selection" style={styles.option} onPress={() => setRangePicker('neededFrom')}><Text maxFontSizeMultiplier={1.4} style={styles.optionText}>Choose dates</Text></HapticPressable>
+          <HapticPressable haptic="selection" accessibilityRole="button" accessibilityState={{ selected: !formData.neededFrom && !formData.neededUntil }} style={[styles.option, !formData.neededFrom && !formData.neededUntil && styles.optionActive]} onPress={() => { setRangePicker(null); setFormData(prev => ({ ...prev, neededFrom: '', neededUntil: '' })); }}><Text maxFontSizeMultiplier={1.4} style={[styles.optionText, !formData.neededFrom && !formData.neededUntil && styles.optionTextActive]}>Flexible</Text></HapticPressable>
         </View>
 
         {(rangePicker || formData.neededFrom || formData.neededUntil) ? <View style={styles.dateRow}>
@@ -378,7 +378,7 @@ export default function CreateRequestScreen({ navigation, route }) {
                     setShowDatePicker(true);
                   }
                 }}
-                haptic="light"
+                haptic="selection"
               >
                 <Ionicons
                   name={isSelected ? "checkmark-circle" : "ellipse-outline"}
@@ -398,7 +398,7 @@ export default function CreateRequestScreen({ navigation, route }) {
             <HapticPressable
               style={styles.customDateButton}
               onPress={() => { Keyboard.dismiss(); setShowDatePicker(true); }}
-              haptic="light"
+              haptic={null}
             >
               <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
               <Text maxFontSizeMultiplier={1.4} style={styles.customDateText}>
@@ -426,7 +426,7 @@ export default function CreateRequestScreen({ navigation, route }) {
               <HapticPressable
                 style={styles.inlineDateDone}
                 onPress={() => setShowDatePicker(false)}
-                haptic="light"
+                haptic={null}
               >
                 <Text maxFontSizeMultiplier={1.4} style={styles.inlineDateDoneText}>Done</Text>
               </HapticPressable>
@@ -452,7 +452,7 @@ export default function CreateRequestScreen({ navigation, route }) {
       </View>
 
       {/* Submit */}
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         testID="CreateRequest.button.submit"
         accessibilityLabel="Post in Wanted"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
@@ -460,7 +460,7 @@ export default function CreateRequestScreen({ navigation, route }) {
         disabled={isSubmitting || Boolean(audienceProblem) || !draft.ready}
         accessibilityRole="button"
         accessibilityState={{ disabled: isSubmitting || Boolean(audienceProblem) || !draft.ready }}
-        haptic="medium"
+        haptic="light"
       >
         {isSubmitting ? (
           <ActivityIndicator color={COLORS.white} />

@@ -205,11 +205,11 @@ export default function InboxScreen({ navigation, route, onRead }) {
       if (activeTab === 1) await api.markAllNotificationsRead();
       else await markMessagesRead();
       if (readerId !== accountId.current) return;
-      haptics.success();
+
       showToast(activeTab === 1 ? 'Activity marked as read.' : 'Messages marked as read.', 'success');
     } catch (e) {
       if (readerId !== accountId.current) return;
-      haptics.error();
+
       showToast('Some items couldn’t be marked as read. Please try again.', 'error');
     } finally {
       if (readerId === accountId.current) {
@@ -244,7 +244,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
 
   const handleNotificationPress = async (item) => {
     const readerId = accountId.current;
-    haptics.light();
+
     const destination = item.destination || notificationDestination(item);
     if (destination) nav.navigate(destination.name, destination.params);
 
@@ -266,7 +266,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
 
   const renderNotification = ({ item, index }) => (
     <LayeredCard style={styles.cardDepth}>
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={[styles.card, !item.isRead && styles.cardUnread]}
         onPress={() => handleNotificationPress(item)}
         accessibilityRole="button"
@@ -277,6 +277,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
           {item.exchange ? (
             <ShimmerImage source={item.exchange.listing?.photoUrl ? { uri: item.exchange.listing.photoUrl } : null}
               placeholderIcon={listingIcon(item.exchange)}
+              category={item.exchange.listing?.category} title={item.exchange.listing?.title}
               style={styles.notifAvatar} />
           ) : item.fromUser?.profilePhotoUrl ? (
             <Image
@@ -284,7 +285,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
               style={styles.notifAvatar}
             />
           ) : (
-            <NotificationIcon notification={item} />
+            <NotificationIcon notification={item} size={22} />
           )}
         </View>
         <View style={styles.cardContent}>
@@ -305,10 +306,10 @@ export default function InboxScreen({ navigation, route, onRead }) {
 
   const renderConversation = ({ item, index }) => (
     <LayeredCard style={styles.cardDepth}>
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={styles.card}
         onPress={() => item.kind === 'community' ? nav.navigate('CommunityChat', { communityId: item.communityId, communityName: item.name }) : nav.navigate('Chat', { conversationId: item.id })}
-        haptic="light"
+        haptic={null}
       >
         <View style={styles.avatarContainer}>
           <ShimmerImage placeholderIcon={item.kind === 'community' ? 'people' : 'person'}
@@ -342,7 +343,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
   const renderRetry = message => (
     <View style={styles.retryNotice} accessibilityLiveRegion="polite">
       <Text style={styles.retryText}>{message}</Text>
-      <HapticPressable accessibilityRole="button" accessibilityLabel="Retry loading inbox" onPress={onRefresh} style={styles.textButton} disabled={isRefreshing}>
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" accessibilityLabel="Retry loading inbox" onPress={onRefresh} style={styles.textButton} disabled={isRefreshing}>
         <Text maxFontSizeMultiplier={1.4} style={styles.markAllBtn}>{isRefreshing ? 'Retrying…' : 'Retry'}</Text>
       </HapticPressable>
     </View>
@@ -353,12 +354,12 @@ export default function InboxScreen({ navigation, route, onRead }) {
       {!isLoading && (activeTab === 1 ? (unreadOnly ? notifications.filter(item => !item.isRead) : notifications) : (unreadOnly ? conversations.filter(item => item.unreadCount > 0) : conversations)).length === 0 && <WoodlandBackdrop fullScreen />}
       <WoodlandHeader title="Inbox" rightElement={
         <View style={styles.headerActions}>
-          {unreadOnly && <HapticPressable style={styles.activeFilter}
+          {unreadOnly && <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.activeFilter}
             accessibilityLabel="Show all inbox items" onPress={() => selectUnreadOnly(false)}>
             <Text maxFontSizeMultiplier={1.4} style={styles.activeFilterLabel}>Unread only</Text>
             <Ionicons name="close" size={14} color={COLORS.primary} />
           </HapticPressable>}
-          <HapticPressable style={styles.optionsButton} accessibilityLabel="Inbox options"
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.optionsButton} accessibilityLabel="Inbox options"
             accessibilityHint="Filter unread items or mark the inbox as read."
             accessibilityState={{ disabled: isLoading || reading, expanded: optionsVisible, busy: reading }}
             disabled={isLoading || reading} onPress={() => setOptionsVisible(true)}>
@@ -400,10 +401,10 @@ export default function InboxScreen({ navigation, route, onRead }) {
               <ExchangeOverviewLink testID="Inbox.exchanges" onPress={() => navigation.navigate('Exchanges')} />
               {(loadError.activity || loadError.exchanges) && renderRetry(loadError.activity && loadError.exchanges ? 'Couldn’t refresh activity and exchanges.' : loadError.activity ? 'Couldn’t refresh activity.' : 'Couldn’t refresh exchanges.')}
               {notifsDenied && (
-                <HapticPressable
+                <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                   style={styles.notifBannerInline}
                   onPress={() => Linking.openSettings()}
-                  haptic="light"
+                  haptic={null}
                 >
                   <Ionicons name="notifications-off-outline" size={18} color={COLORS.warning} />
                   <Text style={styles.notifBannerInlineText}>
@@ -415,7 +416,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
             </>
           }
           ListFooterComponent={hasMore ? (
-            <HapticPressable onPress={loadOlder} disabled={isLoadingMore || isRefreshing} style={styles.olderButton} accessibilityRole="button">
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover} onPress={loadOlder} disabled={isLoadingMore || isRefreshing} style={styles.olderButton} accessibilityRole="button">
               <Text maxFontSizeMultiplier={1.4} style={styles.markAllBtn}>{isLoadingMore ? 'Loading…' : 'Show older updates'}</Text>
             </HapticPressable>
           ) : null}
@@ -529,8 +530,6 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 14,
-    backgroundColor: COLORS.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },

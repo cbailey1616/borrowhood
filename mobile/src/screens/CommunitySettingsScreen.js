@@ -240,7 +240,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
                 />}
               </View>
             ) : (
-              <HapticPressable style={styles.bannerPickerButton} onPress={() => setShowPhotoSheet(true)} haptic="light" disabled={isSaving || isPickingPhoto} accessibilityRole="button">
+              <HapticPressable style={styles.bannerPickerButton} onPress={() => setShowPhotoSheet(true)} haptic={null} disabled={isSaving || isPickingPhoto} accessibilityRole="button">
                 <Ionicons name="image-outline" size={24} color={COLORS.primary} />
                 <Text style={styles.bannerPickerText}>Add cover photo</Text>
               </HapticPressable>
@@ -250,7 +250,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
               <View style={{ gap: SPACING.sm, marginBottom: SPACING.md }}>
                 <ActionButton label="Change cover photo" onPress={() => setShowPhotoSheet(true)} disabled={isSaving || isPickingPhoto} />
                 <ActionButton label="Remove cover photo" destructive disabled={isSaving || isPickingPhoto}
-                  onPress={() => { setSelectedBannerPhoto(null); setEditBannerUrl(null); haptics.light(); }} />
+                  onPress={() => { setSelectedBannerPhoto(null); setEditBannerUrl(null); }} />
               </View>
             )}
 
@@ -295,14 +295,14 @@ export default function CommunitySettingsScreen({ route, navigation }) {
             />
 
             <View style={styles.editActions}>
-              <HapticPressable style={styles.cancelButton} onPress={handleCancelEdit} haptic="light" disabled={isSaving}>
+              <HapticPressable style={styles.cancelButton} onPress={handleCancelEdit} haptic={null} disabled={isSaving}>
                 <Text maxFontSizeMultiplier={1.4} style={styles.cancelButtonText}>Cancel</Text>
               </HapticPressable>
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
                 onPress={handleSave}
                 disabled={isSaving || isPickingPhoto}
-                haptic="medium"
+                haptic={null}
               >
                 {isSaving ? (
                   <ActivityIndicator size="small" color={COLORS.white} />
@@ -321,7 +321,7 @@ export default function CommunitySettingsScreen({ route, navigation }) {
               <Text style={styles.communityDescriptionEmpty}>No description yet</Text>
             ) : null}
             {canEdit && (
-              <HapticPressable style={styles.editButton} onPress={() => setIsEditing(true)} haptic="light">
+              <HapticPressable style={styles.editButton} onPress={() => setIsEditing(true)} haptic={null}>
                 <Ionicons name="pencil" size={15} color={COLORS.primary} />
                 <Text maxFontSizeMultiplier={1.4} style={styles.editButtonText}>Edit Details</Text>
               </HapticPressable>
@@ -332,12 +332,16 @@ export default function CommunitySettingsScreen({ route, navigation }) {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your preferences</Text>
-        <HapticPressable style={styles.actionButton} onPress={() => navigation.navigate('NotificationSettings')}>
-          <Ionicons name="notifications-outline" size={20} color={COLORS.primary} />
-          <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Notification settings</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-        </HapticPressable>
-        <Text style={styles.settingDescription}>Choose which updates you receive across Borrowhood.</Text>
+        <View style={styles.groupedList}>
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.actionButton} onPress={() => navigation.navigate('NotificationSettings')}>
+            <Ionicons name="notifications-outline" size={22} color={COLORS.primary} />
+            <View style={styles.actionCopy}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Notification settings</Text>
+              <Text style={styles.settingDescription}>Choose which updates you receive across Borrowhood.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </HapticPressable>
+        </View>
       </View>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your sharing choices</Text>
@@ -348,36 +352,38 @@ export default function CommunitySettingsScreen({ route, navigation }) {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Neighbors</Text>
 
-        <HapticPressable
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('CommunityMembers', { id, role: community?.role })}
-          haptic="light"
-        >
-          <Ionicons name="neighbors-manage-outline" size={20} color={COLORS.primary} />
-          <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>{canManageMembers ? 'Manage Members' : 'View All Members'}</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </HapticPressable>
-
-        <HapticPressable
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('InviteMembers', { communityId: id })}
-          haptic="light"
-        >
-          <Ionicons name="neighbor-invite-outline" size={20} color={COLORS.primary} />
-          <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Invite Neighbors</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.gray[600]} />
-        </HapticPressable>
+        <View style={styles.groupedList}>
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover}
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('CommunityMembers', { id, role: community?.role })}
+            haptic={null}
+          >
+            <Ionicons name="neighbors-manage-outline" size={22} color={COLORS.primary} />
+            <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>{canManageMembers ? 'Manage Members' : 'View All Members'}</Text>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </HapticPressable>
+          <View style={styles.rowSeparator} />
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover}
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('InviteMembers', { communityId: id })}
+            haptic={null}
+          >
+            <Ionicons name="neighbor-invite-outline" size={22} color={COLORS.primary} />
+            <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Invite Neighbors</Text>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </HapticPressable>
+        </View>
       </View>
 
       {/* Leave */}
       <View style={styles.section}>
-        <HapticPressable
-          style={[styles.actionButton, styles.leaveButton]}
+        <HapticPressable pressedBackgroundColor={COLORS.dangerMuted}
+          style={[styles.groupedList, styles.actionButton, styles.leaveButton]}
           onPress={requestLeave}
           disabled={isLeaving}
-          haptic="medium"
+          haptic={null}
         >
-          <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
+          <Ionicons name="log-out-outline" size={22} color={COLORS.danger} />
           {isLeaving ? <ActivityIndicator color={COLORS.spinner} accessibilityLabel="Checking neighborhood" /> : <Text maxFontSizeMultiplier={1.4} style={[styles.actionButtonText, styles.leaveText]}>Leave Neighborhood</Text>}
         </HapticPressable>
       </View>
@@ -386,12 +392,12 @@ export default function CommunitySettingsScreen({ route, navigation }) {
 
       {cropPhoto && <CoverPhotoCropper key={`${user?.id}:${id}:${cropPhoto.uri}`} photo={cropPhoto}
         onCancel={() => setCropPhoto(null)}
-        onComplete={uri => { setSelectedBannerPhoto(uri); setCropPhoto(null); haptics.light(); }} />}
+        onComplete={uri => { setSelectedBannerPhoto(uri); setCropPhoto(null); }} />}
 
       <ActionSheet isVisible={showPhotoSheet} onClose={() => setShowPhotoSheet(false)} title="Cover photo"
         actions={[
-          { label: 'Take photo', icon: <Ionicons name="camera" size={28} illustrated />, onPress: () => handlePickBanner(true) },
-          { label: 'Choose photo', icon: <Ionicons name="image" size={28} illustrated />, onPress: () => handlePickBanner(false) },
+          { label: 'Take photo', icon: <Ionicons name="camera" size={22}  />, onPress: () => handlePickBanner(true) },
+          { label: 'Choose photo', icon: <Ionicons name="image" size={22}  />, onPress: () => handlePickBanner(false) },
         ]} />
 
       <ActionSheet
@@ -563,13 +569,22 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
     padding: SPACING.lg,
-    borderRadius: RADIUS.md,
-    marginBottom: SPACING.sm,
+    minHeight: 56,
     gap: SPACING.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
+  },
+  groupedList: {
+    ...CARD_SURFACE,
+    borderRadius: RADIUS.md,
+    overflow: 'hidden',
+  },
+  actionCopy: {
+    flex: 1,
+  },
+  rowSeparator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.separator,
+    marginLeft: SPACING.lg + 22 + SPACING.md,
   },
   actionButtonText: {
     ...TYPOGRAPHY.body,

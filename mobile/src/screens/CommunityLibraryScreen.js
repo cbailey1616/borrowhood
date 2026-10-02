@@ -82,13 +82,13 @@ export default function CommunityLibraryScreen({ navigation }) {
 
   const renderItem = ({ item, index }) => (
     <AnimatedCard index={index}>
-      <HapticPressable
+      <HapticPressable scaleDown={item.photoUrl ? 0.97 : 1}
         style={styles.itemCardPressable}
         onPress={() => navigation.navigate('ListingDetail', { id: item.id })}
-        haptic="light"
+        haptic={null}
       >
         <View style={[styles.cardBox, styles.itemCard]}>
-          <ShimmerImage
+          <ShimmerImage category={item.category} title={item.title}
             source={{ uri: item.photoUrl || null }}
             style={styles.itemImage}
           />
@@ -114,18 +114,18 @@ export default function CommunityLibraryScreen({ navigation }) {
             </View>
           </View>
           {item.isAvailable ? (
-            <HapticPressable
+            <HapticPressable scaleDown={0.97}
               style={styles.checkoutButton}
               onPress={() => handleCheckout(item)}
-              haptic="medium"
+              haptic={null}
             >
               <Text maxFontSizeMultiplier={1.4} style={styles.checkoutButtonText}>Check Out</Text>
             </HapticPressable>
           ) : item.isCheckedOutByMe ? (
-            <HapticPressable
+            <HapticPressable scaleDown={0.97}
               style={styles.returnButton}
               onPress={() => handleReturn(item)}
-              haptic="medium"
+              haptic={null}
             >
               <Text maxFontSizeMultiplier={1.4} style={styles.returnButtonText}>Return</Text>
             </HapticPressable>
@@ -177,10 +177,10 @@ export default function CommunityLibraryScreen({ navigation }) {
           <Text style={styles.emptyText}>
             Be the first to donate an item to the community library!
           </Text>
-          <HapticPressable
+          <HapticPressable scaleDown={0.97}
             style={styles.donateButton}
             onPress={() => navigation.navigate('Main', { screen: 'MyItems' })}
-            haptic="medium"
+            haptic={null}
           >
             <Text maxFontSizeMultiplier={1.4} style={styles.donateButtonText}>Donate an Item</Text>
           </HapticPressable>
@@ -188,7 +188,7 @@ export default function CommunityLibraryScreen({ navigation }) {
       )}
 
       <View style={[styles.cardBox, styles.infoCard]}>
-        <Text style={styles.infoIcon}>ℹ️</Text>
+        <Ionicons name="information-circle-outline" size={22} color={COLORS.primary} style={styles.infoIcon} />
         <View style={styles.infoContent}>
           <Text style={styles.infoTitle}>How it works</Text>
           <Text style={styles.infoText}>
@@ -378,7 +378,6 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   infoIcon: {
-    ...TYPOGRAPHY.title3,
     marginRight: SPACING.md,
   },
   infoContent: {

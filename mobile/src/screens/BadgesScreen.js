@@ -37,7 +37,6 @@ export default function BadgesScreen({ navigation }) {
       setMyBadges(mine);
       setAllBadges(all);
       setLeaderboard(leaders);
-      haptics.success();
     } catch (err) {
       haptics.error();
     } finally {
@@ -79,10 +78,10 @@ export default function BadgesScreen({ navigation }) {
 
   const LeaderboardRow = ({ user, rank }) => (
     <AnimatedCard index={rank - 1}>
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={styles.leaderboardRow}
         onPress={() => navigation.navigate('UserProfile', { id: user.id })}
-        haptic="light"
+        haptic={null}
       >
         <Text maxFontSizeMultiplier={1.4} style={[styles.rank, rank <= 3 && styles.rankTop]}>
           {`#${rank}`}

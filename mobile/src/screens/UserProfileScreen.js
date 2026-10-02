@@ -74,9 +74,8 @@ export default function UserProfileScreen({ route, navigation }) {
     try {
       const result = await api.addFriend(id);
       setFriendship(['accepted', 'already_friends'].includes(result.status) ? 'accepted' : 'pending');
-      haptics.success();
+      haptics.selection();
     } catch (error) {
-      haptics.error();
       showError('Could not send friend request', 'Please try again.');
     } finally {
       setIsAddingFriend(false);
@@ -90,7 +89,6 @@ export default function UserProfileScreen({ route, navigation }) {
       await api.removeFriend(id);
       setFriendship('none');
     } catch (error) {
-      haptics.error();
       showError('Could not remove friend', 'Please try again.');
     } finally {
       setIsAddingFriend(false);
@@ -170,8 +168,8 @@ export default function UserProfileScreen({ route, navigation }) {
         {/* Action Buttons */}
         {!isOwnProfile && (
           <View style={styles.actionButtons}>
-            <HapticPressable
-              haptic="medium"
+            <HapticPressable scaleDown={0.97}
+
               style={[styles.friendButton, (isFriend || requestPending) && styles.friendButtonActive, requestPending && { opacity: 1 }]}
               onPress={isFriend ? () => setRemoveFriendSheetVisible(true) : handleAddFriend}
               accessibilityLabel={friendActionLabel}
@@ -193,7 +191,7 @@ export default function UserProfileScreen({ route, navigation }) {
             </HapticPressable>
 
             <HapticPressable
-              haptic="light"
+
               style={styles.messageButton}
               onPress={handleMessage}
               disabled={messagesBlocked}

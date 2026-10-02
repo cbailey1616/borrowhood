@@ -39,6 +39,7 @@ export default function OnboardingWelcomeScreen({ navigation }) {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
         <HapticPressable
+          scaleDown={0.97}
           style={styles.primaryButton}
           onPress={handleGetStarted}
           haptic="medium"

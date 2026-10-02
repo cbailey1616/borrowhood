@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import ListingTypeIcon from '../components/ListingTypeIcon';
 import TextInput from '../components/AppTextInput';
 import GiveawayOptions from '../components/GiveawayOptions';
@@ -38,6 +39,7 @@ const CONDITIONS = ['like_new', 'good', 'fair', 'worn'];
 const VISIBILITIES = ['close_friends', 'neighborhood', 'town'];
 
 export default function CreateListingScreen({ navigation, route }) {
+  const reduceMotion = useReduceMotion();
   const startNavigationTask = useNavigationTask(navigation);
   const { user, refreshUser, isGracePeriodActive } = useAuth();
   const { showError, showToast } = useError();
@@ -218,7 +220,6 @@ export default function CreateListingScreen({ navigation, route }) {
         const newPhotos = result.assets.map(a => a.uri);
         const allPhotos = [...formData.photos, ...newPhotos].slice(0, 10);
         updateField('photos', allPhotos);
-        haptics.light();
       }
     } catch (error) {
       haptics.error();
@@ -251,7 +252,6 @@ export default function CreateListingScreen({ navigation, route }) {
       const photoUri = result.assets[0].uri;
       const allPhotos = [...formData.photos, photoUri].slice(0, 10);
       updateField('photos', allPhotos);
-      haptics.light();
     }
   };
 
@@ -263,7 +263,6 @@ export default function CreateListingScreen({ navigation, route }) {
   const confirmRemovePhoto = () => {
     if (removePhotoIndex !== null) {
       updateField('photos', formData.photos.filter((_, i) => i !== removePhotoIndex));
-      haptics.medium();
     }
     setRemovePhotoIndex(null);
   };
@@ -292,7 +291,7 @@ export default function CreateListingScreen({ navigation, route }) {
         : errors.title ? fieldPositions.current.title
         : fieldPositions.current.categoryId;
       if (y != null && scrollRef.current) {
-        scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), true);
+        scrollRef.current.scrollToPosition(0, Math.max(0, y - SPACING.xl), !reduceMotion);
       }
 
       // Build a specific message listing what's missing
@@ -443,7 +442,7 @@ export default function CreateListingScreen({ navigation, route }) {
                 <HapticPressable
                   style={styles.removePhoto}
                   onPress={() => handleRemovePhoto(index)}
-                  haptic="light"
+                  haptic={null}
                 >
                   <Ionicons name="close" size={16} color={COLORS.white} />
                 </HapticPressable>
@@ -451,11 +450,11 @@ export default function CreateListingScreen({ navigation, route }) {
             ))}
             {formData.photos.length < 10 && (
               <View style={styles.addPhotoButtons}>
-                <HapticPressable testID="CreateListing.button.addPhoto" accessibilityLabel="Add photo from gallery" accessibilityRole="button" style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handlePickImage} haptic="light">
+                <HapticPressable testID="CreateListing.button.addPhoto" accessibilityLabel="Add photo from gallery" accessibilityRole="button" style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handlePickImage} haptic={null}>
                   <Ionicons name="image" size={28} color={fieldErrors.photos ? COLORS.danger : COLORS.primary} />
                   <Text style={styles.addPhotoText}>Gallery</Text>
                 </HapticPressable>
-                <HapticPressable style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handleTakePhoto} haptic="light">
+                <HapticPressable style={[styles.addPhotoButton, fieldErrors.photos && styles.fieldError]} onPress={handleTakePhoto} haptic={null}>
                   <Ionicons name="camera" size={28} color={fieldErrors.photos ? COLORS.danger : COLORS.primary} />
                   <Text style={styles.addPhotoText}>Camera</Text>
                 </HapticPressable>
@@ -580,7 +579,7 @@ export default function CreateListingScreen({ navigation, route }) {
         <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category (optional)</Text>
         {categories.length > 0 ? (
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
             onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
           >
@@ -628,14 +627,14 @@ export default function CreateListingScreen({ navigation, route }) {
 
       </View>}
       {/* Submit */}
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         testID="CreateListing.button.submit"
         accessibilityLabel="List item"
         accessibilityRole="button"
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={() => handleSubmit()}
         disabled={isSubmitting || !draft.ready}
-        haptic="medium"
+        haptic="light"
       >
         {isSubmitting ? (
           <ActivityIndicator color={COLORS.white} />

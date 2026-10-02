@@ -1,5 +1,5 @@
-import ListingTypeIcon from './ListingTypeIcon';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import ShimmerImage from './ShimmerImage';
+import { View, Text, StyleSheet } from 'react-native';
 import ListingOffer from './ListingOffer';
 import HapticPressable from './HapticPressable';
 import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
@@ -9,8 +9,10 @@ export default function PendingRequestCard({ transaction: t, onMessage, onCancel
   const hasOtherRequests = t.queue?.hasOtherRequests ?? (t.queue?.aheadCount > 0);
   const waiting = t.queue?.waiting;
   return <View style={styles.page}>
-    <HapticPressable style={[styles.card, styles.item]} accessibilityLabel={`View ${t.listing.title}`} onPress={onViewItem}>
-      {t.listing.photos?.[0] ? <Image source={{ uri: t.listing.photos[0] }} style={styles.photo} /> : <ListingTypeIcon listing={t} size={48} />}
+    <HapticPressable style={[styles.card, styles.item]} scaleDown={t.listing.photos?.[0] ? 0.97 : 1}
+      accessibilityLabel={`View ${t.listing.title}`} onPress={onViewItem}>
+      <ShimmerImage source={t.listing.photos?.[0] ? { uri: t.listing.photos[0] } : undefined}
+        category={t.listing.category} title={t.listing.title} style={styles.photo} />
       <View style={{ flex: 1, gap: SPACING.sm }}>
         <Text style={styles.title}>{t.listing.title}</Text>
         <ListingOffer listing={{ ...t.listing, listingType: t.listingType ?? t.listing.listingType, directFee: t.directFee ?? t.listing.directFee, pricePerDay: t.dailyRate, isFree: !t.dailyRate }} />

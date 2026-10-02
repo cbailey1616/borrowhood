@@ -21,7 +21,6 @@ import RankInfoSheet from '../components/RankInfoSheet';
 import { Ionicons } from '../components/Icon';
 import { memberReputation } from '../utils/reputation';
 import { requestPresentation } from '../utils/requestPresentation';
-import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 import api from '../services/api';
 
@@ -151,7 +150,7 @@ export default function RequestDetailScreen({ route, navigation }) {
     try {
       await api.deleteRequest(id);
       if (!isCurrent()) return;
-      haptics.success(); navigation.goBack();
+      navigation.goBack();
     } catch {
       if (isCurrent()) showToast('Couldn’t close the post. Please try again.', 'error');
     } finally {
@@ -169,7 +168,6 @@ export default function RequestDetailScreen({ route, navigation }) {
       await api.withdrawOffer(id, item.id);
       if (!isCurrent()) return;
       setOffers(previous => previous.filter(offer => offer.id !== item.id));
-      haptics.success();
     } catch {
       if (isCurrent()) showToast('Couldn’t withdraw the offer. Please try again.', 'error');
     } finally {
@@ -219,7 +217,7 @@ export default function RequestDetailScreen({ route, navigation }) {
               {request.isExpired && request.isOwner ? 'Renew from My Posts.' : 'No longer accepting offers.'}
             </Text>}
           </View>
-          {!!request.photoUrl && <HapticPressable style={styles.photoFrame} onPress={() => setShowPhoto(true)}
+          {!!request.photoUrl && <HapticPressable scaleDown={0.97} style={styles.photoFrame} onPress={() => setShowPhoto(true)}
             accessibilityRole="button" accessibilityLabel="View full wanted photo" testID="Request.photo">
             <ShimmerImage source={{ uri: request.photoUrl }} contentFit="cover" contentPosition="center"
               accessibilityLabel="Wanted item photo" style={styles.photo} />
@@ -228,12 +226,12 @@ export default function RequestDetailScreen({ route, navigation }) {
           {(request.description || dateRange || request.category) && <View style={styles.details}>
             {!!request.description && <Text style={styles.body}>{request.description}</Text>}
             {!!dateRange && <View style={styles.detailRow}>
-              <Ionicons name="calendar" size={18} illustrated color={COLORS.primary} />
+              <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
               <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>Needed {dateRange}</Text>
             </View>}
             {!!request.category && <Text style={styles.category}>{request.category}</Text>}
           </View>}
-          {privateAccess && requester.id && <HapticPressable style={styles.requesterRow}
+          {privateAccess && requester.id && <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.requesterRow}
             accessibilityRole="button" accessibilityLabel={`View ${requester.firstName}’s profile`}
             onPress={() => navigation.navigate('UserProfile', { id: requester.id })}>
             <ShimmerImage placeholderIcon="person" source={{ uri: requester.profilePhotoUrl }} style={styles.avatar} />
@@ -255,7 +253,7 @@ export default function RequestDetailScreen({ route, navigation }) {
       {showOffers && <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.typeLabel}>
-            <Ionicons name="lock-closed" size={18} illustrated color={COLORS.primary} />
+            <Ionicons name="lock-closed-outline" size={22} color={COLORS.primary} />
             <Text style={styles.sectionTitle} accessibilityRole="header">Private offers</Text>
           </View>
           {offers.length > 0 && <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>{offers.length}</Text>}
@@ -266,9 +264,9 @@ export default function RequestDetailScreen({ route, navigation }) {
           : !offerError && offers.length === 0 && <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>No offers yet.</Text>}
         {offers.map(item => <LayeredCard key={item.id}>
           <View style={styles.offerCard}>
-            <HapticPressable style={styles.offerRow} accessibilityRole="button" accessibilityLabel={`View offered item: ${item.title}`}
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.offerRow} accessibilityRole="button" accessibilityLabel={`View offered item: ${item.title}`}
               onPress={() => navigation.navigate('ListingDetail', { id: item.id })}>
-              <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} style={styles.offerPhoto} />
+              <ShimmerImage source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} category={item.category} title={item.title} style={styles.offerPhoto} />
               <View style={styles.offerContent}>
                 <Text style={styles.offerTitle}>{item.title}</Text>
                 <Text maxFontSizeMultiplier={1.4} style={styles.metaText}>{item.isOwn ? 'Your offer' : 'View item'}</Text>
@@ -291,7 +289,7 @@ export default function RequestDetailScreen({ route, navigation }) {
             accessibilityRole="button" accessibilityLabel="View all comments"><Text maxFontSizeMultiplier={1.4} style={styles.linkText}>View all</Text></HapticPressable>}
         </View>
         {discussionError && <ActionButton label="Couldn’t load comments. Try again" onPress={fetchDiscussions} />}
-        {discussions.map(post => <HapticPressable key={post.id} style={styles.commentRow}
+        {discussions.map(post => <HapticPressable pressedBackgroundColor={COLORS.cardHover} key={post.id} style={styles.commentRow}
           accessibilityRole="button" accessibilityLabel={`Comment by ${post.user?.firstName || 'a neighbor'}: ${post.content}`}
           onPress={() => openComments(false)}>
           <ShimmerImage placeholderIcon="person" source={{ uri: post.user?.profilePhotoUrl }} style={styles.commentAvatar} />
@@ -310,7 +308,7 @@ export default function RequestDetailScreen({ route, navigation }) {
     {!!messageError && <Text accessibilityRole="alert" style={styles.messageError}>{messageError}</Text>}
     {(responderAction || ownerActions) && <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
       <View style={[styles.footerContent, (fontScale > 1.3 || width < 360) && styles.stackedActions]}>
-        {responderAction && <HapticPressable style={styles.primaryButton} disabled={isOpeningChat}
+        {responderAction && <HapticPressable scaleDown={0.97} style={styles.primaryButton} disabled={isOpeningChat}
           accessibilityRole="button" accessibilityLabel={request.type === 'service' ? 'I can help' : 'Offer an item privately'}
           accessibilityState={{ disabled: isOpeningChat, busy: isOpeningChat }}
           onPress={request.type === 'service' ? openServiceChat : () => navigation.navigate('OfferItem', { request })}>
@@ -320,9 +318,9 @@ export default function RequestDetailScreen({ route, navigation }) {
           </>}
         </HapticPressable>}
         {ownerActions && <>
-          <HapticPressable style={styles.primaryButton} accessibilityRole="button" accessibilityLabel="Edit post"
+          <HapticPressable scaleDown={0.97} style={styles.primaryButton} accessibilityRole="button" accessibilityLabel="Edit post"
             onPress={() => navigation.navigate('EditRequest', { request })}><Text maxFontSizeMultiplier={1.4} style={styles.primaryText}>Edit post</Text></HapticPressable>
-          <HapticPressable style={[styles.primaryButton, styles.closeButton]} disabled={isDeleting}
+          <HapticPressable scaleDown={0.97} style={[styles.primaryButton, styles.closeButton]} disabled={isDeleting}
             accessibilityRole="button" accessibilityLabel="Close post" accessibilityState={{ disabled: isDeleting, busy: isDeleting }}
             onPress={() => setShowDeleteSheet(true)}>
             {isDeleting ? <ActivityIndicator color={COLORS.surface} /> : <Text maxFontSizeMultiplier={1.4} style={styles.primaryText}>Close post</Text>}

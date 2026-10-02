@@ -7,7 +7,7 @@ export const TOWN_PREVIEW_COPY = 'Browse Town borrow listings. Get verified to s
 export default function TownIdentityPrompt({ compact = false, onVerify }) {
   return <HapticPressable accessibilityRole="button" accessibilityLabel="Identity hidden. Get verified to see who’s sharing"
     onPress={event => { event?.stopPropagation?.(); onVerify(); }} style={compact ? styles.compact : styles.card}>
-    <Ionicons name="shield-checkmark" size={compact ? 18 : 32} color={COLORS.primary} />
+    <Ionicons name="shield-checkmark" size={22} illustrated={false} color={COLORS.primary} />
     <View style={styles.copy}>
       <Text style={compact ? styles.caption : styles.title}>{compact ? 'Identity hidden · Get verified' : 'See who’s sharing'}</Text>
       {!compact && <><Text style={styles.body}>{TOWN_PREVIEW_COPY}</Text><Text maxFontSizeMultiplier={1.4} style={styles.link}>Get verified</Text></>}

@@ -352,7 +352,7 @@ export default function FriendsScreen({ navigation, route }) {
 
   const renderFriendItem = ({ item }) => (
     <LayeredCard style={styles.card}>
-      <HapticPressable style={styles.cardContent}
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.cardContent}
         onPress={() => navigation.navigate('UserProfile', { id: item.id })}>
         <FriendAvatar uri={item.profilePhotoUrl} />
         <FriendIdentity user={item} />
@@ -367,7 +367,7 @@ export default function FriendsScreen({ navigation, route }) {
 
   const renderPersonItem = (item, subtitle) => (
     <LayeredCard style={styles.card}>
-      <HapticPressable style={styles.cardContent}
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.cardContent}
         onPress={() => navigation.navigate('UserProfile', { id: item.id })}>
         <FriendAvatar uri={item.profilePhotoUrl} />
         <FriendIdentity user={item} subtitle={subtitle} />
@@ -379,7 +379,7 @@ export default function FriendsScreen({ navigation, route }) {
       ) : item.requestPending ? (
         <View style={styles.pendingBadge}><Text style={styles.pendingText}>Requested</Text></View>
       ) : (
-        <HapticPressable haptic="medium" style={styles.addButton}
+        <HapticPressable scaleDown={0.97} haptic={null} style={styles.addButton}
           accessibilityLabel={`Add ${item.firstName} as a friend`}
           onPress={() => handleAddFriend(item)} disabled={!!addingId}>
           {addingId === item.id ? <ActivityIndicator size="small" color={COLORS.surface} />
@@ -407,14 +407,14 @@ export default function FriendsScreen({ navigation, route }) {
 
   const renderRequestItem = ({ item }) => (
     <LayeredCard style={styles.requestCard}>
-      <HapticPressable style={[styles.cardContent, styles.requestPerson]}
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={[styles.cardContent, styles.requestPerson]}
         onPress={() => navigation.navigate('UserProfile', { id: item.id })}>
         <FriendAvatar uri={item.profilePhotoUrl} />
         <FriendIdentity user={item} subtitle="Wants to be your friend" />
         <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
       </HapticPressable>
       <View style={styles.requestActions}>
-        <HapticPressable haptic="medium" style={styles.acceptButton}
+        <HapticPressable scaleDown={0.97} haptic={null} style={styles.acceptButton}
           accessibilityLabel={`Accept request from ${item.firstName}`}
           onPress={() => handleAcceptRequest(item)} disabled={!!responding}>
           {responding?.id === item.requestId && responding.action === 'accept'
@@ -540,13 +540,12 @@ export default function FriendsScreen({ navigation, route }) {
       {activeTab === 'contacts' && (
         <>
           {contactsPermission !== null && contactsPermission !== 'granted' ? (
-            <View style={styles.emptyContainer}>
-              <HeroIcon icon="lock-closed-outline" size={80} />
-              <Text style={styles.emptyTitle}>Contacts Access Needed</Text>
-              <Text style={styles.emptySubtitle}>
+            <View style={styles.utilityIntro}>
+              <Text style={styles.utilityTitle}>Contacts Access Needed</Text>
+              <Text style={styles.utilitySubtitle}>
                 Allow access to your contacts to find friends on Borrowhood and invite others
               </Text>
-              <HapticPressable haptic="medium" style={styles.settingsButton} onPress={openSettings}>
+              <HapticPressable scaleDown={0.97} haptic={null} style={styles.settingsButton} onPress={openSettings}>
                 <Text maxFontSizeMultiplier={1.4} style={styles.settingsButtonText}>Open Settings</Text>
               </HapticPressable>
             </View>
@@ -581,7 +580,7 @@ export default function FriendsScreen({ navigation, route }) {
                 ) : null
               }
               ListFooterComponent={
-                <HapticPressable haptic="light" style={styles.updateAccessButton} onPress={openSettings}>
+                <HapticPressable pressedBackgroundColor={COLORS.cardHover} haptic={null} style={styles.updateAccessButton} onPress={openSettings}>
                   <Ionicons name="settings-outline" size={18} color={COLORS.primary} />
                   <Text maxFontSizeMultiplier={1.4} style={styles.updateAccessText}>Not seeing all your contacts? Update access in Settings</Text>
                 </HapticPressable>
@@ -593,7 +592,7 @@ export default function FriendsScreen({ navigation, route }) {
                   <Text style={styles.emptySubtitle}>
                     We couldn't find any contacts with phone numbers. You may need to grant full contacts access in Settings.
                   </Text>
-                  <HapticPressable haptic="medium" style={styles.settingsButton} onPress={openSettings}>
+                  <HapticPressable scaleDown={0.97} haptic={null} style={styles.settingsButton} onPress={openSettings}>
                     <Text maxFontSizeMultiplier={1.4} style={styles.settingsButtonText}>Open Settings</Text>
                   </HapticPressable>
                 </View>
@@ -610,14 +609,13 @@ export default function FriendsScreen({ navigation, route }) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
+            <View style={search.length < 2 && !isSearching ? styles.utilityIntro : styles.emptyContainer}>
               {isSearching ? (
                 <ActivityIndicator size="large" color={COLORS.spinner} />
               ) : search.length < 2 ? (
                 <>
-                  <HeroIcon icon="search-outline" size={80} />
-                  <Text style={styles.emptyTitle}>Search for people</Text>
-                  <Text style={styles.emptySubtitle}>
+                  <Text style={styles.utilityTitle}>Search for people</Text>
+                  <Text style={styles.utilitySubtitle}>
                     Enter at least 2 characters to search
                   </Text>
                 </>
@@ -893,6 +891,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 48,
+  },
+  utilityIntro: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.xl,
+    alignItems: 'flex-start',
+  },
+  utilityTitle: {
+    ...TYPOGRAPHY.title2,
+    color: COLORS.text,
+  },
+  utilitySubtitle: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.sm,
   },
   emptyTitle: {
     ...TYPOGRAPHY.h3,

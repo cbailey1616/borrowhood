@@ -1,3 +1,4 @@
+import useReduceMotion from '../../hooks/useReduceMotion';
 import TextInput from '../../components/AppTextInput';
 import { UNSTABLE_usePreventRemove as usePreventRemove, useIsFocused } from '@react-navigation/native';
 import useNavigationTask from '../../hooks/useNavigationTask';
@@ -19,7 +20,6 @@ import HapticPressable from '../../components/HapticPressable';
 import { useError } from '../../context/ErrorContext';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -50,6 +50,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   const { changePassword, logout } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const { showError } = useError();
+  const reduceMotion = useReduceMotion();
   const [step, setStep] = useState(isChangeMode ? 'password' : 'email');
   const startNavigationTask = useNavigationTask(navigation, step);
   const [email, setEmail] = useState(prefillEmail || '');
@@ -84,7 +85,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   }, [resendCooldown]);
 
   const animateStep = (nextStep) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (!reduceMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setStep(nextStep);
   };
 
@@ -100,7 +101,6 @@ export default function ForgotPasswordScreen({ navigation, route }) {
       if (!isCurrent()) return;
       setResendCooldown(60);
       animateStep('code');
-      haptics.light();
     } catch (error) {
       if (!isCurrent()) return;
       showError({
@@ -164,10 +164,8 @@ export default function ForgotPasswordScreen({ navigation, route }) {
       if (!isCurrent()) return;
       setResetToken(response.resetToken);
       animateStep('password');
-      haptics.success();
     } catch (error) {
       if (!isCurrent()) return;
-      haptics.error();
       setDigits(['', '', '', '', '', '']);
       digitRefs.current[0]?.focus();
       showError({
@@ -186,7 +184,6 @@ export default function ForgotPasswordScreen({ navigation, route }) {
       await api.forgotPassword(email);
       setResendCooldown(60);
       setDigits(['', '', '', '', '', '']);
-      haptics.light();
       showError({
         type: 'success',
         title: 'Code sent',
@@ -218,7 +215,6 @@ export default function ForgotPasswordScreen({ navigation, route }) {
       if (isChangeMode) await changePassword(currentPassword, newPassword);
       else await api.resetPassword(resetToken, newPassword);
       if (!isCurrent()) return;
-      haptics.success();
       if (isChangeMode) {
         showError({
           type: 'success',
@@ -236,7 +232,6 @@ export default function ForgotPasswordScreen({ navigation, route }) {
         if (route?.params?.changeMode) await logout();
       }
     } catch (error) {
-      haptics.error();
       showError({
         type: 'auth',
         message: error.message || 'Reset token expired. Please start over.',
@@ -272,7 +267,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
         style={styles.content}
       >
         <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} contentContainerStyle={{ paddingBottom: SPACING.xl }}>
-        <HapticPressable style={styles.backButton} onPress={handleBack} haptic="light">
+        <HapticPressable style={styles.backButton} onPress={handleBack} >
           <Text maxFontSizeMultiplier={1.4} style={styles.backButtonText}>{'\u2039'}</Text>
         </HapticPressable>
 
@@ -316,11 +311,11 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                     autoFocus
                   />
                 </View>
-                <HapticPressable
+                <HapticPressable scaleDown={0.97}
                   style={[styles.button, isLoading && styles.buttonDisabled]}
                   onPress={handleSendCode}
                   disabled={isLoading}
-                  haptic="medium"
+
                 >
                   {isLoading ? (
                     <ActivityIndicator color={COLORS.background} />
@@ -362,7 +357,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                   style={styles.resendButton}
                   onPress={handleResend}
                   disabled={resendCooldown > 0 || isLoading}
-                  haptic="light"
+
                 >
                   <Text maxFontSizeMultiplier={1.4} style={[styles.resendButtonText, resendCooldown > 0 && styles.resendDisabled]}>
                     {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
@@ -402,7 +397,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                     <HapticPressable
                       onPress={() => setShowPassword(!showPassword)}
                       style={styles.eyeButton}
-                      haptic="light"
+                      haptic="selection"
                     >
                       <Text maxFontSizeMultiplier={1.4} style={styles.eyeButtonText}>{showPassword ? 'Hide' : 'Show'}</Text>
                     </HapticPressable>
@@ -434,11 +429,11 @@ export default function ForgotPasswordScreen({ navigation, route }) {
                   />
                 </View>
 
-                <HapticPressable
+                <HapticPressable scaleDown={0.97}
                   style={[styles.button, isLoading && styles.buttonDisabled]}
                   onPress={handleResetPassword}
                   disabled={isLoading}
-                  haptic="medium"
+
                 >
                   {isLoading ? (
                     <ActivityIndicator color={COLORS.background} />

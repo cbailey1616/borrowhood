@@ -1,3 +1,4 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import TextInput from '../components/AppTextInput';
 import ShimmerImage from '../components/ShimmerImage';
 import { useState, useEffect, useCallback } from 'react';
@@ -20,6 +21,7 @@ import ActionSheet from '../components/ActionSheet';
 import { haptics } from '../utils/haptics';
 
 export default function BundlesScreen({ navigation }) {
+  const reduceMotion = useReduceMotion();
   const [bundles, setBundles] = useState([]);
   const [myBundles, setMyBundles] = useState([]);
   const [myListings, setMyListings] = useState([]);
@@ -109,15 +111,15 @@ export default function BundlesScreen({ navigation }) {
   };
 
   const renderBundle = ({ item }) => (
-    <HapticPressable
+    <HapticPressable scaleDown={item.listings?.some(listing => listing.photoUrl) ? 0.97 : 1}
       onPress={() => navigation.navigate('BundleDetail', { bundleId: item.id })}
-      haptic="light"
+      haptic={null}
     >
       <View style={[styles.cardBox, styles.bundleCard]}>
         <View style={styles.bundleCardContent}>
           <View style={styles.bundleImages}>
             {item.listings?.slice(0, 4).map((listing, idx) => (
-              <ShimmerImage
+              <ShimmerImage category={listing.category} title={listing.title}
                 key={idx}
                 source={{ uri: listing.photoUrl || null }}
                 style={[
@@ -145,7 +147,7 @@ export default function BundlesScreen({ navigation }) {
             <HapticPressable
               style={styles.deleteButton}
               onPress={() => handleDeleteBundle(item.id)}
-              haptic="medium"
+              haptic={null}
             >
               <Text maxFontSizeMultiplier={1.4} style={styles.deleteButtonText}>x</Text>
             </HapticPressable>
@@ -171,7 +173,7 @@ export default function BundlesScreen({ navigation }) {
         <HapticPressable
           style={[styles.tab, activeTab === 'browse' && styles.tabActive]}
           onPress={() => setActiveTab('browse')}
-          haptic="light"
+          haptic="selection"
         >
           <Text maxFontSizeMultiplier={1.4} style={[styles.tabText, activeTab === 'browse' && styles.tabTextActive]}>
             Browse
@@ -180,7 +182,7 @@ export default function BundlesScreen({ navigation }) {
         <HapticPressable
           style={[styles.tab, activeTab === 'mine' && styles.tabActive]}
           onPress={() => setActiveTab('mine')}
-          haptic="light"
+          haptic="selection"
         >
           <Text maxFontSizeMultiplier={1.4} style={[styles.tabText, activeTab === 'mine' && styles.tabTextActive]}>
             My Bundles
@@ -211,17 +213,17 @@ export default function BundlesScreen({ navigation }) {
         </View>
       )}
 
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         style={styles.fab}
         onPress={() => setShowCreateModal(true)}
-        haptic="medium"
+        haptic={null}
       >
         <Text style={styles.fabText}>+</Text>
       </HapticPressable>
 
       <Modal
         visible={showCreateModal}
-        animationType="slide"
+        animationType={reduceMotion ? 'none' : 'slide'}
         transparent
         onRequestClose={() => setShowCreateModal(false)}
       >
@@ -258,9 +260,9 @@ export default function BundlesScreen({ navigation }) {
                     newBundle.listingIds.includes(item.id) && styles.listingItemSelected
                   ]}
                   onPress={() => toggleListingSelection(item.id)}
-                  haptic="light"
+                  haptic="selection"
                 >
-                  <ShimmerImage
+                  <ShimmerImage category={item.category} title={item.title}
                     source={{ uri: item.photos?.[0] || null }}
                     style={styles.listingItemImage}
                   />
@@ -280,15 +282,15 @@ export default function BundlesScreen({ navigation }) {
               <HapticPressable
                 style={styles.cancelButton}
                 onPress={() => setShowCreateModal(false)}
-                haptic="light"
+                haptic={null}
               >
                 <Text maxFontSizeMultiplier={1.4} style={styles.cancelButtonText}>Cancel</Text>
               </HapticPressable>
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={styles.createButton}
                 onPress={handleCreateBundle}
                 disabled={creating}
-                haptic="medium"
+                haptic="light"
               >
                 {creating ? (
                   <ActivityIndicator size="small" color={COLORS.background} />

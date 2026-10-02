@@ -66,7 +66,7 @@ export default function SafetyReportsScreen({ navigation }) {
     <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
       contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 }]}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={() => { if (!saving) { setSelected(null); load(); } }} tintColor={COLORS.spinner} colors={[COLORS.spinner]} />}>
-      <View style={styles.heading}><Ionicons name="shield-checkmark-outline" size={36} color={COLORS.primary} /><View style={{ flex: 1 }}>
+      <View style={styles.heading}><View style={{ flex: 1 }}>
         <Text style={styles.title}>Community safety</Text><Text style={styles.body}>Review reports and manage account access.</Text>
       </View></View>
       <SegmentedControl segments={['Open reports', 'All reports']} selectedIndex={filter === 'open' ? 0 : 1} onIndexChange={i => {
@@ -78,7 +78,7 @@ export default function SafetyReportsScreen({ navigation }) {
       {loading && !data.reports.length && <ActivityIndicator color={COLORS.spinner} />}
       {!loading && !error && !data.reports.length && <LayeredCard style={styles.card}><Ionicons name="document-text-outline" size={28} color={COLORS.primary} /><Text style={styles.name}>{filter === 'open' ? 'No open reports' : 'No reports yet'}</Text><Text style={styles.body}>Reports submitted by members will appear here.</Text></LayeredCard>}
       {data.reports.map(report => <LayeredCard key={report.id} style={styles.card}>
-        <HapticPressable disabled={saving} accessibilityLabel={`Review report about ${report.reportedName}`} onPress={() => {
+        <HapticPressable haptic="selection" pressedBackgroundColor={COLORS.cardHover} disabled={saving} accessibilityLabel={`Review report about ${report.reportedName}`} onPress={() => {
           setSelected(selected?.id === report.id ? null : report); setNote(''); setError('');
         }} style={styles.reportHeader}>
           <View style={{ flex: 1 }}><Text style={styles.name}>{report.reportedName}</Text><Text style={styles.reason}>{report.reason}</Text>

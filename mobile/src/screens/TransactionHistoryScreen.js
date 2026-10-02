@@ -125,12 +125,12 @@ export default function TransactionHistoryScreen({ navigation }) {
 
     return (
       <LayeredCard style={styles.card}>
-        <HapticPressable style={styles.cardBody} testID={`History.${item.id}`} accessibilityRole="button"
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.cardBody} testID={`History.${item.id}`} accessibilityRole="button"
           accessibilityLabel={[title, config.label, person, date].filter(Boolean).join('. ')}
           onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}>
           <View style={styles.itemRow}>
             <ShimmerImage source={{ uri: item.listing?.photoUrl }} style={styles.photo}
-              contentPosition="center" placeholderIcon={listingIcon(item)} />
+              contentPosition="center" placeholderIcon={listingIcon(item)} category={item.listing?.category} title={title} />
             <View style={styles.cardContent}>
               <Text style={styles.listingTitle} numberOfLines={2}>{title}</Text>
               <Text style={styles.otherUser} numberOfLines={2}>{person}</Text>
@@ -139,7 +139,7 @@ export default function TransactionHistoryScreen({ navigation }) {
           </View>
           <View style={styles.summaryRow}>
             <View style={styles.statusBadge}>
-              <Ionicons name={config.icon} size={18} illustrated color={config.complete ? COLORS.primary : COLORS.textSecondary} />
+              <Ionicons name={config.icon} size={18} color={config.complete ? COLORS.primary : COLORS.textSecondary} />
               <Text maxFontSizeMultiplier={1.4} style={[styles.statusText, config.complete && styles.completeText]}>{config.label}</Text>
             </View>
             {!!date && <Text maxFontSizeMultiplier={1.4} style={styles.date}>{date}</Text>}

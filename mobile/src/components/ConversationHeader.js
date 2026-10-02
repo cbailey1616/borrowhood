@@ -14,20 +14,20 @@ export default function ConversationHeader({ navigation, person, userId }) {
   };
   return <View style={[styles.header, { paddingTop: insets.top }]}>
     <View style={styles.row}>
-      <HapticPressable accessibilityLabel="Back" style={styles.back} onPress={() => {
+      <HapticPressable haptic={null} scaleDown={1} accessibilityLabel="Back" style={styles.back} onPress={() => {
         if (navigation.canGoBack()) navigation.goBack();
         else navigation.replace('Main', { screen: 'Inbox' });
       }}>
-        <Ionicons name="chevron-back" size={26} color={COLORS.primary} />
+        <Ionicons name="chevron-back" size={22} color={COLORS.primary} illustrated={false} selected={false} />
       </HapticPressable>
-      <HapticPressable style={styles.identity} onPress={openProfile} disabled={!userId}
+      <HapticPressable haptic={null} scaleDown={1} style={styles.identity} onPress={openProfile} disabled={!userId}
         accessibilityLabel={`View ${name}’s profile`} testID="Chat.profileHeader">
         <ShimmerImage source={{ uri: person?.profilePhotoUrl || null }} placeholderIcon="person" style={styles.avatar} />
         <View style={styles.nameColumn}>
           <Text maxFontSizeMultiplier={1.4} style={styles.name}>{name}</Text>
           {!!userId && <Text maxFontSizeMultiplier={1.4} style={styles.hint}>View profile</Text>}
         </View>
-        {!!userId && <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />}
+        {!!userId && <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} illustrated={false} selected={false} />}
       </HapticPressable>
     </View>
   </View>;

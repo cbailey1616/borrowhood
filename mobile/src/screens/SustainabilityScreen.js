@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION } from '../utils/config';
-import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import AnimatedCard from '../components/AnimatedCard';
 import Icon from '../components/Icon';
@@ -29,9 +28,7 @@ export default function SustainabilityScreen() {
       ]);
       setStats(userStats);
       setCommunityStats(community);
-      haptics.success();
     } catch (err) {
-      haptics.error();
     } finally {
       setLoading(false);
     }
@@ -48,7 +45,7 @@ export default function SustainabilityScreen() {
   const StatCard = ({ icon, value, label, sublabel, index }) => (
     <AnimatedCard index={index} style={styles.statCardWrapper}>
       <View style={[styles.cardBox, styles.statCard]}>
-        <Icon name={icon} size={36} illustrated style={styles.statIcon} />
+        <Icon name={icon} size={22} color={COLORS.primary} style={styles.statIcon} />
         <Text maxFontSizeMultiplier={1.4} style={styles.statValue}>{value}</Text>
         <Text maxFontSizeMultiplier={1.4} style={styles.statLabel}>{label}</Text>
         {sublabel && <Text maxFontSizeMultiplier={1.4} style={styles.statSublabel}>{sublabel}</Text>}
@@ -58,7 +55,7 @@ export default function SustainabilityScreen() {
 
   const ImpactRow = ({ icon, label, value, unit }) => (
     <View style={styles.impactRow}>
-      <Icon name={icon} size={24} illustrated style={styles.impactIcon} />
+      <Icon name={icon} size={22} color={COLORS.primary} style={styles.impactIcon} />
       <Text maxFontSizeMultiplier={1.4} style={styles.impactLabel}>{label}</Text>
       <View style={styles.impactValueContainer}>
         <Text maxFontSizeMultiplier={1.4} style={styles.impactValue}>{value}</Text>
@@ -211,7 +208,7 @@ export default function SustainabilityScreen() {
 
       <AnimatedCard index={7}>
         <View style={styles.tipCard}>
-          <Icon name="bulb-outline" illustrated size={24} color={COLORS.primary} />
+          <Icon name="bulb-outline" size={22} color={COLORS.primary} />
           <Text style={styles.tipText}>
             Every item shared prevents manufacturing of a new one and keeps it out of landfills.
             You're making a real difference!

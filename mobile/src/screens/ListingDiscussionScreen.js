@@ -1,10 +1,11 @@
+import useReduceMotion from '../hooks/useReduceMotion';
 import * as Clipboard from 'expo-clipboard';
 import MessageReactionMenu from '../components/MessageReactionMenu';
 import MessageReactions from '../components/MessageReactions';
 import ContentSafetyActions from '../components/ContentSafetyActions';
 import { randomUUID } from 'expo-crypto';
 import DiscussionComposer from '../components/DiscussionComposer';
-import { DISCUSSION_EMOJIS, DISCUSSION_LIGHT_COLORS, flattenDiscussion, discussionMentions, removeDiscussionBranch, formatDiscussionTime, discussionInitials, composerScrollOffset } from '../utils/discussionThread';
+import { DISCUSSION_EMOJIS, DISCUSSION_LIGHT_COLORS, flattenDiscussion, removeDiscussionBranch, formatDiscussionTime, discussionInitials, composerScrollOffset } from '../utils/discussionThread';
 import ComposerKeyboardView from '../components/ComposerKeyboardView';
 import ShimmerImage from '../components/ShimmerImage';
 import ConversationContextCard from '../components/ConversationContextCard';
@@ -29,6 +30,7 @@ import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function ListingDiscussionScreen({ route, navigation }) {
+  const reduceMotion = useReduceMotion();
   const colors = DISCUSSION_LIGHT_COLORS;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isFocused = useIsFocused();
@@ -56,10 +58,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   const [replyToPostId, setReplyToPostId] = useState(null);
   const [expandedThreads, setExpandedThreads] = useState(new Set());
   const [collapsedComments, setCollapsedComments] = useState(new Set());
-  const [sort, setSort] = useState('top');
-  const sortRef = useRef('top');
   const postsRequest = useRef(0);
-  const voting = useRef(new Set());
   const [pendingDestination, setPendingDestination] = useState(null);
   const activeThread = posts.find(post => post.id === activeThreadId);
   const [replies, setReplies] = useState({});
@@ -107,10 +106,10 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       editor.measureInWindow((_cx, editorY, _cw, editorHeight) => {
         if (composerRefs.current[key] !== editor || focusedComposerKey.current !== key) return;
         const offset = composerScrollOffset(listOffset.current, {y,height}, {y:editorY,height:editorHeight});
-        if (Math.abs(offset - listOffset.current) > 1) listRef.current?.scrollToOffset({offset,animated:true});
+        if (Math.abs(offset - listOffset.current) > 1) listRef.current?.scrollToOffset({offset,animated: !reduceMotion});
       });
     });
-  }, []);
+  }, [reduceMotion]);
 
   const focusReplyComposer = useCallback(() => {
     const key = pendingComposerFocus.current;
@@ -219,8 +218,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     const generation = threadGeneration.current;
     try {
       const data = isRequest
-        ? await api.getRequestDiscussions(requestId, { limit: 50, page, sort: sortRef.current })
-        : await api.getDiscussions(listingId, { limit: 50, page, sort: sortRef.current });
+        ? await api.getRequestDiscussions(requestId, { limit: 50, page, sort: 'oldest' })
+        : await api.getDiscussions(listingId, { limit: 50, page, sort: 'oldest' });
       if (generation !== threadGeneration.current || requestNumber !== postsRequest.current) return;
       setPosts(prev => page === 1 ? data.posts || [] : [...prev, ...(data.posts || []).filter(post => !prev.some(old => old.id === post.id))]);
       postsPage.current = page;
@@ -329,7 +328,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         ? await api.createRequestDiscussionPost(requestId, data)
         : await api.createDiscussionPost(listingId, data);
       if (generation !== threadGeneration.current) return;
-      scrollTarget.current = { draftKey: submittedDraftKey, atEnd: !!parentId, messageId: result.id };
+      scrollTarget.current = { draftKey: submittedDraftKey, atEnd: true, messageId: result.id };
 
       if (parentId) {
         // Add reply to the replies list
@@ -365,8 +364,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         }
         if (!loadedReplies.current.has(parentId)) fetchReplies(parentId);
       } else {
-        // Add new top-level post
-        setPosts(prev => [{
+        // Append a new top-level post; the conversation stays chronological.
+        setPosts(prev => [...prev.filter(post => post.id !== result.id), {
           id: result.id,
           content: result.content,
           replyCount: 0,
@@ -379,16 +378,14 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             profilePhotoUrl: user.profilePhotoUrl,
           },
           isOwn: true,
-        }, ...prev.filter(post => post.id !== result.id)]);
+        }]);
       }
 
-      haptics.success();
       delete pendingSubmissions.current[submittedDraftKey];
       setDrafts(prev => ({ ...prev, [submittedDraftKey]: prev[submittedDraftKey] === submittedText ? '' : prev[submittedDraftKey] }));
     } catch (error) {
       if (generation !== threadGeneration.current) return;
       setSendErrors(previous => ({...previous,[submittedDraftKey]:'Couldn’t send. Please try again.'}));
-      haptics.error();
     } finally {
       if (generation === threadGeneration.current) {
         submitting.current = false;
@@ -417,7 +414,6 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       }
     } catch (error) {
       setThreadError('Couldn’t delete this comment. Please try again.');
-      haptics.error();
     }
   };
 
@@ -460,14 +456,13 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       const update = p => p.id !== post.id ? p : { ...p, reactions: [...(p.reactions || []).filter(r => !(r.userId === user.id && r.emoji === emoji)), ...(removing ? [] : [{ userId: user.id, emoji }])] };
       setPosts(prev => prev.map(update));
       setReplies(prev => Object.fromEntries(Object.entries(prev).map(([id,items]) => [id,items.map(update)])));
-      haptics.success();
     } catch { if (generation === threadGeneration.current) setThreadError('Couldn’t update reaction. Try again.'); }
     finally { reacting.current = false; }
   };
 
-  const threadRows = useMemo(() => flattenDiscussion(posts,replies,expandedThreads,collapsedComments,sort), [posts,replies,expandedThreads,collapsedComments,sort]);
+  const threadRows = useMemo(() => flattenDiscussion(posts,replies,expandedThreads,collapsedComments), [posts,replies,expandedThreads,collapsedComments]);
   // Keep the reply editor keyed independently of the last reply so loading or
-  // sorting replies does not replace the native TextInput being edited.
+  // loading replies does not replace the native TextInput being edited.
   const listRows = useMemo(() => threadRows.flatMap((post,index) => {
     const lastInThread = threadRows[index+1]?.rootId !== post.rootId;
     return lastInThread && activeThreadId === post.rootId && !collapsedComments.has(post.rootId)
@@ -482,23 +477,10 @@ export default function ListingDiscussionScreen({ route, navigation }) {
     requestAnimationFrame(focusReplyComposer);
   }, [activeThreadId, replyToPostId, listRows, focusReplyComposer]);
 
-  const mentions = useMemo(() => discussionMentions(posts,replies,user), [posts,replies,user]);
   const replyTarget = replyToPostId ? threadRows.find(post => post.id === replyToPostId) : null;
-
-  const vote = async (post, direction) => {
-    if (voting.current.has(post.id)) return;
-    voting.current.add(post.id);
-    const generation = threadGeneration.current;
-    const value = post.viewerVote === direction ? 0 : direction;
-    try {
-      const result = await (isRequest ? api.voteOnRequestDiscussion : api.voteOnDiscussion)(targetId,post.id,value);
-      if (generation !== threadGeneration.current) return;
-      const update = item => item.id === post.id ? {...item,score:result.score,viewerVote:result.viewerVote} : item;
-      setPosts(previous => previous.map(update));
-      setReplies(previous => Object.fromEntries(Object.entries(previous).map(([id,items]) => [id,items.map(update)])));
-    } catch { if (generation === threadGeneration.current) setThreadError('Couldn’t update vote. Try again.'); }
-    finally { voting.current.delete(post.id); }
-  };
+  const replyAuthor = replyTarget?.user?.displayName
+    || [replyTarget?.user?.firstName,replyTarget?.user?.lastName].filter(Boolean).join(' ')
+    || 'Neighbor';
 
   const renderComment = (post, parentId = null) => {
     const name = [post.user.firstName,post.user.lastName].filter(Boolean).join(' ') || 'Neighbor';
@@ -515,41 +497,30 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         <Text maxFontSizeMultiplier={1.4} style={styles.postDate}>{formatDiscussionTime(post.createdAt)}</Text>
       </View>
     </>;
-    return <HapticPressable style={styles.comment} onLongPress={event => openReactions(post,parentId,event)}
+    return <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.comment} onLongPress={event => openReactions(post,parentId,event)}
       accessible={false} accessibilityRole={undefined} haptic={false} scaleDown={1} testID={`Comments.message.${post.id}`}>
       <View style={styles.commentHeader}>
-        {post.user.id ? <HapticPressable style={styles.authorIdentity} accessibilityLabel={`View ${name}’s profile`}
+        {post.user.id ? <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.authorIdentity} accessibilityLabel={`View ${name}’s profile`}
           onPress={() => navigateFromComments('UserProfile',{id:post.user.id})}>{identity}</HapticPressable> : <View style={styles.authorIdentity}>{identity}</View>}
-        <HapticPressable accessibilityLabel={`${collapsed ? 'Expand' : 'Collapse'} comment by ${post.user.firstName}`}
+        <HapticPressable haptic="selection" pressedBackgroundColor={COLORS.cardHover} accessibilityLabel={`${collapsed ? 'Expand' : 'Collapse'} comment by ${post.user.firstName}`}
           accessibilityState={{expanded:!collapsed}} style={styles.moreButton} onPress={() => {
             setCollapsedComments(previous => { const next = new Set(previous); if (next.has(post.id)) next.delete(post.id); else next.add(post.id); return next; });
             if (!collapsed && activeThreadId === (parentId || post.id)) closeThread();
           }}><Ionicons name={collapsed ? 'chevron-forward' : 'chevron-down'} size={18} color={colors.textMuted}/></HapticPressable>
-        <HapticPressable accessibilityLabel={`Comment options for ${post.user.firstName}`} style={styles.moreButton}
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityLabel={`Comment options for ${post.user.firstName}`} style={styles.moreButton}
           onPress={() => setActionTarget({post,parentId})}><Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted}/></HapticPressable>
       </View>
       {!collapsed && <View style={styles.commentBody}>
-        <Text style={styles.postContent}>{post.content.split(/(@[a-zA-Z0-9_]+)/g).map((part,index) =>
-          part.startsWith('@') && mentions.some(person => `@${person.handle}`.toLowerCase() === part.toLowerCase())
-            ? <Text key={index} style={styles.mention}>{part}</Text> : part)}</Text>
+        <Text style={styles.postContent}>{post.content}</Text>
         <MessageReactions compact colors={colors} reactions={post.reactions} userId={user.id} onToggle={emoji => react(post,emoji)}/>
         <View style={styles.postActions}>
-          <View style={styles.voteControl}>
-            {[1,-1].map(direction => <HapticPressable key={direction} style={styles.voteButton}
-              accessibilityLabel={`${direction === 1 ? 'Upvote' : 'Downvote'} comment by ${post.user.firstName}`}
-              accessibilityState={{selected:post.viewerVote === direction}} onPress={() => vote(post,direction)}>
-              <Ionicons name={direction === 1 ? 'arrow-up' : 'arrow-down'} size={17}
-                color={post.viewerVote === direction ? direction === 1 ? colors.primary : colors.danger : colors.textMuted}/>
-              {direction === 1 && <Text maxFontSizeMultiplier={1.4} accessibilityLabel={`Score: ${post.score || 0}`} style={styles.voteScore}>{post.score || 0}</Text>}
-            </HapticPressable>)}
-          </View>
-          <HapticPressable style={styles.replyButton} onPress={() => openThread(parentId || post.id,true,post.id)} accessibilityLabel={`Reply to ${post.user.firstName}`}>
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.replyButton} onPress={() => openThread(parentId || post.id,true,post.id)} accessibilityLabel={`Reply to ${post.user.firstName}`}>
             <Ionicons name="chat-reply" size={16} color={colors.textMuted}/><Text maxFontSizeMultiplier={1.4} style={styles.actionText}>Reply</Text>
           </HapticPressable>
-          <HapticPressable style={styles.moreButton} accessibilityLabel="Add reaction" onPress={event => openReactions(post,parentId,event)}>
-            <Ionicons name="reaction-add" size={23} color={colors.primary}/>
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.moreButton} accessibilityLabel="Add reaction" onPress={event => openReactions(post,parentId,event)}>
+            <Ionicons name="happy-outline" size={22} color={colors.primary} illustrated={false}/>
           </HapticPressable>
-          {!parentId && post.replyCount > 0 && <HapticPressable style={styles.replyCountButton} onPress={() => openThread(post.id)}
+          {!parentId && post.replyCount > 0 && <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.replyCountButton} onPress={() => openThread(post.id)}
             accessibilityLabel={`View ${post.replyCount} ${post.replyCount === 1 ? 'reply' : 'replies'} to ${post.user.firstName}`}>
             <Text maxFontSizeMultiplier={1.4} style={styles.actionText}>{post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</Text>
           </HapticPressable>}
@@ -593,12 +564,12 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         <Text maxFontSizeMultiplier={1.4} style={styles.statusText}>Loading replies…</Text>
       </View> : replyErrors[postId] ? <View style={styles.replyStatus}>
         <Text accessibilityRole="alert" style={styles.replyError}>{replyErrors[postId]}</Text>
-        <HapticPressable style={styles.actionButton} accessibilityLabel="Retry loading replies"
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.actionButton} accessibilityLabel="Retry loading replies"
           onPress={() => fetchReplies(postId, failedReplyPages.current[postId] || 1)}>
           <Text maxFontSizeMultiplier={1.4} style={styles.actionText}>Try again</Text>
         </HapticPressable>
       </View> : hasMoreReplies[postId] ? (
-        <HapticPressable style={styles.actionButton} onPress={() => fetchReplies(postId, replyPages.current[postId] + 1)}>
+        <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.actionButton} onPress={() => fetchReplies(postId, replyPages.current[postId] + 1)}>
           <Text maxFontSizeMultiplier={1.4} style={styles.actionText}>Show more replies</Text>
         </HapticPressable>
       ) : null}
@@ -622,9 +593,9 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       style={[styles.composeContainer,inline ? styles.inlineComposer : styles.mainComposer]}>
       {!!sendErrors[key] && <Text accessibilityRole="alert" style={styles.sendError}>{sendErrors[key]}</Text>}
       <DiscussionComposer ref={inline || !activeThreadId ? inputRef : undefined} resetKey={key} value={text}
-        colors={colors} mentions={mentions}
+        colors={colors}
         onFocus={() => { focusedComposerKey.current = key; requestAnimationFrame(ensureComposerVisible); }}
-        replyTo={inline ? mentions.find(person => person.id === replyTarget?.user.id)?.name || 'Neighbor' : undefined}
+        replyTo={inline ? replyAuthor : undefined}
         onCancel={closeThread} onChangeText={value => setDrafts(previous => ({...previous,[key]:value}))}
         onSend={() => handleSubmit(inline ? activeThreadId : null)}
         inputAccessibilityLabel={inline || !activeThreadId ? 'Comment' : 'New comment'}
@@ -662,8 +633,8 @@ export default function ListingDiscussionScreen({ route, navigation }) {
             : messageId ? listRows.findIndex(reply => reply.id === messageId) : -1;
           scrollPosition.current = composer ? 1 : 0.3;
           if (index >= 0) listRef.current?.scrollToIndex({ index, animated: false, viewPosition: scrollPosition.current });
-          else if (atEnd) listRef.current?.scrollToEnd({ animated: true });
-          else listRef.current?.scrollToOffset({ offset: 0, animated: true });
+          else if (atEnd) listRef.current?.scrollToEnd({ animated: !reduceMotion });
+          else listRef.current?.scrollToOffset({ offset: 0, animated: !reduceMotion });
         }}
         onScrollToIndexFailed={({ index, averageItemLength }) => {
           if (scrollAttempts.current++ >= 3) return;
@@ -680,25 +651,22 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         title={targetTitle || (isRequest ? 'Wanted post' : 'Shared item')}
         label="Public comments"
         photoUrl={target?.photoUrl || target?.photos?.[0]}
+        category={target?.category}
+
         icon={isRequest ? 'chatbubble' : 'basket'}
         accessibilityLabel="View original post"
         onPress={() => navigateFromComments(isRequest ? 'RequestDetail' : 'ListingDetail', { id: targetId })}
       />
           {!!threadError && <Text accessibilityRole="alert" style={styles.threadError}>{threadError}</Text>}
           {renderInputBar(false)}
-          <View style={styles.sortToolbar} accessibilityRole="tablist">
-            <Text maxFontSizeMultiplier={1.4} style={styles.sortLabel}>The conversation</Text>
-            {['top','newest','oldest'].map(order => <HapticPressable key={order} accessibilityRole="tab"
-              accessibilityLabel={`Sort ${order}`} accessibilityState={{selected:sort === order}}
-              style={[styles.sortButton,sort === order && styles.sortSelected]} onPress={() => {
-                setSort(order);sortRef.current=order;fetchPosts(1);
-              }}><Text maxFontSizeMultiplier={1.4} style={styles.actionText}>{order[0].toUpperCase()+order.slice(1)}</Text></HapticPressable>)}
+          <View style={styles.conversationHeading}>
+            <Text maxFontSizeMultiplier={1.4} style={styles.conversationLabel}>The conversation</Text>
           </View>
         </View>}
         ListFooterComponent={<>
-          {!!activeThreadId && earliestReplyPage[activeThreadId] > 1 && <HapticPressable style={styles.actionButton}
+          {!!activeThreadId && earliestReplyPage[activeThreadId] > 1 && <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.actionButton}
             onPress={() => fetchReplies(activeThreadId,earliestReplyPage[activeThreadId]-1)}><Text maxFontSizeMultiplier={1.4} style={styles.actionText}>Earlier replies</Text></HapticPressable>}
-          {hasMorePosts && <HapticPressable style={styles.actionButton} onPress={() => fetchPosts(postsPage.current+1)}><Text maxFontSizeMultiplier={1.4} style={styles.actionText}>Older comments</Text></HapticPressable>}
+          {hasMorePosts && <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.actionButton} onPress={() => fetchPosts(postsPage.current+1)}><Text maxFontSizeMultiplier={1.4} style={styles.actionText}>More comments</Text></HapticPressable>}
         </>}
         ListEmptyComponent={activeThreadId ? null :
           <View style={styles.emptyContainer}>
@@ -721,7 +689,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
         onClose={() => setActionTarget(null)}
         title={actionTarget ? `${actionTarget.post.user.firstName}’s comment` : 'Comment'}
         actions={actionTarget ? [
-          { label: 'Add reaction', onPress: () => openReactions(actionTarget.post,actionTarget.parentId) },
+          { label: "Add reaction", onPress: () => openReactions(actionTarget.post,actionTarget.parentId) },
           { label: 'Copy Text', onPress: () => Clipboard.setStringAsync(actionTarget.post.content) },
           {
             label: 'Reply in thread',
@@ -746,7 +714,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
       <ActionSheet
         isVisible={deleteSheetVisible}
         onClose={() => setDeleteSheetVisible(false)}
-        title="Delete comment"
+        title='Delete comment'
         message="Delete this comment?"
         actions={[
           {
@@ -805,14 +773,8 @@ const makeStyles = COLORS => StyleSheet.create({
   threadConnector: {position:'absolute',bottom:0,height:SPACING.md,width:2,backgroundColor:COLORS.primaryLight},
   comment: { minWidth: 0 },
   commentBody:{marginLeft:0},
-  mention:{ fontFamily: 'DMSans_600SemiBold',color:COLORS.primary,backgroundColor:COLORS.primaryMuted,fontWeight:'600'},
-  voteControl:{flexDirection:'row',alignItems:'center'},
-  voteButton:{minHeight:44,minWidth:34,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4,paddingHorizontal:4},
-  voteScore:{...TYPOGRAPHY.caption1,color:COLORS.text},
-  sortToolbar:{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:4,marginHorizontal:SPACING.lg,marginBottom:12},
-  sortLabel:{...TYPOGRAPHY.caption1,color:COLORS.textMuted,marginRight:'auto'},
-  sortButton:{minHeight:44,paddingHorizontal:10,alignItems:'center',justifyContent:'center',borderRadius:10},
-  sortSelected:{backgroundColor:COLORS.primaryMuted},
+  conversationHeading:{marginHorizontal:SPACING.lg,marginBottom:SPACING.md},
+  conversationLabel:{...TYPOGRAPHY.caption1,color:COLORS.textMuted},
   commentHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   authorIdentity: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   commentMeta: { flex: 1, gap: 2 },

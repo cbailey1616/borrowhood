@@ -15,9 +15,9 @@ export default function VerificationBenefits() {
   const close = () => setVisible(false);
   return <>
     <View style={styles.card}>
-      <View style={styles.row}><View style={[styles.icon, { backgroundColor: COLORS.primaryMuted }]}><Icon name="identity-seal" size={34} color={COLORS.primary} /></View>
+      <View style={styles.row}><Icon name="identity-seal" size={22} color={COLORS.primary} illustrated={false} />
         <View style={styles.copy}><Text style={styles.title}>A verified badge</Text><Text style={styles.detail}>Identity checked through Stripe.</Text></View></View>
-      <View style={[styles.row, styles.divider]}><View style={[styles.icon, { backgroundColor: COLORS.accentMuted }]}><Icon name="home" size={34} illustrated /></View>
+      <View style={styles.divider} /><View style={styles.row}><Icon name="home" size={22} color={COLORS.primary} illustrated={false} />
         <View style={styles.copy}><Text style={styles.title}>Town borrowing</Text><Text style={styles.detail}>See who’s lending in Town.</Text></View></View>
     </View>
     <HapticPressable accessibilityRole="button" accessibilityHint="Opens a comparison of available features"
@@ -46,8 +46,7 @@ export default function VerificationBenefits() {
 const styles = StyleSheet.create({
   card: { ...CARD_SURFACE, backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, paddingHorizontal: 18, borderWidth: 1, borderColor: COLORS.border },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 18 },
-  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.border },
-  icon: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center', borderRadius: RADIUS.md },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 36, marginRight: -18, backgroundColor: COLORS.border },
   copy: { flex: 1, gap: 5 },
   title: { ...TYPOGRAPHY.headline, color: COLORS.text },
   detail: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },

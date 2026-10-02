@@ -23,7 +23,6 @@ import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import useBiometrics from '../hooks/useBiometrics';
-import { haptics } from '../utils/haptics';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
 
@@ -56,7 +55,7 @@ export default function ProfileScreen({ navigation, route }) {
   }, [isBiometricsEnabled]);
 
   const handleChangePhoto = () => {
-    haptics.medium();
+
     setShowPhotoSheet(true);
   };
 
@@ -126,7 +125,6 @@ export default function ProfileScreen({ navigation, route }) {
   };
 
   const handleLogout = () => {
-    haptics.warning();
     setShowLogoutSheet(true);
   };
 
@@ -135,7 +133,7 @@ export default function ProfileScreen({ navigation, route }) {
     try {
       const result = await api.deleteAccount();
       await disableBiometrics();
-      haptics.success();
+
       await logout({ sessionExpired: true });
       if (result?.appleRevocation?.status === 'manual') {
         Alert.alert('Account deleted', 'Your Borrowhood account has been deleted. To also disconnect your earlier Apple sign-in, open Settings → your name → Sign in with Apple → Borrowhood → Delete.', [
@@ -170,7 +168,7 @@ export default function ProfileScreen({ navigation, route }) {
         {/* Profile Header */}
         <LayeredCard style={styles.header} radius={RADIUS.lg}>
           <View style={styles.headerInner}>
-            <HapticPressable onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null} accessibilityLabel="Change profile photo">
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover} onPress={handleChangePhoto} disabled={uploadingPhoto} haptic={null} accessibilityLabel="Change profile photo">
               <View style={styles.avatarContainer}>
                 <ShimmerImage placeholderIcon="person"
                   source={{ uri: user?.profilePhotoUrl || null }}
@@ -199,10 +197,10 @@ export default function ProfileScreen({ navigation, route }) {
 
         {/* Verification Banner */}
         {!user?.isVerified && (
-          <HapticPressable
+          <HapticPressable pressedBackgroundColor={COLORS.cardHover}
             style={styles.verifyBanner}
             onPress={() => navigation.navigate('IdentityVerification', { source: 'profile' })}
-            haptic="medium"
+            haptic={null}
             testID="Profile.verifyBanner"
             accessibilityLabel="Verify Your Identity"
           >
@@ -244,7 +242,7 @@ export default function ProfileScreen({ navigation, route }) {
           <GroupedListItem
             icon="people-outline"
             title="Friends"
-            onPress={() => navigation.navigate('Friends')}
+            onPress={() => navigation.navigate("Friends")}
           />
         </GroupedListSection>
 
@@ -311,7 +309,7 @@ export default function ProfileScreen({ navigation, route }) {
           <GroupedListItem
             icon="trash-outline"
             title="Delete Account"
-            onPress={() => { haptics.warning(); setShowDeleteSheet(true); }}
+            onPress={() => setShowDeleteSheet(true)}
             destructive
             accessibilityLabel="Delete account"
             accessibilityRole="button"
@@ -370,7 +368,7 @@ export default function ProfileScreen({ navigation, route }) {
         title="Sign Out"
         message="Are you sure you want to sign out?"
         actions={[
-          { label: 'Sign Out', destructive: true, onPress: logout },
+          { label: "Sign Out", destructive: true, onPress: logout },
         ]}
       />
 
@@ -469,10 +467,8 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   verifyBannerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: COLORS.goldTint,
+    width: 22,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },

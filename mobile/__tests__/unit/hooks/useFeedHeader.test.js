@@ -1,12 +1,21 @@
 import { Animated } from 'react-native';
 import { act, renderHook } from '@testing-library/react-native';
 import useFeedHeader from '../../../src/hooks/useFeedHeader';
+let mockReduceMotion = false;
+jest.mock('../../../src/hooks/useReduceMotion', () => () => mockReduceMotion);
 
 // Exercise the same Animated graph in JS so pull and rebound offsets can be
 // replayed without a native UI thread. The app uses the native driver.
 beforeEach(() => {
+  mockReduceMotion = false;
   const event = Animated.event;
   jest.spyOn(Animated, 'event').mockImplementation((mapping, config) => event(mapping, { ...config, useNativeDriver: false }));
+});
+
+it('keeps the header still when Reduce Motion is enabled', () => {
+  mockReduceMotion = true;
+  const header = measuredHeader();
+  for (const y of [0, 40, 200, 80, -30]) expect(header.scroll(y)).toBe(0);
 });
 afterEach(() => jest.restoreAllMocks());
 

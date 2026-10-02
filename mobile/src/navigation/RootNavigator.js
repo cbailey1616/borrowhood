@@ -17,6 +17,7 @@ import { ModalHeader } from '../components/ModalControls';
 import { renderBackHeader } from '../components/BackHeader';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
@@ -92,6 +93,7 @@ const modalScreenOptions = (title) => ({
 });
 
 export default function RootNavigator({ navigationRef }) {
+  const reduceMotion = useReduceMotion();
   const { isLoading, isAuthenticated, user, refreshUser } = useAuth();
   useProfileLinks(navigationRef, { isLoading, isAuthenticated, user });
   const [nameInput, setNameInput] = useState({ first: '', last: '' });
@@ -136,7 +138,7 @@ export default function RootNavigator({ navigationRef }) {
 
   return (
     <>
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'default' }}>
       {!isAuthenticated ? (
         <Stack.Screen name="Auth" component={AuthNavigator} />
       ) : (
@@ -352,8 +354,9 @@ export default function RootNavigator({ navigationRef }) {
 }
 
 function NamePromptModal({ nameInput, setNameInput, saving, error, onSave }) {
+  const reduceMotion = useReduceMotion();
   return (
-    <Modal visible animationType="slide" presentationStyle="pageSheet">
+    <Modal visible animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="pageSheet">
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={nameStyles.container} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
         <Text maxFontSizeMultiplier={1.4} style={nameStyles.title}>What's your name?</Text>
@@ -382,7 +385,8 @@ function NamePromptModal({ nameInput, setNameInput, saving, error, onSave }) {
           style={[nameStyles.button, !nameInput.first.trim() && { opacity: 0.5 }]}
           onPress={onSave}
           disabled={!nameInput.first.trim() || saving}
-          haptic="medium"
+          haptic={null}
+          scaleDown={0.97}
         >
           {saving ? (
             <ActivityIndicator color={COLORS.white} />

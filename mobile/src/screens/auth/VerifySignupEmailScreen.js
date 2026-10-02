@@ -73,7 +73,6 @@ export default function VerifySignupEmailScreen({ route, navigation }) {
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={insets.top}>
         <ScrollView contentContainerStyle={[styles.content, keyboardVisible && styles.contentCompact]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
           <View style={[styles.intro, keyboardVisible && styles.introCompact]}>
-            <View style={[styles.icon, keyboardVisible && styles.iconCompact]}><Icon name="mail" size={keyboardVisible ? 30 : 46} illustrated /></View>
             <View style={styles.introCopy}>
               <Text accessibilityRole="header" style={[styles.title, keyboardVisible && styles.titleCompact]}>Check your email</Text>
               <Text style={[styles.body, keyboardVisible && styles.bodyCompact]}>Enter the 6-digit code sent to</Text>
@@ -109,7 +108,7 @@ export default function VerifySignupEmailScreen({ route, navigation }) {
           <Text maxFontSizeMultiplier={1.4} style={styles.expiry}>Valid for 10 minutes</Text>
           {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
           {!!notice && <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
-          <HapticPressable onPress={confirm} disabled={!!busy || code.length !== 6} accessibilityRole="button" accessibilityLabel="Verify email and continue"
+          <HapticPressable scaleDown={0.97} onPress={confirm} disabled={!!busy || code.length !== 6} accessibilityRole="button" accessibilityLabel="Verify email and continue"
             style={[styles.button, !busy && code.length !== 6 && styles.buttonDisabled]}>
             {busy === 'verify' ? <ActivityIndicator color={COLORS.background} /> : <>
               <Text style={[styles.buttonText, code.length !== 6 && styles.buttonTextDisabled]}>Continue</Text>
@@ -139,14 +138,12 @@ const styles = StyleSheet.create({
   helpButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   content: { flexGrow: 1, width: '100%', maxWidth: 440, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 28, paddingBottom: 20 },
   contentCompact: { paddingTop: 8 },
-  intro: { alignItems: 'center', gap: 16 },
-  introCompact: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  intro: { alignItems: 'stretch', gap: 16 },
+  introCompact: { alignItems: 'stretch', gap: 12 },
   introCopy: { flexShrink: 1 },
-  icon: { width: 76, height: 76, alignItems: 'center', justifyContent: 'center', borderRadius: RADIUS.xl, backgroundColor: COLORS.primaryMuted },
-  iconCompact: { width: 48, height: 48, borderRadius: RADIUS.md },
-  title: { ...TYPOGRAPHY.h1, lineHeight: 34, color: COLORS.primaryDark, textAlign: 'center' },
+  title: { ...TYPOGRAPHY.h1, lineHeight: 34, color: COLORS.primaryDark, textAlign: 'left' },
   titleCompact: { ...TYPOGRAPHY.title2, textAlign: 'left' },
-  body: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary, textAlign: 'center', marginTop: 6 },
+  body: { ...TYPOGRAPHY.subheadline, color: COLORS.textSecondary, textAlign: 'left', marginTop: 6 },
   bodyCompact: { ...TYPOGRAPHY.bodySmall, textAlign: 'left', marginTop: 2 },
   emailRow: { ...CARD_SURFACE, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, paddingLeft: 12, paddingRight: 4, marginTop: 16 },
   email: { ...TYPOGRAPHY.bodySmall, color: COLORS.text, flex: 1, paddingVertical: 12 },

@@ -165,7 +165,7 @@ export default function EditRequestScreen({ navigation, route }) {
                 key={opt.value}
                 style={[styles.option, isSelected && styles.optionActive]}
                 onPress={() => updateField('type', opt.value)}
-                haptic="light"
+                haptic="selection"
               >
                 <RequestTypeIcon type={opt.value} size={18} color={isSelected ? COLORS.surface : COLORS.primary} style={{ marginRight: SPACING.xs }} />
                 <Text maxFontSizeMultiplier={1.4} style={[styles.optionText, isSelected && styles.optionTextActive]}>
@@ -220,7 +220,7 @@ export default function EditRequestScreen({ navigation, route }) {
         <View style={styles.section}>
           <Text maxFontSizeMultiplier={1.4} style={[styles.label, fieldErrors.categoryId && styles.fieldErrorLabel]}>Category *</Text>
           <HapticPressable
-            haptic="light"
+            haptic={null}
             style={[styles.dropdownButton, fieldErrors.categoryId && styles.fieldError]}
             onPress={() => { Keyboard.dismiss(); setShowCategorySheet(true); }}
           >
@@ -283,11 +283,11 @@ export default function EditRequestScreen({ navigation, route }) {
       </View>
 
       {/* Submit */}
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}
-        haptic="medium"
+        haptic="light"
       >
         {isSubmitting ? (
           <ActivityIndicator color={COLORS.white} />

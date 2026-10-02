@@ -83,7 +83,7 @@ export default function OnboardingTownScreen({ navigation }) {
         {!locked && <HapticPressable accessibilityRole="button" accessibilityLabel="Use my current location"
           accessibilityState={{ disabled: locating || busy, busy: locating }}
           disabled={locating || busy} onPress={locate} style={styles.locationButton}>
-          {locating ? <ActivityIndicator color={COLORS.spinner} /> : <Ionicons name="location" size={21} illustrated />}
+          {locating ? <ActivityIndicator color={COLORS.spinner} /> : <Ionicons name="location-outline" size={22} illustrated={false} color={COLORS.primary} />}
           <Text style={styles.locationText}>{locating ? 'Finding your town…' : 'Use my current location'}</Text>
         </HapticPressable>}
         {!locked && <View style={styles.orRow}>
@@ -106,7 +106,7 @@ export default function OnboardingTownScreen({ navigation }) {
             disabled={locked || busy || locating} style={[styles.input, styles.stateField, statePickerOpen && styles.focusedInput]}
             onPress={() => { Keyboard.dismiss(); setStatePickerOpen(open => !open); }}>
             <Text style={[styles.stateText, !state && { color: COLORS.textMuted }]}>{stateName(state) || 'Choose state'}</Text>
-            <Ionicons name={statePickerOpen ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.primary} />
+            <Ionicons name={statePickerOpen ? 'chevron-up' : 'chevron-down'} size={22} illustrated={false} color={COLORS.primary} />
           </HapticPressable>
         </View>
         {statePickerOpen && <View style={styles.pickerCard}>
@@ -121,7 +121,7 @@ export default function OnboardingTownScreen({ navigation }) {
         </View>}
       </LayeredCard>
       <View style={styles.privacyNote}>
-        <Ionicons name="lock-closed-outline" size={17} color={COLORS.primary} />
+        <Ionicons name="lock-closed-outline" size={22} illustrated={false} color={COLORS.primary} />
         <Text style={styles.privacyText}>{locked ? 'Name and town are locked after verification.' : 'Your street address stays private.'}</Text>
       </View>
     </OnboardingLayout>

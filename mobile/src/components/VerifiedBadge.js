@@ -25,7 +25,6 @@ function IdentityInfoBadge({ size }) {
         <Pressable accessible={false} onPress={close} style={StyleSheet.absoluteFill} />
         <View style={styles.card} accessibilityViewIsModal>
           <ScrollView bounces={false} contentContainerStyle={styles.content}>
-            <Ionicons name="identity-seal" size={58} color={COLORS.primary} />
             <Text accessibilityRole="header" style={styles.title}>Identity verified</Text>
             <Text style={styles.body}>This person verified their identity through Stripe.</Text>
             <HapticPressable accessibilityRole="button" onPress={close} style={styles.button}><Text maxFontSizeMultiplier={1.4} style={styles.buttonText}>Got it</Text></HapticPressable>
@@ -38,9 +37,9 @@ function IdentityInfoBadge({ size }) {
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: COLORS.overlay },
   card: { ...CARD_SURFACE, width: '100%', maxWidth: 400, maxHeight: '85%', backgroundColor: COLORS.surface, borderRadius: RADIUS.xl, overflow: 'hidden' },
-  content: { alignItems: 'center', padding: 24, gap: 16 },
-  title: { ...TYPOGRAPHY.title2, color: COLORS.text, textAlign: 'center' },
-  body: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center' },
+  content: { alignItems: 'flex-start', padding: 24, gap: 16 },
+  title: { ...TYPOGRAPHY.title2, color: COLORS.text, textAlign: 'left' },
+  body: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'left' },
   button: { alignSelf: 'stretch', backgroundColor: COLORS.primary, borderRadius: RADIUS.lg, minHeight: 48, justifyContent: 'center', padding: 12 },
   buttonText: { ...TYPOGRAPHY.button, textAlign: 'center', color: COLORS.surface },
 });

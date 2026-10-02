@@ -1,3 +1,4 @@
+import useReduceMotion from '../../hooks/useReduceMotion';
 import TextInput from '../../components/AppTextInput';
 import { useState } from 'react';
 import {
@@ -16,8 +17,7 @@ import { Ionicons } from '../../components/Icon';
 import HapticPressable from '../../components/HapticPressable';
 import { useError } from '../../context/ErrorContext';
 import api from '../../services/api';
-import { haptics } from '../../utils/haptics';
-import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
+import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -25,6 +25,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 export default function FindAccountScreen({ navigation }) {
   const { showError } = useError();
+  const reduceMotion = useReduceMotion();
   const [step, setStep] = useState('choose'); // 'choose' | 'phone' | 'name' | 'success'
   const [phone, setPhone] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -32,7 +33,7 @@ export default function FindAccountScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const animateStep = (nextStep) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (!reduceMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setStep(nextStep);
   };
 
@@ -50,10 +51,8 @@ export default function FindAccountScreen({ navigation }) {
     try {
       const params = step === 'phone' ? { phone } : { firstName, lastName };
       await api.findAccount(params);
-      haptics.success();
       animateStep('success');
     } catch (error) {
-      haptics.error();
       showError({
         type: 'network',
         message: error.message || "Couldn't search right now. Please try again.",
@@ -80,7 +79,7 @@ export default function FindAccountScreen({ navigation }) {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
-        <HapticPressable style={styles.backButton} onPress={handleBack} haptic="light">
+        <HapticPressable style={styles.backButton} onPress={handleBack} >
           <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
         </HapticPressable>
 
@@ -98,29 +97,25 @@ export default function FindAccountScreen({ navigation }) {
         {/* Choose method */}
         {step === 'choose' && (
           <View style={styles.optionsContainer}>
-            <HapticPressable
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover}
               style={styles.optionCard}
               onPress={() => animateStep('phone')}
-              haptic="light"
+
             >
-              <View style={styles.optionIcon}>
-                <Ionicons name="call-outline" size={22} color={COLORS.primary} />
-              </View>
+              <Ionicons name="call-outline" size={22} color={COLORS.textSecondary} />
               <View style={styles.optionText}>
                 <Text style={styles.optionTitle}>Search by phone number</Text>
                 <Text style={styles.optionSubtitle}>Find your account using your phone</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
             </HapticPressable>
-
-            <HapticPressable
+            <View style={styles.optionSeparator} />
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover}
               style={styles.optionCard}
               onPress={() => animateStep('name')}
-              haptic="light"
+
             >
-              <View style={styles.optionIcon}>
-                <Ionicons name="person-outline" size={22} color={COLORS.primary} />
-              </View>
+              <Ionicons name="person-outline" size={22} color={COLORS.textSecondary} />
               <View style={styles.optionText}>
                 <Text style={styles.optionTitle}>Search by name</Text>
                 <Text style={styles.optionSubtitle}>Find your account using your name</Text>
@@ -146,11 +141,11 @@ export default function FindAccountScreen({ navigation }) {
                   autoFocus
                 />
               </View>
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleSearch}
                 disabled={isLoading}
-                haptic="medium"
+
               >
                 {isLoading ? (
                   <ActivityIndicator color={COLORS.background} />
@@ -191,11 +186,11 @@ export default function FindAccountScreen({ navigation }) {
                   />
                 </View>
               </View>
-              <HapticPressable
+              <HapticPressable scaleDown={0.97}
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleSearch}
                 disabled={isLoading}
-                haptic="medium"
+
               >
                 {isLoading ? (
                   <ActivityIndicator color={COLORS.background} />
@@ -211,17 +206,17 @@ export default function FindAccountScreen({ navigation }) {
         {step === 'success' && (
           <View style={styles.successContainer}>
             <View style={styles.successIcon}>
-              <Ionicons name="checkmark-circle" size={48} color={COLORS.primary} />
+              <Ionicons name="checkmark-circle" size={48} illustrated={true} color={COLORS.primary} />
             </View>
             <Text style={styles.successTitle}>Check your inbox</Text>
             <Text style={styles.successText}>
               If we found a matching account, we sent a login hint to the email on file.
             </Text>
 
-            <HapticPressable
+            <HapticPressable scaleDown={0.97}
               style={styles.button}
               onPress={() => navigation.navigate('Login')}
-              haptic="medium"
+
             >
               <Text style={styles.buttonText}>Back to Login</Text>
             </HapticPressable>
@@ -263,31 +258,26 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xxl,
   },
   optionsContainer: {
-    gap: SPACING.md,
+    ...CARD_SURFACE,
+    overflow: 'hidden',
   },
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 76,
     padding: SPACING.lg,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderBrown,
     gap: SPACING.md,
   },
-  optionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: COLORS.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
+  optionSeparator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.separator,
+    marginLeft: SPACING.lg + 22 + SPACING.md,
   },
   optionText: {
     flex: 1,
   },
   optionTitle: {
-    ...TYPOGRAPHY.subheadline,
+    ...TYPOGRAPHY.headline,
     color: COLORS.text,
   },
   optionSubtitle: {

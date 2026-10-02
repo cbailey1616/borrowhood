@@ -27,7 +27,6 @@ class ErrorBoundary extends React.Component {
       return (
         <View style={styles.container}>
           <View style={styles.content}>
-            <Text style={styles.icon}>!</Text>
             <Text style={styles.title}>Something went wrong</Text>
             <Text style={styles.message}>
               We're sorry for the inconvenience. Please try again.
@@ -66,30 +65,19 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   content: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     maxWidth: 300,
-  },
-  icon: {
-    ...TYPOGRAPHY.largeTitle,
-    color: COLORS.warning,
-    marginBottom: 16,
-    width: 80,
-    height: 80,
-    lineHeight: 80,
-    textAlign: 'center',
-    backgroundColor: COLORS.tints.warning20,
-    borderRadius: 40,
   },
   title: {
     ...TYPOGRAPHY.title2,
     color: COLORS.text,
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   message: {
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
     lineHeight: 22,
     marginBottom: 24,
   },

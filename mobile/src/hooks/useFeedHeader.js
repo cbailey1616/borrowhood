@@ -1,9 +1,11 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Animated } from 'react-native';
+import useReduceMotion from './useReduceMotion';
 
 // The header lives outside the bouncing list. Only actual browsing offsets can
 // hide it; a negative iOS pull (and its rebound to zero) must leave it in place.
 export default function useFeedHeader({ pinned = false, columns = 1 } = {}) {
+  const reduceMotion = useReduceMotion();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [height, setHeight] = useState(0);
   const translateY = useMemo(() => {
@@ -26,5 +28,5 @@ export default function useFeedHeader({ pinned = false, columns = 1 } = {}) {
   // FlatList remounts when its column count changes.
   useLayoutEffect(() => { scrollY.setValue(0); }, [scrollY, columns]);
 
-  return { height, onLayout, onScroll, scrollY, style: { transform: [{ translateY: pinned ? 0 : translateY }] } };
+  return { height, onLayout, onScroll, scrollY, style: { transform: [{ translateY: pinned || reduceMotion ? 0 : translateY }] } };
 }

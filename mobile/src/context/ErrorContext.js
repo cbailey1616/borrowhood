@@ -24,6 +24,7 @@ import { Ionicons } from '../components/Icon';
 import HapticPressable from '../components/HapticPressable';
 import { haptics } from '../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ANIMATION, CARD_SURFACE } from '../utils/config';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 const ErrorContext = createContext(null);
 
@@ -126,10 +127,11 @@ function detectErrorType(message) {
 }
 
 function Toast({ toast, onRemove }) {
+  const reduceMotion = useReduceMotion();
   return (
     <Animated.View
-      entering={SlideInUp.duration(300)}
-      exiting={FadeOutUp.duration(200)}
+      entering={reduceMotion ? undefined : SlideInUp.duration(300)}
+      exiting={reduceMotion ? undefined : FadeOutUp.duration(200)}
       style={[
         styles.toast,
         toast.type === 'success' && styles.toastSuccess,
@@ -149,6 +151,7 @@ function Toast({ toast, onRemove }) {
 }
 
 export function ErrorProvider({ children, navigationRef }) {
+  const reduceMotion = useReduceMotion();
   const [error, setError] = useState(null);
   const pendingAction = useRef(null);
   const [toasts, setToasts] = useState([]);
@@ -174,18 +177,12 @@ export function ErrorProvider({ children, navigationRef }) {
     onPrimaryAction,
     onSecondaryPress,
     onDismiss,
+    haptic = null,
   }) => {
     const detectedType = type || detectErrorType(message);
     const config = ERROR_CONFIGS[detectedType] || ERROR_CONFIGS.generic;
 
-    // Fire haptic based on error type
-    if (detectedType === 'success') {
-      haptics.success();
-    } else if (detectedType === 'validation') {
-      haptics.warning();
-    } else {
-      haptics.error();
-    }
+    if (haptic && haptics[haptic]) haptics[haptic]();
 
     setError({
       type: detectedType,
@@ -204,14 +201,10 @@ export function ErrorProvider({ children, navigationRef }) {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  const showToast = useCallback((message, type = 'error') => {
+  const showToast = useCallback((message, type = 'error', haptic = null) => {
     const id = Date.now();
 
-    if (type === 'success') {
-      haptics.success();
-    } else {
-      haptics.warning();
-    }
+    if (haptic && haptics[haptic]) haptics[haptic]();
 
     setToasts(prev => [...prev, { id, message, type }]);
 
@@ -244,11 +237,6 @@ export function ErrorProvider({ children, navigationRef }) {
     if (error?.type === 'subscription') return COLORS.warning;
     return COLORS.danger;
   };
-  const getIconBorderColor = () => {
-    if (error?.type === 'success') return COLORS.tints.secondary30;
-    if (error?.type === 'subscription') return COLORS.tints.warning30;
-    return COLORS.tints.danger30;
-  };
 
   return (
     <ErrorContext.Provider value={{ showError, showToast, dismissError }}>
@@ -264,14 +252,15 @@ export function ErrorProvider({ children, navigationRef }) {
           <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.overlay }]} />
 
           <Animated.View
-            entering={FadeInUp.springify().damping(15).stiffness(150)}
+            entering={reduceMotion ? undefined : FadeInUp.springify().damping(15).stiffness(150)}
             style={styles.modalContent}
           >
             <ScrollView bounces={false} contentContainerStyle={styles.modalInner}>
-            <View style={[styles.iconContainer, { borderColor: getIconBorderColor() }]}>
+            <View style={styles.iconContainer}>
               <Ionicons
                 name={error?.icon || 'warning-outline'}
-                size={28}
+                size={22}
+                illustrated={false}
                 color={getIconColor()}
               />
             </View>
@@ -284,7 +273,7 @@ export function ErrorProvider({ children, navigationRef }) {
                 <HapticPressable
                   style={styles.secondaryButton}
                   onPress={handleSecondaryPress}
-                  haptic="light"
+                  haptic={null}
                 >
                   <Text maxFontSizeMultiplier={1.4} style={styles.secondaryButtonText}>{error.secondaryAction}</Text>
                 </HapticPressable>
@@ -297,13 +286,14 @@ export function ErrorProvider({ children, navigationRef }) {
                   error?.type === 'success' && styles.successButton,
                 ]}
                 onPress={handlePrimaryPress}
-                haptic="medium"
+                haptic={null}
+                scaleDown={0.97}
               >
                 <Text maxFontSizeMultiplier={1.4} style={styles.primaryButtonText}>{error?.primaryAction}</Text>
               </HapticPressable>
             </View>
 
-            <HapticPressable accessibilityLabel="Close alert" style={styles.dismissButton} onPress={dismissError} haptic="light">
+            <HapticPressable accessibilityLabel="Close alert" style={styles.dismissButton} onPress={dismissError} haptic={null}>
               <Ionicons name="close" size={20} color={COLORS.primary} />
             </HapticPressable>
             </ScrollView>
@@ -346,14 +336,11 @@ const styles = StyleSheet.create({
   },
   modalInner: { padding: 20 },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: COLORS.background,
+    width: 22,
+    height: 22,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.md,
-    borderWidth: 1,
   },
   title: {
     ...TYPOGRAPHY.h2,

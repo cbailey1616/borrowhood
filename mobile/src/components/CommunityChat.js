@@ -16,11 +16,13 @@ import ComposerKeyboardView from './ComposerKeyboardView';
 import ActionSheet from './ActionSheet';
 import { ThemedAlert as Alert } from './ThemedAlert';
 import { Ionicons } from './Icon';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 // The neighborhood page and Inbox both mount this same channel by community ID.
 export default function CommunityChat({ community, navigation, header }) {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [thread, setThread] = useState(null);
@@ -92,7 +94,7 @@ export default function CommunityChat({ community, navigation, header }) {
       await api.sendCommunityMessage(id, { content, parentId: thread?.id || null, clientRequestId: retry.current.clientRequestId });
       if (!alive.current || token !== generation.current) return;
       setText(''); retry.current = null; nearBottom.current = true;
-      await refresh(); list.current?.scrollToOffset({ offset: 0, animated: true });
+      await refresh(); list.current?.scrollToOffset({ offset: 0, animated: !reduceMotion });
     } catch (err) { if (alive.current && token === generation.current) setError(err.message || 'Message not sent. Try again.'); }
     finally { sendLock.current = false; if (alive.current) setSending(false); }
   };
@@ -125,7 +127,7 @@ export default function CommunityChat({ community, navigation, header }) {
     finally { reacting.current = false; }
   };
   const options = menu === 'channel' ? [
-    { label: muted ? 'Unmute chat' : 'Mute chat', onPress: toggleMute },
+    { label: muted ? 'Unmute chat' : 'Mute chat', onPress: toggleMute, haptic: 'selection' },
     { label: 'Neighborhood settings', onPress: () => navigation.navigate('CommunitySettings', { id }) },
   ] : menu ? [
     ...(!menu.deleted && menu.sender.id !== user?.id ? [{ label: 'Report or block', onPress: () => setSafetyTarget(menu.id) }] : []),
@@ -136,17 +138,17 @@ export default function CommunityChat({ community, navigation, header }) {
   return <ComposerKeyboardView style={styles.container}>
     {header}
     <View style={styles.chatHeading}>
-      {thread ? <HapticPressable onPress={() => changeThread(null)} accessibilityLabel="Back to neighborhood chat" style={styles.back}>
-        <Ionicons name="chevron-back" size={20} color={COLORS.primary} /><Text maxFontSizeMultiplier={1.4} style={styles.heading}>Replies</Text>
+      {thread ? <HapticPressable haptic={null} scaleDown={1} onPress={() => changeThread(null)} accessibilityLabel="Back to neighborhood chat" style={styles.back}>
+        <Ionicons name="chevron-back" size={22} color={COLORS.primary} illustrated={false} selected={false} /><Text maxFontSizeMultiplier={1.4} style={styles.heading}>Replies</Text>
       </HapticPressable> : <Text maxFontSizeMultiplier={1.4} style={styles.heading}>Chat{muted ? ' · Muted' : ''}</Text>}
-      <HapticPressable onPress={() => setMenu('channel')} accessibilityLabel="Chat options" style={styles.more}>
-        <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.primary} />
+      <HapticPressable haptic={null} scaleDown={1} onPress={() => setMenu('channel')} accessibilityLabel="Chat options" style={styles.more}>
+        <Ionicons name="ellipsis-horizontal" size={22} color={COLORS.primary} illustrated={false} selected={false} />
       </HapticPressable>
     </View>
-    {!!error && <HapticPressable onPress={() => refresh()} style={styles.error}><Text style={styles.errorText}>{error}</Text></HapticPressable>}
+    {!!error && <HapticPressable haptic={null} scaleDown={1} onPress={() => refresh()} style={styles.error}><Text style={styles.errorText}>{error}</Text></HapticPressable>}
     {thread && <View style={styles.threadParent}>
       <Text maxFontSizeMultiplier={1.4} style={styles.threadSender}>{thread.sender.name}</Text>
-      <HapticPressable onLongPress={event => openReactions(thread,event)}><Text style={styles.body}>{thread.deleted ? 'Message removed' : thread.content}</Text></HapticPressable>
+      <HapticPressable haptic={null} longPressHaptic="selection" scaleDown={1} onLongPress={event => openReactions(thread,event)}><Text style={styles.body}>{thread.deleted ? 'Message removed' : thread.content}</Text></HapticPressable>
       {!thread.deleted && <MessageReactions reactions={thread.reactions} userId={user.id} onToggle={emoji => react(thread,emoji)} onAdd={event => openReactions(thread,event)} />}
     </View>}
     {loading ? <ActivityIndicator style={styles.conversation} color={COLORS.spinner} /> : !messages.length ? <ScrollView
@@ -159,20 +161,20 @@ export default function CommunityChat({ community, navigation, header }) {
       ref={list} style={styles.conversation} inverted data={messages} keyExtractor={item => item.id}
       keyboardShouldPersistTaps="handled" contentContainerStyle={styles.messages}
       onScroll={event => { nearBottom.current = event.nativeEvent.contentOffset.y < 80; }} scrollEventThrottle={100}
-      ListFooterComponent={nextBefore ? <HapticPressable onPress={() => refresh(nextBefore)} style={styles.more}><Text maxFontSizeMultiplier={1.4} style={styles.link}>Earlier messages</Text></HapticPressable> : null}
+      ListFooterComponent={nextBefore ? <HapticPressable haptic={null} scaleDown={1} onPress={() => refresh(nextBefore)} style={styles.more}><Text maxFontSizeMultiplier={1.4} style={styles.link}>Earlier messages</Text></HapticPressable> : null}
       renderItem={({ item }) => <View style={[styles.message, item.sender.id === user?.id && styles.own]}>
-        <HapticPressable onPress={() => navigation.navigate('UserProfile', { id: item.sender.id })} accessibilityLabel={`View ${item.sender.name}'s profile`}>
-          {item.sender.photoUrl ? <Image source={{ uri: item.sender.photoUrl }} style={styles.avatar} /> : <View style={styles.avatar}><Ionicons name="person" size={22} color={COLORS.primary} /></View>}
+        <HapticPressable haptic={null} scaleDown={1} onPress={() => navigation.navigate('UserProfile', { id: item.sender.id })} accessibilityLabel={`View ${item.sender.name}'s profile`}>
+          {item.sender.photoUrl ? <Image source={{ uri: item.sender.photoUrl }} style={styles.avatar} /> : <View style={styles.avatar}><Ionicons name="person" size={22} color={COLORS.primary} illustrated={false} selected={false} /></View>}
         </HapticPressable>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <View style={styles.messageHeader}><HapticPressable onPress={() => navigation.navigate('UserProfile', { id: item.sender.id })}><Text maxFontSizeMultiplier={1.4} style={styles.name}>{item.sender.name}</Text></HapticPressable>
+          <View style={styles.messageHeader}><HapticPressable haptic={null} scaleDown={1} onPress={() => navigation.navigate('UserProfile', { id: item.sender.id })}><Text maxFontSizeMultiplier={1.4} style={styles.name}>{item.sender.name}</Text></HapticPressable>
             <Text maxFontSizeMultiplier={1.4} style={styles.time}>{new Date(item.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Text></View>
-          <HapticPressable onLongPress={event => openReactions(item,event)} accessibilityLabel={item.content}><Text style={styles.body}>{item.content}</Text></HapticPressable>
+          <HapticPressable haptic={null} longPressHaptic="selection" scaleDown={1} onLongPress={event => openReactions(item,event)} accessibilityLabel={item.content}><Text style={styles.body}>{item.content}</Text></HapticPressable>
           {!item.deleted && <MessageReactions reactions={item.reactions} userId={user.id} onToggle={emoji => react(item,emoji)} onAdd={event => openReactions(item,event)} />}
-          {!thread && (!item.deleted || item.replyCount > 0) && <HapticPressable onPress={() => changeThread(item)} style={styles.reply} accessibilityLabel={`Reply to ${item.sender.name}`}>
-            <Ionicons name="chat-reply" size={18}/><Text maxFontSizeMultiplier={1.4} style={styles.link}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text><Ionicons name="chevron-forward" size={14}/>
+          {!thread && (!item.deleted || item.replyCount > 0) && <HapticPressable haptic={null} scaleDown={1} onPress={() => changeThread(item)} style={styles.reply} accessibilityLabel={`Reply to ${item.sender.name}`}>
+            <Ionicons name="chat-reply" size={22} color={COLORS.primary} illustrated={false} selected={false}/><Text maxFontSizeMultiplier={1.4} style={styles.link}>{item.replyCount ? `${item.replyCount} ${item.replyCount === 1 ? 'reply' : 'replies'}` : 'Reply'}</Text><Ionicons name="chevron-forward" size={18} color={COLORS.primary} illustrated={false} selected={false}/>
           </HapticPressable>}
-          {!item.deleted && <HapticPressable onPress={() => setMenu(item)} accessibilityLabel="Message options" style={styles.messageOptions}><Ionicons name="ellipsis-horizontal" size={18} color={COLORS.textMuted} /></HapticPressable>}
+          {!item.deleted && <HapticPressable haptic={null} scaleDown={1} onPress={() => setMenu(item)} accessibilityLabel="Message options" style={styles.messageOptions}><Ionicons name="ellipsis-horizontal" size={22} color={COLORS.textMuted} illustrated={false} selected={false} /></HapticPressable>}
         </View>
       </View>}
     />}

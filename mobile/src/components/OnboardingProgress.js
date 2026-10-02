@@ -4,7 +4,9 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   useSharedValue,
+  cancelAnimation,
 } from 'react-native-reanimated';
+import useReduceMotion from '../hooks/useReduceMotion';
 import { COLORS, SPACING, ANIMATION } from '../utils/config';
 
 const TOTAL_STEPS = 5;
@@ -22,14 +24,17 @@ export default function OnboardingProgress({ currentStep }) {
 }
 
 function Dot({ index, currentStep }) {
+  const reduceMotion = useReduceMotion();
   const width = useSharedValue(index === currentStep ? ACTIVE_WIDTH : DOT_SIZE);
 
   useEffect(() => {
+    if (reduceMotion) { cancelAnimation(width); width.value = index === currentStep ? ACTIVE_WIDTH : DOT_SIZE; return; }
     width.value = withSpring(
       index === currentStep ? ACTIVE_WIDTH : DOT_SIZE,
       ANIMATION.spring.default
     );
-  }, [currentStep]);
+    return () => cancelAnimation(width);
+  }, [currentStep, index, reduceMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: width.value,

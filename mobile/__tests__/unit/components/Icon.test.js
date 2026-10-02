@@ -24,13 +24,23 @@ describe('Icon', () => {
     }
     expect(iconSvg('thumbs-up-outline', { illustrated: true })).not.toEqual(iconSvg('thumbs-down-outline', { illustrated: true }));
   });
-  it('warms object icons without recoloring white controls or warnings', () => {
+  it('does not automatically add illustrated fills to functional icons', () => {
     const { usesWarmIllustration } = require('../../../src/components/Icon');
-    expect(usesWarmIllustration('cube-outline', '#42594C')).toBe(true);
-    expect(usesWarmIllustration('create-outline', '#42594C')).toBe(true);
+    expect(usesWarmIllustration('cube-outline', '#42594C')).toBe(false);
+    expect(usesWarmIllustration('create-outline', '#42594C')).toBe(false);
     expect(usesWarmIllustration('home', '#fff')).toBe(false);
     expect(usesWarmIllustration('trash', '#B54242')).toBe(false);
     expect(usesWarmIllustration('close', '#42594C')).toBe(false);
+  });
+
+  it('uses illustrated colors only when the caller explicitly opts in', () => {
+    const Icon = require('../../../src/components/Icon').default;
+    const { Image } = require('expo-image');
+    const plain = render(<Icon name="home" />);
+    const illustrated = render(<Icon name="home" illustrated />);
+    const svg = view => decodeURIComponent(view.UNSAFE_getByType(Image).props.source.uri.split(',')[1]);
+    expect(svg(plain)).toContain('fill-opacity="0"');
+    expect(svg(illustrated)).toContain('fill-opacity="1"');
   });
 
   it('keeps an unselected heart unfilled even with the warm illustration palette', () => {

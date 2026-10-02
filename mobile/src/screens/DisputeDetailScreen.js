@@ -218,7 +218,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
       </View>
 
       {/* Item link */}
-      <HapticPressable
+      <HapticPressable scaleDown={dispute.listing?.photos?.[0] ? 0.97 : 1}
         style={styles.itemCard}
         onPress={() => {
           if (dispute.listing?.id) {
@@ -228,9 +228,9 @@ export default function DisputeDetailScreen({ route, navigation }) {
             showToast('This listing is no longer available.', 'warning');
           }
         }}
-        haptic="light"
+        haptic={null}
       >
-        <ShimmerImage
+        <ShimmerImage category={dispute.listing?.category} title={dispute.listing?.title}
           source={{ uri: dispute.listing?.photos?.[0] || null }}
           style={styles.itemImage}
         />
@@ -262,10 +262,10 @@ export default function DisputeDetailScreen({ route, navigation }) {
           </View>
 
           {dispute.claimant && (
-            <HapticPressable
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover}
               style={styles.personRow}
               onPress={() => navigation.navigate('UserProfile', { id: dispute.claimant.id })}
-              haptic="light"
+              haptic={null}
             >
               <ShimmerImage placeholderIcon="person"
                 source={{ uri: dispute.claimant.profilePhotoUrl || null }}
@@ -312,10 +312,10 @@ export default function DisputeDetailScreen({ route, navigation }) {
             </View>
 
             {dispute.respondent && (
-              <HapticPressable
+              <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                 style={styles.personRow}
                 onPress={() => navigation.navigate('UserProfile', { id: dispute.respondent.id })}
-                haptic="light"
+                haptic={null}
               >
                 <ShimmerImage placeholderIcon="person"
                   source={{ uri: dispute.respondent.profilePhotoUrl || null }}
@@ -425,7 +425,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
             style={[styles.refundButton, acceptLoading && styles.buttonDisabled]}
             onPress={handleAcceptClaim}
             disabled={acceptLoading || actionLoading}
-            haptic="medium"
+            haptic={null}
           >
             {acceptLoading ? (
               <ActivityIndicator color={COLORS.white} size="small" />
@@ -447,7 +447,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
               mode: 'decline',
             })}
             disabled={acceptLoading || actionLoading}
-            haptic="medium"
+            haptic={null}
           >
             <Ionicons name="close-circle-outline" size={18} color={COLORS.white} />
             <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Decline</Text>
@@ -464,7 +464,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
                 mode: 'counter',
               })}
               disabled={acceptLoading || actionLoading}
-              haptic="medium"
+              haptic={null}
             >
               <Ionicons name="swap-horizontal-outline" size={18} color={COLORS.white} />
               <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Counter</Text>
@@ -480,7 +480,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
             style={[styles.refundButton, counterActionLoading && styles.buttonDisabled]}
             onPress={() => setShowAcceptCounterSheet(true)}
             disabled={counterActionLoading}
-            haptic="medium"
+            haptic={null}
           >
             {counterActionLoading ? (
               <ActivityIndicator color={COLORS.white} size="small" />
@@ -495,7 +495,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
             style={[styles.declineButton, counterActionLoading && styles.buttonDisabled]}
             onPress={() => setShowDeclineCounterSheet(true)}
             disabled={counterActionLoading}
-            haptic="medium"
+            haptic={null}
           >
             <Ionicons name="close-circle-outline" size={18} color={COLORS.white} />
             <Text maxFontSizeMultiplier={1.4} style={styles.actionButtonText}>Decline</Text>
@@ -532,7 +532,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
                   key={opt.key}
                   style={[styles.outcomeOption, outcome === opt.key && styles.outcomeOptionActive]}
                   onPress={() => setOutcome(opt.key)}
-                  haptic="light"
+                  haptic="selection"
                 >
                   <Ionicons
                     name={opt.icon}
@@ -593,7 +593,7 @@ export default function DisputeDetailScreen({ route, navigation }) {
               style={[styles.resolveButton, actionLoading && styles.buttonDisabled]}
               onPress={handleResolve}
               disabled={actionLoading}
-              haptic="medium"
+              haptic={null}
             >
               {actionLoading ? (
                 <ActivityIndicator color={COLORS.white} />

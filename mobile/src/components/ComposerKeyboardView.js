@@ -1,11 +1,16 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Keyboard, Platform, View, useWindowDimensions } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
+import useReduceMotion from '../hooks/useReduceMotion';
 
 // Keyboard frames use window coordinates. Measure the actual native screen
 // instead of assuming the navigation library's estimated header height is its
 // origin (the two can differ with newer iOS navigation bars).
 export default function ComposerKeyboardView({ children, style, onKeyboardVisibilityChange, ...props }) {
+  const reduceMotion = useReduceMotion();
+  // Preference updates must not reset keyboard visibility or native listeners.
+  const reduceMotionRef = useRef(reduceMotion);
+  reduceMotionRef.current = reduceMotion;
   const viewportRef = useRef(null);
   const mounted = useRef(true);
   const measurement = useRef(0);
@@ -40,13 +45,13 @@ export default function ComposerKeyboardView({ children, style, onKeyboardVisibi
     const update = event => {
       const frame = event?.endCoordinates;
       const visible = isDocked(frame);
-      if (Platform.OS === 'ios') Keyboard.scheduleLayoutAnimation(event);
+      if (Platform.OS === 'ios' && !reduceMotionRef.current) Keyboard.scheduleLayoutAnimation(event);
       setKeyboardFrame(visible ? frame : null);
       onKeyboardVisibilityChange?.(visible);
       measureViewport();
     };
     const hide = event => {
-      if (Platform.OS === 'ios') Keyboard.scheduleLayoutAnimation(event);
+      if (Platform.OS === 'ios' && !reduceMotionRef.current) Keyboard.scheduleLayoutAnimation(event);
       setKeyboardFrame(null);
       onKeyboardVisibilityChange?.(false);
     };

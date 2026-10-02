@@ -199,14 +199,14 @@ export default function OnboardingScreen({ onComplete }) {
     const { status } = await Notifications.requestPermissionsAsync();
     setNotifStatus(status);
     if (status === 'granted') {
-      haptics.success();
+
       // Brief pause to show the success state
       setTimeout(() => handleFinish(), 600);
     }
   };
 
   const handleFinish = async () => {
-    haptics.success();
+
     if (onComplete) {
       onComplete();
     }
@@ -222,11 +222,11 @@ export default function OnboardingScreen({ onComplete }) {
         We'll show you items and neighbors in your area
       </Text>
 
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={styles.locationButton}
         onPress={handleGetLocation}
         disabled={isGettingLocation}
-        haptic="medium"
+        haptic={null}
       >
         {isGettingLocation ? (
           <ActivityIndicator color={COLORS.spinner} />
@@ -259,11 +259,11 @@ export default function OnboardingScreen({ onComplete }) {
         />
       </View>
 
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         style={[styles.primaryButton, (!city || !state) && styles.buttonDisabled]}
         onPress={handleSaveLocation}
         disabled={!city || !state || isLoading}
-        haptic="medium"
+        haptic={null}
       >
         {isLoading ? (
           <ActivityIndicator color={COLORS.white} />
@@ -290,7 +290,7 @@ export default function OnboardingScreen({ onComplete }) {
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No neighborhoods in {city} yet.</Text>
           <Text style={styles.emptySubtext}>Be the first to create one!</Text>
-          <HapticPressable style={styles.createButton} onPress={handleCreateNeighborhood} haptic="medium">
+          <HapticPressable scaleDown={0.97} style={styles.createButton} onPress={handleCreateNeighborhood} haptic="light">
             <Ionicons name="add" size={20} color={COLORS.white} />
             <Text style={styles.createButtonText}>Create Neighborhood</Text>
           </HapticPressable>
@@ -317,11 +317,11 @@ export default function OnboardingScreen({ onComplete }) {
                 ) : item.rejoinStatus === 'pending' ? (
                   <View style={styles.joinedBadge}><Text style={styles.joinedText}>Approval requested</Text></View>
                 ) : (
-                  <HapticPressable
+                  <HapticPressable scaleDown={0.97}
                     style={styles.joinButton}
                     onPress={() => handleJoinNeighborhood(item)}
                     disabled={isLoading}
-                    haptic="medium"
+                    haptic={null}
                   >
                     <Text style={styles.joinButtonText}>{item.rejoinStatus === 'removed' ? 'Request to rejoin' : 'Join'}</Text>
                   </HapticPressable>
@@ -330,7 +330,7 @@ export default function OnboardingScreen({ onComplete }) {
             </View>
           )}
           ListFooterComponent={
-            <HapticPressable style={styles.createLinkButton} onPress={handleCreateNeighborhood} haptic="light">
+            <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.createLinkButton} onPress={handleCreateNeighborhood} haptic="light">
               <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
               <Text style={styles.createLinkText}>Create a new neighborhood</Text>
             </HapticPressable>
@@ -338,10 +338,10 @@ export default function OnboardingScreen({ onComplete }) {
         />
       )}
 
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         style={styles.primaryButton}
         onPress={() => setStep(3)}
-        haptic="medium"
+        haptic={null}
       >
         <Text style={styles.primaryButtonText}>
           {joinedCommunity || neighborhoods.some(n => n.isMember) ? 'Continue' : 'Skip for now'}
@@ -404,10 +404,10 @@ export default function OnboardingScreen({ onComplete }) {
                     </Text>
                   </View>
                 ) : (
-                  <HapticPressable
+                  <HapticPressable scaleDown={0.97}
                     style={styles.addButton}
                     onPress={() => handleAddFriend(item)}
-                    haptic="light"
+                    haptic={null}
                   >
                     <Ionicons name="person-add" size={18} color={COLORS.white} />
                   </HapticPressable>
@@ -428,10 +428,10 @@ export default function OnboardingScreen({ onComplete }) {
         </View>
       )}
 
-      <HapticPressable
+      <HapticPressable scaleDown={0.97}
         style={styles.primaryButton}
         onPress={() => setStep(4)}
-        haptic="medium"
+        haptic={null}
       >
         <Text style={styles.primaryButtonText}>
           {addedFriends.length > 0 ? 'Continue' : 'Skip for now'}
@@ -471,20 +471,20 @@ export default function OnboardingScreen({ onComplete }) {
           <Text style={styles.primaryButtonText}>Notifications Enabled</Text>
         </View>
       ) : (
-        <HapticPressable
+        <HapticPressable scaleDown={0.97}
           style={styles.primaryButton}
           onPress={handleEnableNotifications}
-          haptic="medium"
+          haptic={null}
         >
           <Ionicons name="notifications-outline" size={20} color={COLORS.white} style={{ marginRight: SPACING.sm }} />
           <Text style={styles.primaryButtonText}>Enable Notifications</Text>
         </HapticPressable>
       )}
 
-      <HapticPressable
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
         style={{ paddingVertical: SPACING.md, alignItems: 'center', marginTop: SPACING.sm }}
         onPress={handleFinish}
-        haptic="light"
+        haptic={null}
       >
         <Text style={{ ...TYPOGRAPHY.footnote, color: COLORS.textMuted }}>
           {notifStatus === 'granted' ? "Let's go!" : "I'll do this later"}

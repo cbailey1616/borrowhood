@@ -197,8 +197,8 @@ export default function CommunityMembersScreen({ route, navigation }) {
   };
 
   const renderMember = ({ item }) => (
-    <HapticPressable
-      haptic="light"
+    <HapticPressable pressedBackgroundColor={COLORS.cardHover}
+      haptic={null}
       style={styles.memberRow}
       disabled={handoff && !!handoffId}
       accessibilityLabel={handoff ? `Choose ${item.firstName} as steward` : undefined}

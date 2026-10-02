@@ -65,7 +65,7 @@ export default function WantedPostsScreen({ navigation }) {
   const renderItem = ({ item }) => (
     <HapticPressable
       onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
-      haptic="light"
+
     >
       <View style={[styles.cardBox, styles.card]}>
         <View style={styles.cardContent}>
@@ -106,10 +106,10 @@ export default function WantedPostsScreen({ navigation }) {
             </View>
           )}
 
-          <HapticPressable
+          <HapticPressable scaleDown={0.97}
             style={styles.haveThisButton}
             onPress={() => setSelectedRequest(item)}
-            haptic="medium"
+
           >
             <RequestTypeIcon type="service" size={18} />
             <Text maxFontSizeMultiplier={1.4} style={styles.haveThisText}>I Can Help</Text>
@@ -133,7 +133,7 @@ export default function WantedPostsScreen({ navigation }) {
           returnKeyType="search"
         />
         {searchQuery.length > 0 && (
-          <HapticPressable onPress={() => setSearchQuery('')} haptic="light">
+          <HapticPressable onPress={() => setSearchQuery('')} >
             <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
           </HapticPressable>
         )}

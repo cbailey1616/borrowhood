@@ -8,7 +8,6 @@ import LayeredCard from './LayeredCard';
 import { Ionicons } from './Icon';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { haptics } from '../utils/haptics';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 export default function SocialAccountLink({ link, navigation, onCancel, onPasswordSignIn }) {
@@ -75,7 +74,7 @@ export default function SocialAccountLink({ link, navigation, onCancel, onPasswo
     if (!challenge || !/^\d{6}$/.test(code)) return;
     return run('verify', async () => {
       await completeSocialLinkCode(link, challenge.challengeId, code);
-      Keyboard.dismiss(); haptics.success();
+      Keyboard.dismiss();
     });
   };
   const signInWithPassword = () => {
@@ -109,7 +108,6 @@ export default function SocialAccountLink({ link, navigation, onCancel, onPasswo
         </View>
 
         <View style={styles.intro}>
-          <View style={styles.heroIcon}><Ionicons name={usingPassword ? 'lock-closed-outline' : codeSent ? 'mail-outline' : 'link-outline'} size={40} color={COLORS.primary}/></View>
           <Text accessibilityRole="header" style={styles.title}>{usingPassword ? 'Confirm your account' : codeSent ? 'Check your email' : 'Finish signing in'}</Text>
           <Text style={styles.body}>{usingPassword ? `Enter your Borrowhood password to connect ${provider}.`
             : codeSent ? `Enter the six-digit code to connect ${provider}.`
@@ -184,12 +182,11 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, width: '100%', maxWidth: 480, alignSelf: 'center', paddingHorizontal: SPACING.xl, paddingBottom: SPACING.xl, gap: SPACING.xl },
   header: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingTop: SPACING.sm },
   back: { width: 44, height: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
-  wordmark: { ...TYPOGRAPHY.title3, color: COLORS.primary, flex: 1, textAlign: 'center' },
+  wordmark: { ...TYPOGRAPHY.title3, color: COLORS.primary, flex: 1, textAlign: 'left' },
   headerSpacer: { width: 44 },
-  intro: { alignItems: 'center', gap: SPACING.md },
-  heroIcon: { width: 72, height: 72, borderRadius: RADIUS.lg, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' },
-  title: { ...TYPOGRAPHY.title2, letterSpacing: 0, color: COLORS.primary, textAlign: 'center' },
-  body: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center' },
+  intro: { alignItems: 'flex-start', gap: SPACING.md },
+  title: { ...TYPOGRAPHY.title2, letterSpacing: 0, color: COLORS.primary, textAlign: 'left' },
+  body: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'left' },
   account: { flexDirection: 'row', alignItems: 'center', padding: SPACING.lg, gap: SPACING.md },
   accountCopy: { flex: 1, minWidth: 0, gap: SPACING.xs },
   providerLogo: { width: 28, height: 28, resizeMode: 'contain' },
@@ -204,9 +201,9 @@ const styles = StyleSheet.create({
   showPassword: { minWidth: 52, minHeight: 44, paddingHorizontal: SPACING.md, alignItems: 'center', justifyContent: 'center' },
   codeInput: { fontSize: TYPOGRAPHY.h1.fontSize, lineHeight: 36, textAlign: 'center', letterSpacing: 0 },
   textButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.sm },
-  link: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary, textAlign: 'center' },
+  link: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary, textAlign: 'left' },
   muted: { color: COLORS.textSecondary },
-  hint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'center' },
+  hint: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, textAlign: 'left' },
   error: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, backgroundColor: COLORS.dangerMuted, padding: SPACING.md, borderRadius: RADIUS.md },
   errorText: { ...TYPOGRAPHY.footnote, color: COLORS.danger, flex: 1 },
 });

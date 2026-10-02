@@ -15,7 +15,6 @@ import ActionSheet from '../../components/ActionSheet';
 import { useAuth } from '../../context/AuthContext';
 import { useError } from '../../context/ErrorContext';
 import api from '../../services/api';
-import { haptics } from '../../utils/haptics';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../../utils/config';
 import { isUserVerified } from '../../utils/auth';
 
@@ -51,7 +50,6 @@ export default function VerifyIdentityScreen({ navigation, route }) {
       await refreshUser();
       if (!isCurrent()) return;
       if (isUserVerified(result)) {
-        haptics.success();
         showToast('You’re verified!', 'success');
         navigation.goBack();
       } else {
@@ -78,7 +76,6 @@ export default function VerifyIdentityScreen({ navigation, route }) {
       if (isUserVerified(result)) {
         await refreshUser();
         if (!isCurrent()) return;
-        haptics.success();
         showToast('You’re verified!', 'success');
         navigation.goBack();
       } else if (result.status === 'processing') {
@@ -116,7 +113,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
     <View style={styles.actionFooter}>
       <View style={styles.readableWidth}>
         <VerificationPurchaseActions purchase={purchase} onVerify={handleStartVerification} disabled={isLoading} />
-        <HapticPressable style={styles.skipButton} onPress={handleSkipForNow} haptic="light">
+        <HapticPressable style={styles.skipButton} onPress={handleSkipForNow} >
           <Text maxFontSizeMultiplier={1.4} style={styles.skipButtonText}>Skip for now</Text>
         </HapticPressable>
       </View>
@@ -132,7 +129,7 @@ export default function VerifyIdentityScreen({ navigation, route }) {
             style={styles.secondaryButton}
             onPress={handleCheckStatus}
             disabled={isLoading || purchase.busy}
-            haptic="light"
+
           >
             <Text maxFontSizeMultiplier={1.4} style={styles.secondaryButtonText}>I've already verified</Text>
           </HapticPressable>

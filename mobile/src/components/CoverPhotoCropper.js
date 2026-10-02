@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
+import useReduceMotion from '../hooks/useReduceMotion';
 import { COLORS, RADIUS, TYPOGRAPHY } from '../utils/config';
 import { COVER_ASPECT, clamp, coverCropRect, coverTransform } from '../utils/coverCrop';
 
@@ -24,6 +25,7 @@ async function renderPhoto(uri, crop) {
 }
 
 export default function CoverPhotoCropper({ photo, onCancel, onComplete }) {
+  const reduceMotion = useReduceMotion();
   const { width, height } = useWindowDimensions();
   const frameWidth = Math.min(width - 40, 600);
   const canvasHeight = Math.max(frameWidth / COVER_ASPECT, Math.min(frameWidth, height * 0.5));
@@ -114,7 +116,7 @@ export default function CoverPhotoCropper({ photo, onCancel, onComplete }) {
   };
   const zoomBy = delta => move(cropRef.current.zoom + delta, cropRef.current);
   const transform = image ? coverTransform(image, frameWidth, crop.zoom, crop) : null;
-  return <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={() => { if (!busy.current) onCancel(); }}>
+  return <Modal visible animationType={reduceMotion ? 'none' : 'slide'} presentationStyle="fullScreen" onRequestClose={() => { if (!busy.current) onCancel(); }}>
     <SafeAreaView style={styles.page}>
       <View style={styles.header}>
         <HapticPressable accessibilityRole="button" accessibilityLabel="Cancel cover crop" onPress={onCancel} disabled={saving} style={styles.control}>

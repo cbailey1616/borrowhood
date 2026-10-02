@@ -16,7 +16,7 @@ export default function UserBadges({
 
   if (layout === 'summary') return (
     <View style={styles.summary} accessible accessibilityLabel={exchangeLabel}>
-      <Ionicons name="swap-horizontal" size={20} illustrated color={COLORS.primary} />
+      <Ionicons name="swap-horizontal" size={20} illustrated={false} color={COLORS.primary} />
       <Text maxFontSizeMultiplier={1.4} style={styles.summaryText}>{exchangeLabel}</Text>
     </View>
   );

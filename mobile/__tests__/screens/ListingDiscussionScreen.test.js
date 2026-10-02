@@ -122,9 +122,9 @@ describe('ListingDiscussionScreen', () => {
       .mockResolvedValueOnce({posts:[makePost('older','Lauren')],total:51});
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByText('Older comments'));
+    fireEvent.press(await screen.findByText('More comments'));
     await screen.findByText('Lauren’s comment');
-    expect(api.getDiscussions).toHaveBeenLastCalledWith('listing-1',{page:2,limit:50,sort:'top'});
+    expect(api.getDiscussions).toHaveBeenLastCalledWith('listing-1',{page:2,limit:50,sort:'oldest'});
   });
 
   it.each([
@@ -170,7 +170,7 @@ describe('ListingDiscussionScreen', () => {
   it('fetches discussions on mount', async () => {
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
     render(<Screen navigation={mockNavigation} route={route} />);
-    await waitFor(() => { expect(api.getDiscussions).toHaveBeenCalledWith('listing-1', { limit: 50, page: 1, sort: 'top' }); });
+    await waitFor(() => { expect(api.getDiscussions).toHaveBeenCalledWith('listing-1', { limit: 50, page: 1, sort: 'oldest' }); });
   });
 
   it('shows empty state when no discussions', async () => {
@@ -533,17 +533,20 @@ it('keeps multiple emoji reactions and removes only the selected chip',async()=>
  expect(screen.queryByLabelText('Like reaction, 1')).toBeNull();
 });
 
-it('sets live votes, toggles the same arrow off, and keeps scores from the server',async()=>{
- api.getDiscussions.mockResolvedValue({posts:[makePost('vote','Alice',{score:4,viewerVote:0})]});
- api.voteOnDiscussion=jest.fn().mockResolvedValueOnce({score:5,viewerVote:1}).mockResolvedValueOnce({score:4,viewerVote:0});
+it('shows reply and reactions without voting controls or score labels',async()=>{
+ api.getDiscussions.mockResolvedValue({posts:[makePost('vote','Alice',{score:4,viewerVote:1})]});
+ api.voteOnDiscussion=jest.fn();
  const Screen=require('../../src/screens/ListingDiscussionScreen').default;
  const screen=render(<Screen navigation={mockNavigation} route={{params:{listingId:'listing-1',listing:{title:'Sofa'}}}}/>);
- fireEvent.press(await screen.findByLabelText('Upvote comment by Alice'));
- await screen.findByLabelText('Score: 5');
- expect(screen.getByLabelText('Upvote comment by Alice').props.accessibilityState.selected).toBe(true);
- fireEvent.press(screen.getByLabelText('Upvote comment by Alice'));
- await screen.findByLabelText('Score: 4');
- expect(api.voteOnDiscussion.mock.calls).toEqual([['listing-1','vote',1],['listing-1','vote',0]]);
+ await screen.findByText('Alice’s comment');
+ expect(screen.queryByLabelText(/Upvote|Downvote|Score:/)).toBeNull();
+ expect(screen.getByLabelText('Reply to Alice')).toBeTruthy();
+ expect(screen.getByLabelText('Add reaction')).toBeTruthy();
+ expect(api.voteOnDiscussion).not.toHaveBeenCalled();
+ const Icon=require('../../src/components/Icon').default;
+ const smiles=screen.UNSAFE_getAllByType(Icon.type || Icon).filter(icon=>icon.props.name==='happy-outline');
+ expect(smiles).toHaveLength(2);
+ expect(smiles.every(icon=>icon.props.size===22)).toBe(true);
 });
 
 it('collapses a nested branch and restores it without discarding the reply draft',async()=>{
@@ -563,18 +566,63 @@ it('collapses a nested branch and restores it without discarding the reply draft
  expect(screen.getByLabelText('Comment').props.value).toBe('Tomorrow works 👍');
 });
 
-it('suggests a visible neighbor at @ and preserves the main draft while sorting',async()=>{
- api.getDiscussions.mockResolvedValue({posts:[makePost('root','Alice')]});
+it('keeps @ text plain with no autocomplete, highlighting, or sort controls',async()=>{
+ api.getDiscussions.mockResolvedValue({posts:[makePost('root','Alice',{content:'@Alice can collect this tomorrow.'})]});
  const Screen=require('../../src/screens/ListingDiscussionScreen').default;
  const screen=render(<Screen navigation={mockNavigation} route={{params:{listingId:'listing-1',listing:{title:'Sofa'}}}}/>);
- await screen.findByText('Alice');
+ await screen.findByText('@Alice can collect this tomorrow.');
  fireEvent(screen.getByLabelText('Comment'),'focus');
  fireEvent.changeText(screen.getByLabelText('Comment'),'@Al');
- fireEvent.press(await screen.findByLabelText('Mention Alice'));
- expect(screen.getByLabelText('Comment').props.value).toBe('@Alice ');
- fireEvent.press(screen.getByLabelText('Sort newest'));
- await waitFor(()=>expect(api.getDiscussions).toHaveBeenLastCalledWith('listing-1',{limit:50,page:1,sort:'newest'}));
- expect(screen.getByLabelText('Comment').props.value).toBe('@Alice ');
+ expect(screen.getByLabelText('Comment').props.value).toBe('@Al');
+ expect(screen.queryByLabelText(/Mention /)).toBeNull();
+ expect(screen.queryByLabelText('Mention a neighbor')).toBeNull();
+ expect(screen.queryByLabelText(/Sort /)).toBeNull();
+ expect(api.getDiscussions).toHaveBeenCalledTimes(1);
+ expect(screen.getByText('@Alice can collect this tomorrow.').props.children).toBe('@Alice can collect this tomorrow.');
+ fireEvent.press(screen.getByLabelText('Reply to Alice'));
+ await screen.findByText('Replying to Alice');
+});
+
+it.each([false,true])('keeps all paginated roots oldest first and appends new comments at the bottom (request=%s)',async isRequest=>{
+ const old=makePost('old','Alice',{createdAt:'2026-09-01T10:00:00Z',score:0});
+ const recent=makePost('recent','Ben',{createdAt:'2026-09-20T10:00:00Z',score:100});
+ const later=makePost('later','Cara',{createdAt:'2026-09-25T10:00:00Z'});
+ const getPosts=isRequest?api.getRequestDiscussions:api.getDiscussions;
+ getPosts.mockResolvedValueOnce({posts:[recent,old],total:51}).mockResolvedValueOnce({posts:[recent,later],total:51});
+ const create=isRequest?api.createRequestDiscussionPost:api.createDiscussionPost;
+ create.mockResolvedValueOnce({id:'newest',content:'I can pick it up 👍',createdAt:'2026-10-01T12:00:00Z'});
+ const params=isRequest?{requestId:'request-1',request:{title:'Sofa'}}:{listingId:'listing-1',listing:{title:'Sofa'}};
+ const Screen=require('../../src/screens/ListingDiscussionScreen').default;
+ const screen=render(<Screen navigation={mockNavigation} route={{params}}/>);
+ await screen.findByText('Alice’s comment');
+ const ids=()=>screen.UNSAFE_getByType(FlatList).props.data.map(item=>item.id);
+ expect(ids()).toEqual(['old','recent']);
+ fireEvent.press(screen.getByText('More comments'));
+ await screen.findByText('Cara’s comment');
+ expect(ids()).toEqual(['old','recent','later']);
+ expect(getPosts.mock.calls).toEqual([[isRequest?'request-1':'listing-1',{limit:50,page:1,sort:'oldest'}],[isRequest?'request-1':'listing-1',{limit:50,page:2,sort:'oldest'}]]);
+ fireEvent.changeText(screen.getByLabelText('Comment'),'I can pick it up 👍');
+ fireEvent.press(screen.getByLabelText('Post comment'));
+ await screen.findByText('I can pick it up 👍');
+ expect(ids()).toEqual(['old','recent','later','newest']);
+ expect(getPosts).toHaveBeenCalledTimes(2);
+});
+
+it('orders fetched and newly sent replies oldest first within their parent thread',async()=>{
+ api.getDiscussions.mockResolvedValue({posts:[makePost('root','Alice',{replyCount:2})]});
+ api.getDiscussionReplies.mockResolvedValue({replies:[makePost('late','Cara',{createdAt:'2026-09-25T10:00:00Z',score:50}),makePost('early','Ben',{createdAt:'2026-09-20T10:00:00Z',score:0})]});
+ api.createDiscussionPost.mockResolvedValueOnce({id:'new-reply',content:'Tomorrow works',createdAt:'2026-10-01T12:00:00Z'});
+ const Screen=require('../../src/screens/ListingDiscussionScreen').default;
+ const screen=render(<Screen navigation={mockNavigation} route={{params:{listingId:'listing-1',listing:{title:'Sofa'}}}}/>);
+ fireEvent.press(await screen.findByLabelText('Reply to Alice'));
+ await screen.findByText('Ben’s comment');
+ const ids=()=>screen.UNSAFE_getByType(FlatList).props.data.filter(item=>item.kind!=='composer').map(item=>item.id);
+ expect(ids()).toEqual(['root','early','late']);
+ fireEvent.changeText(screen.getByLabelText('Comment'),'Tomorrow works');
+ fireEvent.press(screen.getByLabelText('Post reply'));
+ await screen.findByText('Tomorrow works');
+ expect(ids()).toEqual(['root','early','late','new-reply']);
+ expect(screen.getByText('Replying to Alice')).toBeTruthy();
 });
 
 it('uses the app light theme even when the iPhone is in dark mode, with one scrolling header',async()=>{

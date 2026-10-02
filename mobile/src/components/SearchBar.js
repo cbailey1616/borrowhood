@@ -49,7 +49,7 @@ export default function SearchBar({
         onSubmitEditing={onSubmitEditing}
       />
       {value && value.length > 0 ? (
-        <HapticPressable onPress={handleClear} haptic="light" style={styles.clearButton} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8}>
+        <HapticPressable onPress={handleClear} haptic={null} style={styles.clearButton} accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8}>
           <Ionicons name="close-circle-sharp" size={18} color={iconColor} />
         </HapticPressable>
       ) : null}

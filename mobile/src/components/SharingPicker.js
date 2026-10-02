@@ -57,10 +57,10 @@ export default function SharingPicker({ value = ['private'], onChange, request =
         {audienceLoading ? 'Checking your audience…' : 'Choose who can see your post'}
       </Text>}
       {audiences.map(([scope, title, hint, icon]) => (
-        <HapticPressable key={scope} accessibilityRole="checkbox" accessibilityState={{ checked: value.includes(scope) }}
+        <HapticPressable haptic="selection" pressedBackgroundColor={COLORS.cardHover} key={scope} accessibilityRole="checkbox" accessibilityState={{ checked: value.includes(scope) }}
           accessibilityLabel={title} style={[styles.option, value.includes(scope) && styles.selected]}
           onPress={() => confirm(scope)}>
-          <Ionicons name={icon} size={24} color={COLORS.primary} />
+          <Ionicons name={icon} size={22} illustrated={false} color={COLORS.primary} />
           <View style={styles.copy}>
             <Text maxFontSizeMultiplier={1.4} style={styles.label}>{title}</Text>
             <Text maxFontSizeMultiplier={1.4} style={styles.hint}>{scope === 'close_friends' && !friendsAvailable ? 'Invite a friend to share with them.'

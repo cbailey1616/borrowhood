@@ -34,12 +34,12 @@ export default function CircleDetailScreen({ route, navigation }) {
         catch (e) { Alert.alert('Could not invite', e.message); }
       } },
     ]);
-  if (error) return <View style={styles.container}><HapticPressable onPress={load} style={styles.card}><Text>Could not load this group. Tap to retry.</Text></HapticPressable></View>;
+  if (error) return <View style={styles.container}><HapticPressable pressedBackgroundColor={COLORS.cardHover} onPress={load} style={styles.card}><Text>Could not load this group. Tap to retry.</Text></HapticPressable></View>;
   if (!group) return <ActivityIndicator color={COLORS.spinner} style={{ margin: 32 }} />;
   return <ScrollView style={styles.container} contentContainerStyle={styles.content}>
     <Text style={styles.title}>{group.name}</Text>
     <Text style={styles.hint}>Invite-only. Members see only items explicitly shared with this group.</Text>
-    {['owner', 'admin'].includes(group.userRole) && <HapticPressable style={styles.card} onPress={chooseInvite}>
+    {['owner', 'admin'].includes(group.userRole) && <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.card} onPress={chooseInvite}>
       <Ionicons name="person-add" size={24} /><Text maxFontSizeMultiplier={1.4} style={styles.label}>Invite a friend</Text>
     </HapticPressable>}
     <Text style={styles.title}>Members</Text>
@@ -49,7 +49,7 @@ export default function CircleDetailScreen({ route, navigation }) {
     </View>)}
     <Text style={styles.title}>Shared items</Text>
     {(group.items || []).length === 0 && <Text style={styles.hint}>No items shared with this group yet.</Text>}
-    {(group.items || []).map(item => <HapticPressable key={item.id} style={styles.card} onPress={() => navigation.navigate('ListingDetail', { id: item.id })}>
+    {(group.items || []).map(item => <HapticPressable pressedBackgroundColor={COLORS.cardHover} key={item.id} style={styles.card} onPress={() => navigation.navigate('ListingDetail', { id: item.id })}>
       <ListingTypeIcon listing={item} size={24} /><Text maxFontSizeMultiplier={1.4} style={styles.label}>{item.title}</Text>
     </HapticPressable>)}
     <ActionSheet isVisible={inviting} onClose={() => setInviting(false)} title="Invite a friend"

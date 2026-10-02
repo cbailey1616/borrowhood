@@ -73,8 +73,8 @@ export default function ConversationsScreen({ navigation, onRead, selectedId, on
 
   const renderItem = ({ item }) => (
     <LayeredCard style={styles.cardDepth}>
-      <HapticPressable
-        haptic="light"
+      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
+        haptic={null}
         style={[styles.card, selectedId === item.id && { backgroundColor: COLORS.primaryMuted }]}
         accessibilityState={{ selected: selectedId === item.id }}
         onPress={() => item.kind === 'community' ? navigation.navigate('MyCommunity', { communityId: item.communityId }) : onSelect ? onSelect(item.id) : navigation.navigate('Chat', { conversationId: item.id })}
