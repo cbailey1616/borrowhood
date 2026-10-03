@@ -75,7 +75,7 @@ const NOTIFICATION_TEMPLATES = {
   return_requested: { title: 'Was your item returned?', body: () => 'Your neighbor reported a return. Confirm only once you have the item back.' },
   return_reported_missing: { title: 'Your return was reported', body: () => 'The owner reported an item not returned. Open the exchange and Return options to respond within 48 hours. Reports are for account review and may lead to a ban.' },
   return_date_extended: { title: 'Return date updated', body: () => 'The owner gave you more time. Open the exchange to see the new return date.' },
-  return_case_updated: { title: 'Return report update', body: () => 'There is an update to your return report. Open the exchange to see the response or account decision.' },
+  return_case_updated: { title: 'Return report update', body: data => data.closedUnreturned ? 'Exchange closed — item not returned. The report remains available for account review. Borrowhood does not recover items or cover losses.' : 'There is an update to your return report. Open the exchange to see the response or account decision.' },
   return_confirmed: {
     title: 'Return Complete',
     body: data => data.autoClosed ? 'Return closed after 48 hours without a reported issue. Tap to view your exchange.' : returnCompleteBody(data),

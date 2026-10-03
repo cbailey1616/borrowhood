@@ -4,6 +4,12 @@ import logger from '../utils/logger.js';
 export async function ensureExchangeCompletionSchema() {
   await query('ALTER TABLE borrow_transactions ADD COLUMN IF NOT EXISTS return_requested_at TIMESTAMPTZ');
   await query('ALTER TABLE borrow_transactions ADD COLUMN IF NOT EXISTS return_auto_closed_at TIMESTAMPTZ');
+  await query('ALTER TABLE borrow_transactions ADD COLUMN IF NOT EXISTS non_return_closed_at TIMESTAMPTZ');
+  await query(`DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname='borrow_status' AND typtype='e') THEN
+      ALTER TYPE borrow_status ADD VALUE IF NOT EXISTS 'closed_unreturned';
+    END IF;
+  END $$`);
   // Recover the original return notice for older pending returns. Where no
   // notice survives, start a fresh window rather than guessing from the due date.
   await query(`UPDATE borrow_transactions bt SET return_requested_at=COALESCE(

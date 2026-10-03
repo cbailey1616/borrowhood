@@ -19,6 +19,18 @@ it('describes Town visibility without a borrowing verification prompt', () => {
   }
 });
 
+it('requires an explicit choice before an item can appear in public previews',()=>{
+  const onPublicPreviewChange=jest.fn();
+  const screen=render(<SharingPicker value={['town']} onChange={onChange}
+    publicPreviewEnabled={false} onPublicPreviewChange={onPublicPreviewChange}/>);
+  expect(screen.getByLabelText('Show a public preview').props.accessibilityState.checked).toBe(false);
+  fireEvent.press(screen.getByLabelText('Show a public preview'));
+  expect(onPublicPreviewChange).toHaveBeenCalledWith(true);
+  screen.rerender(<SharingPicker value={['private']} onChange={onChange}
+    publicPreviewEnabled={true} onPublicPreviewChange={onPublicPreviewChange}/>);
+  expect(screen.queryByLabelText('Show a public preview')).toBeNull();
+});
+
 it('selecting Town includes the available Friends and Neighborhood audiences', () => {
   const { getByLabelText } = render(<SharingPicker value={['close_friends']} onChange={onChange} verified />);
   fireEvent.press(getByLabelText('Town'));

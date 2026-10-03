@@ -7,6 +7,7 @@ vi.mock('../../src/services/notifications.js', () => ({ sendNotification: async 
   await options.runQuery('INSERT INTO notifications(transaction_id,type,user_id,created_at) VALUES($1,$2,$3,NOW())', [data.transactionId,type,user]);
   return 'saved';
 } }));
+import { autoCloseNonReturns } from '../../src/services/autoCloseNonReturns.js';
 import { autoCloseReturns } from '../../src/services/autoCloseReturns.js';
 import { completeFreeReturn } from '../../src/services/borrowReturn.js';
 import { ensureExchangeCompletionSchema } from '../../src/services/exchangeCompletionSchema.js';
@@ -17,10 +18,10 @@ beforeAll(async () => {
     CREATE TABLE borrow_transactions(id TEXT PRIMARY KEY, listing_id TEXT, borrower_id TEXT DEFAULT 'borrower', lender_id TEXT DEFAULT 'owner',
       status TEXT DEFAULT 'picked_up', actual_pickup_at TIMESTAMPTZ DEFAULT NOW()-INTERVAL '7 days', actual_return_at TIMESTAMPTZ,
       stripe_payment_intent_id TEXT, payment_status TEXT DEFAULT 'none', rental_fee NUMERIC DEFAULT 0, deposit_amount NUMERIC DEFAULT 0,
-      condition_at_pickup TEXT DEFAULT 'good', condition_at_return TEXT, condition_notes TEXT);
+      requested_end_date DATE DEFAULT CURRENT_DATE-2, condition_at_pickup TEXT DEFAULT 'good', condition_at_return TEXT, condition_notes TEXT);
     CREATE TABLE notifications(transaction_id TEXT, type TEXT, user_id TEXT, created_at TIMESTAMPTZ);
     CREATE TABLE disputes(transaction_id TEXT);
-    CREATE TABLE return_reports(transaction_id TEXT,status TEXT,resolved_at TIMESTAMPTZ);
+    CREATE TABLE return_reports(transaction_id TEXT,status TEXT,resolved_at TIMESTAMPTZ,response_due_at TIMESTAMPTZ DEFAULT NOW()+INTERVAL '48 hours');
     CREATE TABLE safety_reports(content_type TEXT,content_id TEXT,status TEXT);`);
   await ensureExchangeCompletionSchema();
 }, 15000);
@@ -59,7 +60,7 @@ it('closes after 48 hours, restores inventory and notifies both once', async () 
 it.each(['dispute','report','damage','condition','paid'])('keeps a %s return open for review', async kind => {
   await ageReturn();
   if(kind==='dispute') await state.db.exec("INSERT INTO disputes VALUES('borrow')");
-  if(kind==='report') await state.db.exec("INSERT INTO return_reports VALUES('borrow','open',NULL)");
+  if(kind==='report') await state.db.exec("INSERT INTO return_reports(transaction_id,status,resolved_at) VALUES('borrow','open',NULL)");
   if(kind==='damage') await state.db.exec("INSERT INTO safety_reports VALUES('exchange','borrow','open')");
   if(kind==='condition') await state.db.exec("UPDATE borrow_transactions SET condition_at_return='worn'");
   if(kind==='paid') await state.db.exec('UPDATE borrow_transactions SET rental_fee=5');
@@ -103,4 +104,71 @@ it('backfills old pending returns from the original return notice', async () => 
   expect((await row()).return_requested_at).toEqual(first);
   await autoCloseReturns();
   expect((await row()).status).toBe('completed');
+});
+
+const missingReport = () => state.db.exec("INSERT INTO return_reports(transaction_id,status,response_due_at) VALUES('borrow','open',NOW()-INTERVAL '1 minute')");
+it('closes a missing-item exchange after the response window without recording a return or restoring inventory', async () => {
+  await missingReport();
+  await autoCloseNonReturns();
+  expect(await row()).toMatchObject({status:'closed_unreturned',actual_return_at:null});
+  expect((await row()).non_return_closed_at).toBeTruthy();
+  expect(await listing()).toMatchObject({is_available:false,times_borrowed:0});
+  expect((await state.db.query('SELECT * FROM return_reports')).rows[0]).toMatchObject({status:'open',resolved_at:null});
+  await autoCloseNonReturns();
+  expect((await state.db.query('SELECT * FROM notifications')).rows).toHaveLength(2);
+});
+it('does not close before the 48-hour window expires', async () => {
+  await state.db.exec("INSERT INTO return_reports(transaction_id,status) VALUES('borrow','open')");
+  await autoCloseNonReturns();
+  expect((await row()).status).toBe('picked_up');
+});
+it('an owner-confirmed return during the window prevents missing-item closure', async () => {
+  await missingReport();
+  await completeFreeReturn('borrow','owner','good');
+  await autoCloseNonReturns();
+  expect(await row()).toMatchObject({status:'completed'});
+  expect((await row()).actual_return_at).toBeTruthy();
+  expect((await listing()).times_borrowed).toBe(1);
+});
+it('a borrower return claim does not override the owner’s unresolved missing-item report', async () => {
+  await missingReport();
+  await completeFreeReturn('borrow','borrower','good');
+  await autoCloseNonReturns();
+  expect(await row()).toMatchObject({status:'closed_unreturned',actual_return_at:null});
+});
+it('allows only the owner to record a late return, once, after closure', async () => {
+  await missingReport(); await autoCloseNonReturns();
+  expect(await completeFreeReturn('borrow','borrower','good')).toMatchObject({status:409});
+  await completeFreeReturn('borrow','owner','good');
+  expect((await row()).status).toBe('completed');
+  expect((await row()).actual_return_at).toBeTruthy();
+  expect(await completeFreeReturn('borrow','owner','good')).toMatchObject({alreadyConfirmed:true});
+  expect((await listing()).times_borrowed).toBe(1);
+});
+it.each(['dismissed','resolved','paid','dispute'])('does not auto-close a %s missing-item case', async kind => {
+  await missingReport();
+  if(kind==='dismissed') await state.db.exec("UPDATE return_reports SET status='dismissed'");
+  if(kind==='resolved') await state.db.exec('UPDATE return_reports SET resolved_at=NOW()');
+  if(kind==='paid') await state.db.exec('UPDATE borrow_transactions SET deposit_amount=5');
+  if(kind==='dispute') await state.db.exec("INSERT INTO disputes VALUES('borrow')");
+  await autoCloseNonReturns(); expect((await row()).status).toBe('picked_up');
+});
+it('rolls back missing-item closure on notification failure and retries', async () => {
+  await missingReport(); state.failRecipient='owner'; await autoCloseNonReturns();
+  expect((await row()).status).toBe('picked_up');
+  expect((await state.db.query('SELECT * FROM notifications')).rows).toHaveLength(0);
+  state.failRecipient=null; await autoCloseNonReturns();
+  expect((await row()).status).toBe('closed_unreturned');
+});
+
+it('honors a newly agreed future return date even when a reviewed report is retained', async () => {
+  await missingReport();
+  await state.db.exec("UPDATE return_reports SET status='confirmed'; UPDATE borrow_transactions SET requested_end_date=CURRENT_DATE+3");
+  await autoCloseNonReturns();
+  expect((await row()).status).toBe('picked_up');
+});
+it('does not close a damage-only report as an unreturned item',async()=>{
+  await state.db.exec("INSERT INTO safety_reports VALUES('exchange','borrow','open')");
+  await autoCloseNonReturns();
+  expect((await row()).status).toBe('picked_up');
 });

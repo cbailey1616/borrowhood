@@ -1,3 +1,4 @@
+import { autoCloseNonReturns } from './autoCloseNonReturns.js';
 import { processAppleRevocations } from './appleSignInTokens.js';
 import { cleanupFeedHistory } from './feedWindows.js';
 import { query, withTransaction, withBackgroundDatabase } from '../utils/db.js';
@@ -258,6 +259,7 @@ export function startScheduler() {
   schedule('Apple revocations', () => processAppleRevocations(), 60 * 1000);
   schedule('ranks', checkRankChanges, 60000);
   schedule('feed retention', cleanupFeedHistory, 5 * 60 * 1000);
+  schedule('missing-item exchanges', autoCloseNonReturns, 5 * 60 * 1000);
   schedule('pending returns', autoCloseReturns, 5 * 60 * 1000);
   schedule('hourly', async () => {
     // Avoid a startup burst of six maintenance jobs competing for connections.

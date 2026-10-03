@@ -95,3 +95,14 @@ it('does not submit after leaving while photos upload',async()=>{
   await act(async()=>resolveUpload(['uploaded-photo']));
   expect(api.reportExchangeIssue).not.toHaveBeenCalled();
 });
+
+it('shows an existing report and its closure rule rather than offering a duplicate missing-item report',async()=>{
+  api.getTransaction.mockResolvedValue({...exchange,issueReports:[{id:'report',reason:'non_return',status:'open',reportedByMe:true,resolved:false}]});
+  const screen=await open();
+  expect(screen.getByText('Submitted for account review')).toBeTruthy();
+  expect(screen.getByText(/automatically closes 48 hours/)).toBeTruthy();
+  expect(screen.queryByLabelText('Item wasn’t returned')).toBeNull();
+  expect(screen.getByLabelText('Item was damaged')).toBeTruthy();
+  fireEvent.press(screen.getByLabelText('View return report'));
+  expect(navigation.navigate).toHaveBeenCalledWith('ReturnHelp',{transaction:expect.objectContaining({id:'exchange-1'}),reports:true});
+});

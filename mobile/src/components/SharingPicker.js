@@ -13,6 +13,7 @@ const audiences = [
 ];
 
 export default function SharingPicker({ value = ['private'], onChange, request = false, listingType = 'lend',
+  publicPreviewEnabled = false, onPublicPreviewChange,
   neighborhoodAvailable = true, onJoinNeighborhood, onCreateNeighborhood,
   friendsAvailable = true, onInviteFriends, audienceProblem, audienceLoading = false, onRetryAudience }) {
   const [neighborhoodPrompt, setNeighborhoodPrompt] = useState(false);
@@ -70,6 +71,18 @@ export default function SharingPicker({ value = ['private'], onChange, request =
           <Ionicons name={value.includes(scope) ? 'checkbox' : 'square-outline'} size={20} color={COLORS.primary} />
         </HapticPressable>
       ))}
+      {!request && value.includes('town') && onPublicPreviewChange && <HapticPressable
+        accessibilityRole="checkbox" accessibilityLabel="Show a public preview"
+        accessibilityState={{ checked: publicPreviewEnabled }}
+        style={[styles.option, publicPreviewEnabled && styles.selected]}
+        onPress={() => onPublicPreviewChange(!publicPreviewEnabled)}>
+        <Ionicons name="eye-outline" size={22} color={COLORS.primary} />
+        <View style={styles.copy}>
+          <Text style={styles.label}>Show a public preview</Text>
+          <Text style={styles.hint}>Anyone can browse this item’s title, description and first photo without an account. Your name, profile and private posts stay hidden.</Text>
+        </View>
+        <Ionicons name={publicPreviewEnabled ? 'checkbox' : 'square-outline'} size={20} color={COLORS.primary} />
+      </HapticPressable>}
       {!request && !audiences.some(([scope]) => value.includes(scope)) && <Text maxFontSizeMultiplier={1.4} style={styles.hint}>Only you can see this item.</Text>}
       {onRetryAudience && <HapticPressable accessibilityRole="button" onPress={onRetryAudience} style={styles.option}>
         <Text maxFontSizeMultiplier={1.4} style={styles.label}>Couldn’t check friends. Try again</Text>

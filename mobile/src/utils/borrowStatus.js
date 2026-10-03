@@ -1,12 +1,15 @@
+import { exchangeIssueStatus } from './exchangeIssueStatus';
 import { parseCalendarDate } from './calendarDate';
 
 // Presentation only: actions remain subject to server permissions and state.
-export function borrowGuidance({ status, isBorrower, isGiveaway, hasDispute, lender, borrower, endDate, paymentStatus, pickupReview, actualPickupAt }) {
+export function borrowGuidance({ issueReports, actualReturnAt, status, isBorrower, isGiveaway, hasDispute, lender, borrower, endDate, paymentStatus, pickupReview, actualPickupAt }) {
   if (status === 'account_deleted') return { title: 'Your neighbor deleted their account', detail: 'Contact support for help completing this exchange. Your exchange record has been kept.' };
   const neighbor = (isBorrower ? lender : borrower)?.firstName || (isBorrower ? 'the owner' : 'your neighbor');
   const date = parseCalendarDate(endDate);
   const due = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : 'the agreed date';
   if (hasDispute || status === 'disputed') return { title: 'An issue is being reviewed', detail: 'Check the latest update with your neighbor before taking another step.' };
+  const issue = exchangeIssueStatus({ status, issueReports, actualReturnAt });
+  if (issue) return issue;
   switch (status) {
     case 'pending': return isBorrower
       ? { title: `Waiting for ${neighbor}`, detail: `${neighbor} needs to approve your request. There’s nothing you need to do yet—we’ll notify you when they respond.` }

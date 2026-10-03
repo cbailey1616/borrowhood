@@ -11,6 +11,7 @@ import LayeredCard from '../components/LayeredCard';
 import ShimmerImage from '../components/ShimmerImage';
 import useNavigationTask from '../hooks/useNavigationTask';
 import { returnHelpGuidance } from '../utils/returnHelpGuidance';
+import { REPORT_RETURN_NOTICE, reportReviewLabel } from '../utils/exchangeIssueStatus';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 export const REPORT_NOTICE = 'Reports are used to review account access and may lead to a ban. Borrowhood does not recover items, cover loss or damage, or resolve disputes.';
@@ -50,6 +51,9 @@ export default function ExchangeIssueScreen({ navigation, route }) {
     && ['picked_up', 'return_pending'].includes(transaction?.status)
     && !['sell', 'giveaway'].includes(transaction?.listingType || transaction?.listing?.listingType);
   const canReportMissing = returnHelpGuidance(transaction)?.canReport;
+  const reports = transaction?.issueReports || [];
+  const availableReasons = reasons.filter(option => (transaction?.isLender || option.key !== 'non_return')
+    && !reports.some(report => report.reason === option.key && report.reportedByMe && report.status !== 'dismissed' && !report.resolved));
   const pickPhotos = async () => {
     if (flight.current || picking || photos.length >= 5) return;
     const current = startTask(); setPicking(true); setError('');
@@ -76,6 +80,7 @@ export default function ExchangeIssueScreen({ navigation, route }) {
   if (completed) return <View style={styles.success}>
     <View style={styles.successIcon}><Ionicons name="checkmark-circle-outline" size={44} color={COLORS.primary} /></View>
     <Text style={styles.heading}>Report submitted</Text>
+    {reason === 'non_return' && <Text style={styles.body}>{REPORT_RETURN_NOTICE} If it comes back during that window, the owner can confirm the return.</Text>}
     <Text style={styles.body}>{REPORT_NOTICE}</Text>
     <ActionButton label="Done" variant="primary" onPress={() => navigation.goBack()} />
   </View>;
@@ -87,11 +92,22 @@ export default function ExchangeIssueScreen({ navigation, route }) {
     </LayeredCard>}
     {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {!loading && !transaction && <ActionButton label="Try again" onPress={load} />}
+    {!loading && reports.length > 0 && <LayeredCard style={styles.section}>
+      <Text style={styles.heading}>Exchange reports</Text>
+      {reports.map(report => <View key={report.id} style={styles.section}>
+        <Text style={styles.label}>{report.reason === 'non_return' ? 'Item wasn’t returned' : 'Item was damaged'}</Text>
+        <Text style={styles.caption}>{reportReviewLabel(report)}{report.resolved ? ' · Return recorded' : ''}</Text>
+        {active && report.reason === 'non_return' && !report.resolved && report.status !== 'dismissed' && <Text style={styles.body}>{REPORT_RETURN_NOTICE}</Text>}
+        {report.reason === 'non_return' && <ActionButton label={transaction.isBorrower ? 'View report or respond' : 'View return report'}
+          onPress={() => navigation.navigate('ReturnHelp', { transaction, reports: true })} />}
+      </View>)}
+      <Text style={styles.caption}>{REPORT_NOTICE}</Text>
+    </LayeredCard>}
     {!loading && transaction && !active && <Text style={styles.body}>This exchange is no longer awaiting a return. A new return issue cannot be reported here.</Text>}
-    {!loading && active && <>
+    {!loading && active && availableReasons.length > 0 && <>
       <Text style={styles.heading}>What happened?</Text>
       <LayeredCard style={styles.reasons}>
-        {reasons.filter(option => transaction.isLender || option.key !== 'non_return').map((option, index) => {
+        {availableReasons.map((option, index) => {
           const disabled = busy || picking || (option.key === 'non_return' && !canReportMissing);
           const selected = reason === option.key;
           return <HapticPressable key={option.key} accessibilityRole="radio" accessibilityLabel={option.label}

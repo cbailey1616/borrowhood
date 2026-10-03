@@ -22,9 +22,9 @@ const send = (user = borrower, dates = {}) => request(app).post('/transactions')
 beforeAll(async () => {
   state.db = new PGlite();
   await state.db.exec(`CREATE TABLE users(id UUID PRIMARY KEY, stripe_connect_account_id TEXT, city TEXT,
-      first_name TEXT DEFAULT 'Neighbor', last_name TEXT, display_name TEXT, profile_photo_url TEXT, is_verified BOOLEAN DEFAULT true);
+      rating NUMERIC DEFAULT 0, rating_count INT DEFAULT 0, first_name TEXT DEFAULT 'Neighbor', last_name TEXT, display_name TEXT, profile_photo_url TEXT, is_verified BOOLEAN DEFAULT true);
     CREATE TABLE user_blocks(user_id UUID,blocked_id UUID);
-    CREATE TABLE listings(id UUID PRIMARY KEY, owner_id UUID, title TEXT, is_free BOOLEAN DEFAULT true, price_per_day NUMERIC DEFAULT 0,
+    CREATE TABLE listings(id UUID PRIMARY KEY, owner_id UUID, title TEXT, description TEXT, condition TEXT DEFAULT 'good', is_free BOOLEAN DEFAULT true, price_per_day NUMERIC DEFAULT 0,
       deposit_amount NUMERIC DEFAULT 0, listing_type TEXT DEFAULT 'lend', direct_fee JSONB, is_available BOOLEAN DEFAULT true,
       status TEXT DEFAULT 'active', min_duration INT DEFAULT 1, max_duration INT DEFAULT 14);
     CREATE TABLE listing_availability(id UUID DEFAULT gen_random_uuid(), listing_id UUID, start_date DATE, end_date DATE, is_available BOOLEAN, note TEXT);
@@ -33,14 +33,19 @@ beforeAll(async () => {
       daily_rate NUMERIC, rental_fee NUMERIC, deposit_amount NUMERIC, platform_fee NUMERIC, lender_payout NUMERIC, borrower_message TEXT,
       lender_response TEXT, status TEXT DEFAULT 'pending', payment_status TEXT DEFAULT 'none', stripe_payment_intent_id TEXT,
       accepted_at TIMESTAMPTZ, endorsement_started_at TIMESTAMPTZ, actual_pickup_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW());
+    CREATE TABLE ratings(transaction_id UUID,rater_id UUID,rating INT,comment TEXT);
+    CREATE TABLE return_reports(id UUID DEFAULT gen_random_uuid(),transaction_id UUID,owner_id UUID,status TEXT DEFAULT 'open',
+      created_at TIMESTAMPTZ DEFAULT NOW(),response_due_at TIMESTAMPTZ DEFAULT NOW()+INTERVAL '48 hours',resolved_at TIMESTAMPTZ);
+    CREATE TABLE safety_reports(id UUID DEFAULT gen_random_uuid(),content_type TEXT,content_id UUID,reporter_id UUID,reason TEXT,
+      status TEXT DEFAULT 'open',created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE listing_photos(listing_id UUID, url TEXT, sort_order INT);
-    CREATE TABLE disputes(id UUID DEFAULT gen_random_uuid(), transaction_id UUID, created_at TIMESTAMPTZ DEFAULT NOW());
+    CREATE TABLE disputes(status TEXT DEFAULT 'open',id UUID DEFAULT gen_random_uuid(), transaction_id UUID, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE TABLE exchange_endorsements(transaction_id UUID, rater_id UUID, ratee_id UUID, positive BOOLEAN,
       UNIQUE(transaction_id,rater_id));`);
   app = express(); app.use(express.json()); app.use('/transactions', transactions); app.use('/listings', availability);
 }, 20000);
 beforeEach(async () => {
-  await state.db.exec('TRUNCATE user_blocks,listings, users, borrow_transactions, listing_availability, exchange_endorsements, disputes, listing_photos');
+  await state.db.exec('TRUNCATE ratings,return_reports,safety_reports,user_blocks,listings, users, borrow_transactions, listing_availability, exchange_endorsements, disputes, listing_photos');
   await state.db.query('INSERT INTO users(id) VALUES($1),($2),($3)', [owner, borrower, other]);
   await state.db.query("INSERT INTO listings(id,owner_id,title) VALUES($1,$2,'Ladder')", [listing, owner]);
 });
@@ -131,4 +136,19 @@ it('keeps existing exchange records available to participants after blocking',as
   expect(res.status).toBe(200);expect(res.body.map(t=>t.id)).toContain(created.body.id);
  }
  expect((await request(app).get('/transactions').set('x-user',other)).body).toEqual([]);
+});
+
+it('returns report status on both exchange endpoints without exposing another participant’s private damage report',async()=>{
+  const created=await send(); const id=created.body.id;
+  await state.db.query("UPDATE borrow_transactions SET status='picked_up',actual_pickup_at=NOW() WHERE id=$1",[id]);
+  await state.db.query('INSERT INTO return_reports(transaction_id,owner_id) VALUES($1,$2)',[id,owner]);
+  await state.db.query("INSERT INTO safety_reports(content_type,content_id,reporter_id,reason) VALUES('exchange',$1,$2,'Item was damaged')",[id,owner]);
+  for(const participant of [owner,borrower]) {
+    const list=await request(app).get('/transactions').set('x-user',participant).expect(200);
+    const detail=await request(app).get(`/transactions/${id}`).set('x-user',participant).expect(200);
+    const expected=participant===owner?2:1;
+    expect(list.body[0].issueReports).toHaveLength(expected);
+    expect(detail.body.issueReports).toEqual(list.body[0].issueReports);
+  }
+  await request(app).get(`/transactions/${id}`).set('x-user',other).expect(404);
 });

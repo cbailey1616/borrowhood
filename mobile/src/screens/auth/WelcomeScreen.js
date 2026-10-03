@@ -148,6 +148,14 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
               <Text style={styles.authTitle}>Sign in to your account</Text>
             </View>
 
+            <HapticPressable accessibilityRole="button" accessibilityLabel="Browse items without an account"
+              testID="Welcome.button.browse" disabled={isLoading || socialBusy}
+              onPress={() => navigation.navigate('PublicMarketplace')} style={styles.browseButton}>
+              <Ionicons name="search-outline" size={22} color={COLORS.primary} />
+              <Text style={styles.browseText}>Browse items without an account</Text>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+            </HapticPressable>
+
             <View style={styles.form}>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Email address</Text>
@@ -339,6 +347,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   authTitle: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'left' },
+  browseButton: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm,
+    backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary,
+    borderRadius: RADIUS.md, paddingHorizontal: SPACING.md, marginBottom: SPACING.lg },
+  browseText: { ...TYPOGRAPHY.buttonSmall, color: COLORS.primary, flex: 1 },
   biometricAction: {
     alignItems: 'center',
     justifyContent: 'center',

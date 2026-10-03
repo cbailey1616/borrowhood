@@ -44,6 +44,7 @@ export async function runMigrations() {
     await query(`CREATE TABLE IF NOT EXISTS safety_reports (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), reporter_id UUID REFERENCES users(id), reported_id UUID REFERENCES users(id), reason TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())`);
     await ensureSafetyReviewSchema();
     await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS town_preview_enabled BOOLEAN NOT NULL DEFAULT false');
+    await query('ALTER TABLE listings ADD COLUMN IF NOT EXISTS public_preview_enabled BOOLEAN NOT NULL DEFAULT false');
     await query('ALTER TABLE item_requests ADD COLUMN IF NOT EXISTS town_preview_enabled BOOLEAN NOT NULL DEFAULT false');
     await query('ALTER TABLE item_requests ADD COLUMN IF NOT EXISTS photo_url TEXT');
     // A displayed offline price is separate from Stripe rental amounts.

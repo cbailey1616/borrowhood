@@ -1,3 +1,4 @@
+import { exchangeIssueStatus } from './exchangeIssueStatus';
 import { listingIcon } from './listingPresentation';
 import { isTransferListing } from './directFee';
 import { groupPendingExchanges } from './requestActivity';
@@ -71,6 +72,8 @@ export function nextHomeAction(transactions = [], disputes = [], userId, now = n
 export function exchangeStatus(transaction, userId, now = new Date()) {
   const borrower = isBorrower(transaction, userId);
   if (transaction.status === 'disputed') return 'Issue under review';
+  const reportedIssue = exchangeIssueStatus(transaction);
+  if (reportedIssue) return reportedIssue.title;
   switch (transaction.status) {
     case 'pending': return borrower ? 'Waiting for approval' : `${transaction.requestCount || 1} request${transaction.requestCount > 1 ? 's' : ''} to review`;
     case 'approved': case 'paid': return !borrower && transaction.pickupReview?.needed && !transaction.actualPickupAt && !transaction.hasDispute

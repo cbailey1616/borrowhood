@@ -1,3 +1,4 @@
+import { exchangeIssueStatus } from '../utils/exchangeIssueStatus';
 import RefreshControl from '../components/HapticRefreshControl';
 import useReduceMotion from '../hooks/useReduceMotion';
 import ListingTypeIcon from '../components/ListingTypeIcon';
@@ -227,14 +228,14 @@ export default function TransactionDetailScreen({ route, navigation }) {
                   navigation.navigate('Chat', { ...params, conversationId: existing?.id });
                 } catch { if (isCurrent()) navigation.navigate('Chat', params); }
   };
-  const needsReturn = !isGiveaway && ((transaction.isBorrower && transaction.status === 'picked_up')
+  const needsReturn = !isGiveaway && ((transaction.isLender && transaction.status === 'closed_unreturned') || (transaction.isBorrower && transaction.status === 'picked_up')
     || (transaction.isLender && ['picked_up', 'return_pending'].includes(transaction.status))
     || (transaction.isLender && transaction.status === 'returned' && transaction.paymentStatus === 'authorized' && !transaction.hasDispute));
   const needsPickup = (transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt
     && !transaction.hasDispute && ['approved', 'paid'].includes(transaction.status);
   const needsPickupReview = transaction.isLender && needsPickup && transaction.pickupReview?.needed;
   const primaryIsMessage = !needsPickup && !needsReturn && !(transaction.isLender && transaction.status === 'pending');
-  const finished = ['completed', 'cancelled', 'declined'].includes(transaction.status)
+  const finished = ['completed', 'cancelled', 'declined', 'closed_unreturned'].includes(transaction.status)
     || (transaction.status === 'returned' && transaction.paymentStatus !== 'authorized')
     || (isGiveaway && transaction.status === 'picked_up');
   const endorsementSubmitted = transaction.endorsement?.submitted || endorsementSavedFor === transaction.id;
@@ -265,11 +266,12 @@ export default function TransactionDetailScreen({ route, navigation }) {
     : transaction.isLender && transaction.status === 'pending'
     ? { label: 'View queue', testID: 'Transaction.button.queue', onPress: viewQueue }
     : needsPickup ? { label: 'Confirm pickup', testID: 'Transaction.button.confirmPickup', onPress: () => setPickupSheetVisible(true) }
-    : needsReturn ? { label: transaction.isBorrower ? 'I returned it' : 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => handleConfirmReturn(transaction.conditionAtPickup || transaction.listing.condition || 'good') }
+    : needsReturn ? { label: transaction.status === 'closed_unreturned' ? 'Item came back? Record return' : transaction.isBorrower ? 'I returned it' : 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => handleConfirmReturn(transaction.conditionAtPickup || transaction.listing.condition || 'good') }
     : !finished ? { label: `Message ${otherPerson.firstName} privately`, testID: 'Transaction.button.message', onPress: messageNeighbor }
     : null;
   const activeReturn = !isGiveaway && !transaction.hasDispute && ['picked_up', 'return_pending'].includes(transaction.status);
-  const waitingForReturn = activeReturn && transaction.isLender && transaction.status === 'picked_up';
+  const reportedIssue = exchangeIssueStatus(transaction);
+  const waitingForReturn = !reportedIssue && activeReturn && transaction.isLender && transaction.status === 'picked_up';
   const returnDue = formatCalendarDate(transaction.endDate, { weekday: 'short', month: 'short', day: 'numeric' });
   const showMessageRow = !primaryIsMessage && !finished && !needsPickupReview;
   const showReturnHelp = activeReturn && transaction.isLender && !!transaction.actualPickupAt;
@@ -334,9 +336,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
             }} embedded />
           </> : <>
           <View style={styles.guidanceCopy}>
-            <Text style={styles.heroTitle}>{waitingForReturn ? 'Waiting for return' : transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
+            <Text style={styles.heroTitle}>{reportedIssue ? reportedIssue.title : waitingForReturn ? 'Waiting for return' : transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Waiting—currently reserved' : 'Item currently reserved') : nextStep.title}</Text>
             {waitingForReturn && <Text style={styles.returnNeighbor}>{otherPerson.firstName} has your item.</Text>}
-            <Text style={styles.heroDescription}>{waitingForReturn ? 'Confirm once it’s back in the same condition.' : transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This request is still waiting. Open the queue to review it.') : nextStep.detail}</Text>
+            <Text style={styles.heroDescription}>{reportedIssue ? reportedIssue.detail : waitingForReturn ? 'Confirm once it’s back in the same condition.' : transaction.status === 'pending' && transaction.queue?.waiting ? (transaction.isBorrower ? 'Your request is still in the queue. The owner can choose you if the item becomes available. You can leave at any time.' : 'This request is still waiting. Open the queue to review it.') : nextStep.detail}</Text>
           </View>
           {transaction.isLender && transaction.status === 'pending' && <HapticPressable accessibilityRole="button"
             accessibilityLabel={`View ${otherPerson.firstName}'s profile`} style={styles.outlinedAction}
@@ -346,7 +348,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           {primaryAction && <ActionButton testID={primaryAction.testID} label={primaryAction.label} variant="primary"
             icon={needsPickup || needsReturn ? 'checkmark-circle-outline' : primaryIsMessage ? 'chatbubble-outline' : 'people-outline'}
             loading={actionLoading} disabled={!!fetchError && (needsPickup || needsReturn)} onPress={primaryAction.onPress} />}
-          {(needsReturn || (activeReturn && transaction.isBorrower)) && <ActionButton label="Report an issue" variant="primary" destructive icon="flag-outline"
+          {(needsReturn || transaction.issueReports?.length || (activeReturn && transaction.isBorrower)) && <ActionButton label={transaction.issueReports?.length ? 'View reports' : 'Report an issue'} variant={reportedIssue ? 'secondary' : 'primary'} destructive={!reportedIssue} icon="flag-outline"
             testID="Transaction.button.reportReturnIssue" disabled={actionLoading || !!fetchError}
             onPress={() => navigation.navigate('ExchangeIssue', { transactionId: id })} />}
           {needsPickupReview && <ActionButton label="Give more time" testID="Transaction.button.giveMoreTime"

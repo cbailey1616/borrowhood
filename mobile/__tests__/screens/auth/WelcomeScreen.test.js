@@ -46,6 +46,14 @@ describe('WelcomeScreen', () => {
     useBiometrics.mockReturnValue({ isBiometricsAvailable: false, isBiometricsEnabled: false });
   });
 
+  it('lets someone reach the marketplace without creating an account',()=>{
+    const WelcomeScreen=require('../../../src/screens/auth/WelcomeScreen').default;
+    const screen=nativeRender(<WelcomeScreen navigation={mockNavigation}/>);
+    fireEvent.press(screen.getByTestId('Welcome.button.browse'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('PublicMarketplace');
+    expect(mockLogin).not.toHaveBeenCalled();
+  });
+
   it('connects Google with an email code without asking for or submitting a password', async () => {
     mockGoogle.mockRejectedValueOnce(Object.assign(new Error('Connect account'), { code: 'ACCOUNT_LINK_REQUIRED', email: 'neighbor@example.com' }));
     api.startSocialLinkCode.mockResolvedValueOnce({ challengeId: 'challenge-1', email: 'neighbor@example.com' });
