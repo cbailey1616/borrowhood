@@ -449,3 +449,16 @@ it('keeps a reserved request waiting without promising a pickup', async () => {
  expect(screen.queryByTestId('Transaction.button.confirmPickup')).toBeNull();
  expect(screen.getByLabelText('Cancel request')).toBeTruthy();
 });
+
+it.each(['picked_up','closed_unreturned'])('shows the missing-item report in %s state and keeps owner receipt recording available',async status=>{
+  api.getTransaction.mockResolvedValue({...mockTransaction,status,isLender:true,isBorrower:false,actualPickupAt:'2026-09-25T12:00:00Z',
+    issueReports:[{id:'report',reason:'non_return',status:'open',reportedByMe:true,resolved:false}]});
+  const Screen=require('../../src/screens/TransactionDetailScreen').default;
+  const screen=render(<Screen navigation={mockNavigation} route={{params:{id:'txn-1'}}}/>);
+  expect(await screen.findByText(status==='picked_up'?'Item not returned · Issue reported':'Closed — item not returned')).toBeTruthy();
+  expect(screen.queryByText('Waiting for return')).toBeNull();
+  expect(screen.getByTestId('Transaction.button.confirmReturn')).toBeTruthy();
+  expect(screen.queryByText('Exchange complete')).toBeNull();
+  fireEvent.press(screen.getByLabelText('View reports'));
+  expect(mockNavigation.navigate).toHaveBeenCalledWith('ExchangeIssue',{transactionId:'txn-1'});
+});

@@ -1,3 +1,4 @@
+import { exchangeIssueStatus } from './exchangeIssueStatus';
 import { exchangeIsActive, exchangeHomeAction, exchangeStatus, isBorrower } from './homeAction';
 import { groupPendingExchanges } from './requestActivity';
 import { isTransferListing } from './directFee';
@@ -8,6 +9,7 @@ const SECTIONS = [
   { key: 'pickup', title: 'Ready for pickup', icon: 'basket-outline' },
   { key: 'in-use', title: 'Borrowing & lending', icon: 'handshake-outline' },
   { key: 'waiting', title: 'Waiting', icon: 'time-outline' },
+  { key: 'closed', title: 'Closed with an issue', icon: 'flag-outline' },
 ];
 
 function belongsToUser(transaction, userId) {
@@ -30,7 +32,7 @@ function returnDate(transaction, now) {
 }
 
 export function trackedExchanges(transactions = [], userId, now = new Date(), disputes = []) {
-  const active = transactions.filter(transaction => belongsToUser(transaction, userId) && exchangeIsActive(transaction));
+  const active = transactions.filter(transaction => belongsToUser(transaction, userId) && (exchangeIsActive(transaction) || transaction.status === 'closed_unreturned'));
   return groupPendingExchanges(active, userId).map(transaction => {
     const borrower = isBorrower(transaction, userId);
     const neighbor = borrower ? transaction.lender : transaction.borrower;
@@ -45,17 +47,18 @@ export function trackedExchanges(transactions = [], userId, now = new Date(), di
       || dispute.status === 'counterPending' && dispute.claimant?.id === userId);
     const awaitingReturn = transaction.status === 'return_pending'
       || transaction.status === 'returned' && transaction.paymentStatus === 'authorized';
+    const reportedIssue = exchangeIssueStatus(transaction);
     const pending = transaction.status === 'pending';
     const needsYou = needsIssueReview || !issue && !transaction.hasDispute && (pending && !borrower
       || awaitingReturn && !borrower || transaction.pickupReview?.needed && !borrower && !!action
       || due?.soon && borrower);
-    const section = needsYou ? 'needs-you' : issue || pending || awaitingReturn ? 'waiting'
+    const section = transaction.status === 'closed_unreturned' ? 'closed' : needsYou ? 'needs-you' : issue || reportedIssue || pending || awaitingReturn ? 'waiting'
       : ['approved', 'paid'].includes(transaction.status) ? 'pickup' : 'in-use';
     const status = issue ? needsIssueReview ? 'Your turn: review issue' : 'Issue under review'
-      : pending && borrower ? `Waiting for ${name}` : awaitingReturn && borrower
+      : reportedIssue ? reportedIssue.title : pending && borrower ? `Waiting for ${name}` : awaitingReturn && borrower
       ? `Waiting for ${name} to confirm the return` : awaitingReturn ? 'Return reported' : exchangeStatus(transaction, userId, now);
     const nextStep = issue ? needsIssueReview ? 'Review the issue and respond' : 'Check the latest update'
-      : pending ? borrower ? 'The owner will review your request' : 'Choose a request to review'
+      : reportedIssue ? 'Report saved. Open for closure and return details.' : pending ? borrower ? 'The owner will review your request' : 'Choose a request to review'
       : awaitingReturn ? borrower ? null : 'Confirm once the item is back'
       : section === 'pickup' ? `Arrange a time and place with ${name}`
       : needsYou && transaction.pickupReview?.needed ? 'Confirm whether the handoff happened'

@@ -8,6 +8,8 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import FindAccountScreen from '../screens/auth/FindAccountScreen';
 import VerifySignupEmailScreen from '../screens/auth/VerifySignupEmailScreen';
 import VerifyIdentityScreen from '../screens/auth/VerifyIdentityScreen';
+import PublicMarketplaceScreen from '../screens/auth/PublicMarketplaceScreen';
+import PublicListingScreen from '../screens/auth/PublicListingScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +28,8 @@ export default function AuthNavigator() {
         component={WelcomeScreen}
         options={{ animation: reduceMotion ? 'none' : 'fade_from_bottom' }}
       />
+      <Stack.Screen name="PublicMarketplace" component={PublicMarketplaceScreen} />
+      <Stack.Screen name="PublicListing" component={PublicListingScreen} />
       <Stack.Screen
         name="Login"
         component={LoginScreen}

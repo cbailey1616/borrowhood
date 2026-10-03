@@ -12,7 +12,7 @@ export async function completeFreeReturn(id, userId, condition, notes) {
     const { rows: [listing] } = await client.query('SELECT * FROM listings WHERE id = $1 FOR UPDATE', [borrow.listing_id]);
     if (['giveaway', 'sell'].includes(listing?.listing_type)) return { status: 400, error: 'Sales and giveaways do not have a return step.' };
     if (['returned', 'completed'].includes(borrow.status) && borrow.actual_return_at) return { alreadyConfirmed: true };
-    if (!['picked_up', 'return_pending'].includes(borrow.status)) return { status: 409, error: 'This item is not currently borrowed. Refresh to see its latest status.' };
+    if (!['picked_up', 'return_pending'].includes(borrow.status) && !(borrow.status === 'closed_unreturned' && borrow.lender_id === userId)) return { status: 409, error: 'This item is not currently borrowed. Refresh to see its latest status.' };
     if (borrow.borrower_id === userId) {
       if (borrow.status === 'return_pending') return { alreadyConfirmed: true, pendingOwner: true };
       await client.query("UPDATE borrow_transactions SET status='return_pending', return_requested_at=NOW(), condition_notes=$2 WHERE id=$1", [id, notes]);

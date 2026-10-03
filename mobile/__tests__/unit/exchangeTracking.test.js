@@ -72,3 +72,10 @@ it('routes issues to their details, and highlights only the participant who must
   expect(track({ status: 'disputed' }, 'me', [{ ...dispute, claimant: { id: 'other' }, respondent: { id: 'other' } }]).section).toBe('waiting');
   expect(track({}, 'me', [{ ...dispute, status: 'dismissed' }]).section).toBe('in-use');
 });
+
+it('keeps an unreturned closure in a separate history section without prompting the borrower to confirm a return',()=>{
+  const transaction={id:'missing',status:'closed_unreturned',isBorrower:true,borrower:{id:'me'},lender:{id:'owner'},listing:{title:'Drill'}};
+  const rows=trackedExchanges([transaction],'me');
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({section:'closed',status:'Closed — item not returned',label:'View details'});
+});

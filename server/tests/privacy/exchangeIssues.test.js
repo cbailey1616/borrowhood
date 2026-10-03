@@ -1,3 +1,4 @@
+import { exchangeReportSummarySql } from '../../src/services/exchangeReportSummary.js';
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { randomUUID } from 'node:crypto';
@@ -118,4 +119,19 @@ it('exposes authenticated issue reporting with optional details and rejects malf
   expect((await post(id).send({ reason: 'damage', photos: Array(6).fill(photo(owner)) })).status).toBe(400);
   expect((await post(id).send({ reason: 'damage', detail: 'x'.repeat(2001) })).status).toBe(400);
   expect((await request(app).post(`/return-help/exchange/${id}/issue`).send({ reason: 'damage' })).status).toBe(401);
+});
+
+it('exposes non-return summaries to both participants but keeps damage summaries private to the author', async () => {
+  const id=await seed();
+  await reportExchangeIssue(id,owner,{reason:'non_return'});
+  await reportExchangeIssue(id,owner,{reason:'damage',detail:'Private evidence'});
+  const summary=async viewer => (await rows(`SELECT ${exchangeReportSummarySql('$2')} FROM borrow_transactions t WHERE t.id=$1 AND (t.lender_id=$2 OR t.borrower_id=$2)`,[id,viewer]))[0]?.issue_reports;
+  expect(await summary(owner)).toEqual(expect.arrayContaining([
+    expect.objectContaining({reason:'non_return',reportedByMe:true,status:'open'}),
+    expect.objectContaining({reason:'damage',reportedByMe:true,status:'open'})]));
+  expect(await summary(borrower)).toEqual([expect.objectContaining({reason:'non_return',reportedByMe:false})]);
+  expect(await summary(outsider)).toBeUndefined();
+  expect(JSON.stringify(await summary(owner))).not.toContain('Private evidence');
+  await state.db.query('UPDATE borrow_transactions SET actual_return_at=NOW() WHERE id=$1',[id]);
+  expect((await summary(owner)).find(r=>r.reason==='non_return').resolved).toBe(true);
 });

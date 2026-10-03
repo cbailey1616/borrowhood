@@ -8,12 +8,12 @@ export default function RentalProgress({ status, isBorrower, isGiveaway, isSale 
     { icon: 'request-note', label: 'Requested' },
     { icon: 'checkmark-circle', label: 'Approved' },
     { icon: listingIcon({ listingType: isSale ? 'sell' : isGiveaway ? 'giveaway' : 'lend' }), label: isGiveaway && !isBorrower ? (isSale ? 'Sold' : 'Given') : 'Picked up' },
-    ...(!isGiveaway ? [{ icon: 'home', label: status === 'return_pending' ? 'Return pending' : 'Returned' }] : []),
+    ...(!isGiveaway ? [{ icon: 'home', label: status === 'closed_unreturned' ? 'Not returned' : status === 'return_pending' ? 'Return pending' : 'Returned' }] : []),
   ];
-  const active = ({ pending: 0, approved: 1, paid: 1, picked_up: 2, return_pending: steps.length - 1, returned: steps.length - 1, completed: steps.length - 1 })[status] ?? -1;
-  const stopped = ['cancelled', 'disputed'].includes(status);
+  const active = ({ pending: 0, approved: 1, paid: 1, picked_up: 2, return_pending: steps.length - 1, returned: steps.length - 1, completed: steps.length - 1, closed_unreturned: steps.length - 1 })[status] ?? -1;
+  const stopped = ['cancelled', 'disputed', 'closed_unreturned'].includes(status);
   const finished = ['returned', 'completed'].includes(status);
-  return <View style={styles.track} accessibilityLabel={stopped ? 'Exchange paused or cancelled' : `Exchange progress: ${steps[active]?.label || status}`}>
+  return <View style={styles.track} accessibilityLabel={status === 'closed_unreturned' ? 'Closed — item not returned' : stopped ? 'Exchange paused or cancelled' : `Exchange progress: ${steps[active]?.label || status}`}>
     {steps.map((step, index) => {
       const complete = !stopped && (index < active || finished);
       const current = !stopped && index === active;

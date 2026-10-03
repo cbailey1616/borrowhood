@@ -96,6 +96,7 @@ router.get('/', authenticate, async (req, res) => {
         condition: l.condition,
         isFree: l.is_free,
       directFee: l.direct_fee || null,
+      publicPreviewEnabled: l.public_preview_enabled === true,
         pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
         depositAmount: parseFloat(l.deposit_amount),
         minDuration: l.min_duration,
@@ -165,6 +166,7 @@ router.get('/mine', authenticate, async (req, res) => {
       categoryId: l.category_id,
       isFree: l.is_free,
       directFee: l.direct_fee || null,
+      publicPreviewEnabled: l.public_preview_enabled === true,
       listingType: l.listing_type || 'lend',
       pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
       depositAmount: parseFloat(l.deposit_amount),
@@ -269,6 +271,7 @@ router.get('/:id', authenticate, async (req, res) => {
       condition: l.condition,
       isFree: l.is_free,
       directFee: l.direct_fee || null,
+      publicPreviewEnabled: l.public_preview_enabled === true,
       listingType: l.listing_type || 'lend',
       pricePerDay: l.price_per_day ? parseFloat(l.price_per_day) : null,
       depositAmount: parseFloat(l.deposit_amount),
@@ -371,6 +374,7 @@ router.post('/', authenticate, freeListingOnly,
   body('maxDuration').optional().isInt({ min: 1, max: 365 }),
   body('visibility').optional().isArray({ min: 1 }),
   body('visibility.*').isIn(['private', 'close_friends', 'neighborhood', 'circle', 'town']),
+  body('publicPreviewEnabled').optional().isBoolean(),
   body('circleId').optional({ nullable: true }).isUUID(),
   body('requestMatchId').optional({ nullable: true }).isUUID(),
   body('photos').isArray({ min: 1, max: 10 }),
@@ -462,6 +466,9 @@ router.post('/', authenticate, freeListingOnly,
         if (req.body.townPreviewEnabled === true && visibilityArray.includes('town')) {
           await client.query('UPDATE listings SET town_preview_enabled=true WHERE id=$1', [listingId]);
         }
+        if (req.body.publicPreviewEnabled === true && visibilityArray.includes('town') && !requestMatchId) {
+          await client.query('UPDATE listings SET public_preview_enabled=true WHERE id=$1', [listingId]);
+        }
 
         // Add photos (if any)
         if (photos && photos.length > 0) {
@@ -540,6 +547,9 @@ router.patch('/:id', authenticate, freeListingOnly,
         try { req.body.directFee = normalizeDirectFee(req.body.directFee, listing.rows[0].listing_type); }
         catch (error) { return res.status(400).json({ error: error.message }); }
       }
+      if (req.body.publicPreviewEnabled !== undefined && typeof req.body.publicPreviewEnabled !== 'boolean') {
+        return res.status(400).json({ error: 'Invalid public preview choice' });
+      }
       const allowedFields = [
         'direct_fee',
         'title', 'description', 'condition', 'category_id', 'is_free', 'price_per_day',
@@ -616,6 +626,8 @@ router.patch('/:id', authenticate, freeListingOnly,
       if (sharing) {
         updates.push('town_preview_enabled = $' + paramIndex++);
         values.push(sharing.scopes.includes('town') && req.body.townPreviewEnabled === true);
+        updates.push('public_preview_enabled = $' + paramIndex++);
+        values.push(sharing.scopes.includes('town') && req.body.publicPreviewEnabled === true);
         updates.push('privacy_version = 1');
         updates.push('circle_id = $' + paramIndex++);
         values.push(sharing.circleId);

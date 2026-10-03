@@ -301,6 +301,9 @@ const createCommunity = (data) =>
 const getListings = (params) =>
   get('/listings', params);
 
+const getPublicListings = (params) => get('/public/listings', params);
+const getPublicListing = id => get(`/public/listings/${id}`);
+
 const getMyListings = () =>
   get('/listings/mine');
 
@@ -929,6 +932,8 @@ export default {
   createCommunity,
   // Listings
   getListings,
+  getPublicListings,
+  getPublicListing,
   getMyListings,
   getListing,
   createListing,

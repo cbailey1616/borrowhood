@@ -1,3 +1,4 @@
+import { exchangeReportSummarySql } from '../services/exchangeReportSummary.js';
 import { lockProjectItem } from '../services/projects.js';
 import { endorsementState, submitEndorsement } from '../services/endorsements.js';
 import { declineBorrow } from '../services/borrowDecline.js';
@@ -318,6 +319,7 @@ router.get('/', authenticate, async (req, res) => {
 
     const result = await query(
       `SELECT t.*,
+              ${exchangeReportSummarySql('$1')},
               l.title as listing_title, l.listing_type, l.direct_fee,
               (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY sort_order LIMIT 1) as photo_url,
               COALESCE(b.display_name, b.first_name) as borrower_first_name,
@@ -339,6 +341,8 @@ router.get('/', authenticate, async (req, res) => {
     res.json(result.rows.map(t => ({
       id: t.id,
       status: t.status,
+      issueReports: t.issue_reports || [],
+      nonReturnClosedAt: t.non_return_closed_at || null,
       listingType: t.listing_type || 'lend',
       directFee: t.direct_fee || null,
       listing: {
@@ -388,6 +392,7 @@ router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await query(
       `SELECT t.*,
+              ${exchangeReportSummarySql('$2')},
               (SELECT COUNT(*) FROM borrow_transactions q
                 WHERE t.status='pending' AND q.listing_id=t.listing_id AND q.status='pending'
                   AND (q.created_at,q.id) < (t.created_at,t.id)) AS queue_ahead,
@@ -430,6 +435,8 @@ router.get('/:id', authenticate, async (req, res) => {
     res.json({
       id: t.id,
       status: t.status,
+      issueReports: t.issue_reports || [],
+      nonReturnClosedAt: t.non_return_closed_at || null,
       listingType: t.listing_type || 'lend',
       directFee: t.direct_fee || null,
       listing: {

@@ -52,6 +52,7 @@ export default function EditListingScreen({ navigation, route }) {
     categoryId: listing.categoryId || null,
     visibility: listing.sharingReviewRequired ? ['private'] : (Array.isArray(listing.visibility) ? listing.visibility : (listing.visibility || 'private').split(',')),
     circleId: listing.circleId || null,
+    publicPreviewEnabled: listing.publicPreviewEnabled === true,
     communityId: listing.communityId || null,
     isFree: listing.isFree ?? true,
     chargeFee: Boolean(listing.directFee),
@@ -222,6 +223,7 @@ export default function EditListingScreen({ navigation, route }) {
         visibility: formData.visibility,
         sharingConfirmed: true,
         townPreviewEnabled: true,
+        publicPreviewEnabled: formData.visibility.includes('town') && formData.publicPreviewEnabled === true,
         directFee,
         giveawayMode: listing.listingType === 'giveaway' ? 'free' : undefined,
         circleId: formData.circleId || undefined,
@@ -404,6 +406,7 @@ export default function EditListingScreen({ navigation, route }) {
         {listing.sharingReviewRequired && <Text maxFontSizeMultiplier={1.4} style={styles.label}>This item is private until you review its audience.</Text>}
 
         <SharingPicker value={formData.visibility} circleId={formData.circleId} listingType={listing.listingType}
+          publicPreviewEnabled={formData.publicPreviewEnabled} onPublicPreviewChange={value => updateField('publicPreviewEnabled',value)}
           neighborhoodAvailable={Boolean(formData.communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}
           onCreateNeighborhood={() => navigation.navigate('JoinCommunity', { create: true, fromPosting: true })}

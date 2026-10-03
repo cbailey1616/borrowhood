@@ -75,6 +75,7 @@ export default function CreateListingScreen({ navigation, route }) {
     categoryId: null,
     visibility: requestMatchId ? ['private'] : ['close_friends'],
     circleId: null,
+    publicPreviewEnabled: false,
     isFree: true,
     chargeFee: false,
     directFeeAmount: '',
@@ -353,6 +354,7 @@ export default function CreateListingScreen({ navigation, route }) {
           visibility: requestMatchId ? ['private'] : data.visibility,
           sharingConfirmed: true,
           townPreviewEnabled: true,
+          publicPreviewEnabled: !requestMatchId && data.visibility.includes('town') && data.publicPreviewEnabled === true,
           directFee,
           circleId: data.circleId || undefined,
           isFree: !ENABLE_PAYMENTS || isGiveaway ? true : data.isFree,
@@ -529,6 +531,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
         {requestMatchId ? <Text style={styles.hint}>Private offer: only this requester can see this item for up to 14 days while their request is open. Your other items stay private.</Text> : (
         <SharingPicker value={formData.visibility} circleId={formData.circleId} listingType={formData.listingType}
+          publicPreviewEnabled={formData.publicPreviewEnabled} onPublicPreviewChange={value => updateField('publicPreviewEnabled',value)}
           friendsAvailable={hasFriends}
           neighborhoodAvailable={Boolean(communityId)}
           onJoinNeighborhood={() => navigation.navigate('JoinCommunity', { fromPosting: true })}

@@ -242,6 +242,40 @@ export async function servePrivatePhoto(req, res) {
   }
 }
 
+// Public images are a distinct, owner-approved surface. Recheck the listing on
+// every request so removing the opt-in or pausing the item revokes the image.
+export async function servePublicPreviewPhoto(req, res, visibleSql) {
+  try {
+    const { rows: [photo] } = await query(`SELECT p.url FROM listings l JOIN users u ON u.id=l.owner_id
+      JOIN listing_photos p ON p.listing_id=l.id
+      WHERE l.id=$1 AND ${visibleSql} ORDER BY p.sort_order LIMIT 1`, [req.params.id]);
+    if (!photo || !managedPhoto(photo.url)) return res.sendStatus(404);
+    const url = new URL(photo.url);
+    res.set('Cache-Control','no-store');
+    if (url.hostname === `${bucket}.s3.${region}.amazonaws.com`) {
+      const key = decodeURIComponent(url.pathname.slice(1));
+      if (!key.startsWith('listings/') || key.includes('..')) return res.sendStatus(404);
+      const object = await s3.send(new GetObjectCommand({ Bucket:bucket, Key:key }),
+        { abortSignal:AbortSignal.timeout(10000) });
+      res.type(object.ContentType || 'image/jpeg');
+      object.Body.on('error', () => res.destroy());
+      res.once('close', () => { if (!res.writableFinished) object.Body.destroy(); });
+      return object.Body.pipe(res);
+    }
+    if (url.origin === new URL(origin()).origin && url.pathname.startsWith('/uploads/')) {
+      const file = path.resolve(localRoot, decodeURIComponent(url.pathname.slice('/uploads/'.length)));
+      if (!file.startsWith(localRoot + path.sep)) return res.sendStatus(404);
+      return res.sendFile(file, { cacheControl:false });
+    }
+    return res.sendStatus(404);
+  } catch (error) {
+    if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) return res.sendStatus(404);
+    logger.error('Public preview photo unavailable', { reason: 'dependency' });
+    if (!res.headersSent) return res.sendStatus(503);
+    res.destroy();
+  }
+}
+
 // Existing local listing URLs must not bypass the authenticated photo route.
 export async function blockPublicListingPhoto(req, res, next) {
   try {

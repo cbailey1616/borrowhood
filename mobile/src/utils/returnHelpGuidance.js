@@ -52,6 +52,7 @@ export function returnHelpGuidance(transaction, now = new Date()) {
   if (transaction.hasDispute || transaction.status === 'disputed' || transaction.status === 'account_deleted') {
     return { ...guidance, icon: 'alert-circle-outline' };
   }
+  if (transaction.status === 'closed_unreturned') return { ...guidance, icon: 'flag-outline' };
   if (isTransfer) return { ...guidance, title: 'No return needed', detail: 'This exchange does not require a return.', icon: 'gift-outline' };
   if (pending) return {
     ...guidance,
