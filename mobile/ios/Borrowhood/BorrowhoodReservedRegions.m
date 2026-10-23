@@ -32,6 +32,8 @@
 - (void)publishRegions {
   if (!self.window || !_onRegionsChange) return;
   NSMutableArray *regions = [NSMutableArray array];
+  // Older SDKs use the ordinary safe area; Duo builds read the reserved regions.
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 270100
   if (@available(iOS 27.1, *)) {
     for (UIViewReservedRegion *region in [self reservedRegionsOfKind:UIViewReservedRegionKind.occlusionRegionKind]) {
       if (!region.active || CGRectIsEmpty(region.frame)) continue;
@@ -40,6 +42,7 @@
         @"width": @(CGRectGetWidth(frame)), @"height": @(CGRectGetHeight(frame))}];
     }
   }
+  #endif
   NSDictionary *payload = @{@"regions": regions, @"width": @(self.bounds.size.width), @"height": @(self.bounds.size.height)};
   if (![_lastPayload isEqualToDictionary:payload]) {
     _lastPayload = payload;

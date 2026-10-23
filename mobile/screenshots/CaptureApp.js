@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import { ReservedRegionsProvider } from '../src/context/ReservedRegionsContext';
 import { AuthProvider } from '../src/context/AuthContext';
 import { ErrorProvider } from '../src/context/ErrorContext';
 import ErrorBoundary from '../src/components/ErrorBoundary';
@@ -103,7 +104,7 @@ export default function CaptureApp() {
   if (!fontsLoaded) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <ErrorBoundary><SafeAreaProvider><AuthProvider>
+      <ErrorBoundary><SafeAreaProvider><ReservedRegionsProvider><AuthProvider>
         <NavigationContainer ref={navigation} theme={theme} onReady={openCapture}>
           <ErrorProvider navigationRef={navigation}>
             {['feedback', 'keyboard', 'keyboard-number', 'refresh-control', 'refresh-remount'].includes(requested) ? <ReviewStack.Navigator screenOptions={{ headerStyle: { backgroundColor: COLORS.background }, headerTintColor: COLORS.primary }}>
@@ -114,7 +115,7 @@ export default function CaptureApp() {
             <StatusBar style="dark" />
           </ErrorProvider>
         </NavigationContainer>
-      </AuthProvider></SafeAreaProvider></ErrorBoundary>
+      </AuthProvider></ReservedRegionsProvider></SafeAreaProvider></ErrorBoundary>
     </GestureHandlerRootView>
   );
 }
