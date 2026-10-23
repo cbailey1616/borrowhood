@@ -125,14 +125,11 @@ it('blocks approvals and pickups of pre-existing requests while restricted',asyn
  await expect(state.db.query("UPDATE borrow_transactions SET status='paid' WHERE id=$1",[waiting])).rejects.toMatchObject({code:'P0001'});
  await expect(state.db.query("UPDATE borrow_transactions SET status='picked_up' WHERE id=$1",[approved])).rejects.toMatchObject({code:'P0001'});
 });
-it('reopens one case after a missed extended deadline with a fresh response window',async()=>{
+it('does not reopen a dismissed report after an extended deadline',async()=>{
  const id=await seed(),r=await reported(id);await review(r,'dismiss');
- expect((await reportNonReturn(id,owner,'Repeated allegation with no new deadline.')).alreadyReported).toBe(true);
+ const before=await report(r);
  await state.db.query('UPDATE borrow_transactions SET requested_end_date=CURRENT_DATE-1 WHERE id=$1',[id]);
- const reopened=await reportNonReturn(id,owner,'The later agreed deadline has also passed.');
- expect(reopened.id).toBe(r);expect(reopened.alreadyReported).toBeUndefined();
- expect((await report(r)).status).toBe('open');expect((await report(r)).response).toBeNull();
+ expect(await reportNonReturn(id,owner,'The later deadline passed.')).toEqual({id:r,alreadyReported:true});
+ expect(await report(r)).toEqual(before);
  expect(await rows('SELECT * FROM return_reports')).toHaveLength(1);
- await expect(review(r)).rejects.toMatchObject({status:409});
- expect((await returnHelp(owner)).reports[0].history).toHaveLength(2);
 });
