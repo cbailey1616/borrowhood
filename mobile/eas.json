@@ -48,6 +48,12 @@
         "buildType": "app-bundle",
         "autoIncrement": "versionCode"
       }
+    },
+    "launch-qa": {
+      "extends": "development",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://127.0.0.1:3101"
+      }
     }
   },
   "submit": {

@@ -1,6 +1,10 @@
 import { query } from '../utils/db.js';
 
 export const WINDOW_PAGES = 10;
+// Use the same clock and microsecond precision as created_at in PostgreSQL.
+// A JavaScript Date can put a just-published post beyond the feed cutoff.
+const snapshotTimestamp = column => `to_char(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+const currentSnapshot = async () => (await query(`SELECT ${snapshotTimestamp('clock_timestamp()')} AS snapshot_at`)).rows[0].snapshot_at;
 export async function ensureFeedWindowSchema() {
   await query(`CREATE TABLE IF NOT EXISTS feed_windows (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE, token UUID NOT NULL,
@@ -17,8 +21,8 @@ export async function ensureFeedWindowSchema() {
 }
 
 export async function loadFeedWindow(userId, token, filterKey, number) {
-  if (!token) return { snapshot_at: new Date().toISOString() };
-  const { rows } = await query(`SELECT * FROM feed_windows WHERE user_id=$1 AND token=$2 AND filter_key=$3
+  if (!token) return { snapshot_at: await currentSnapshot() };
+  const { rows } = await query(`SELECT *, ${snapshotTimestamp('snapshot_at')} AS snapshot_at FROM feed_windows WHERE user_id=$1 AND token=$2 AND filter_key=$3
     AND window_number = ANY($4::int[]) AND created_at > NOW()-INTERVAL '1 day'`,
   [userId,token,filterKey,number ? [number-1,number] : [0]]);
   const stored = rows.find(row => row.window_number === number);
@@ -29,7 +33,7 @@ export async function loadFeedWindow(userId, token, filterKey, number) {
   }
   if (!number) await query(`DELETE FROM feed_windows WHERE user_id=$1 AND token=$2
     AND filter_key=$3 AND created_at<=NOW()-INTERVAL '1 day'`, [userId,token,filterKey]);
-  return { snapshot_at: previous?.snapshot_at || new Date().toISOString(),
+  return { snapshot_at: previous?.snapshot_at || await currentSnapshot(),
     before: previous?.next_cursor, exhausted: previous?.has_more === false,
     ribbon_keys: previous?.request_keys, request_count: previous?.request_count,
     latest_post_at: previous?.latest_post_at };
@@ -43,7 +47,7 @@ export async function saveFeedWindow(userId, token, filterKey, number, value) {
     snapshot_at,item_keys,request_keys,next_cursor,has_more,request_count,latest_post_at)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
     ON CONFLICT(user_id,token,filter_key,window_number) DO UPDATE SET
-      item_keys=feed_windows.item_keys RETURNING *`,
+      item_keys=feed_windows.item_keys RETURNING *, ${snapshotTimestamp('snapshot_at')} AS snapshot_at`,
   [userId,token,filterKey,number,value.snapshot_at,JSON.stringify(value.item_keys),JSON.stringify(value.request_keys),
     JSON.stringify(value.next_cursor),value.has_more,value.request_count,value.latest_post_at]);
   return result.rows[0];

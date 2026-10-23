@@ -5,6 +5,9 @@ export function profileQrSource(link) {
   code.addData(link, 'Byte');
   code.make();
   // Retain a four-module white quiet zone; never put artwork over the code.
-  const svg = code.createSvgTag({ cellSize: 8, margin: 32 });
+  // Explicit SVG units avoid native image decoders treating 100% as 100 units.
+  const size = code.getModuleCount() * 8 + 64;
+  const svg = code.createSvgTag({ cellSize: 8, margin: 32 })
+    .replace('<rect width="100%" height="100%"', `<rect width="${size}" height="${size}"`);
   return { uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` };
 }

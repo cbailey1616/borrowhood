@@ -53,6 +53,7 @@ export default function ActionSheet({
 
   const handleAction = useCallback(
     (action) => {
+      if (action.disabled) return;
       const feedback = action.haptic || (action.destructive ? 'warning' : null);
       if (feedback && haptics[feedback]) haptics[feedback]();
       if (multiSelect) action.onPress?.();
@@ -114,16 +115,18 @@ export default function ActionSheet({
                 {actions.map((action, index) => (
                   <HapticPressable
                     key={index}
+                    disabled={action.disabled}
                     onPress={() => handleAction(action)}
                     haptic={null}
                     scaleDown={action.primary ? 0.97 : 1}
                     pressedBackgroundColor={action.primary || action.destructive ? undefined : COLORS.cardHover}
                     accessibilityRole={options && typeof action.selected === 'boolean' ? 'checkbox' : 'button'}
-                    accessibilityState={options && typeof action.selected === 'boolean' ? { checked: action.selected } : undefined}
+                    accessibilityState={{ ...(options && typeof action.selected === 'boolean' ? { checked: action.selected } : {}), ...(action.disabled ? { disabled: true } : {}) }}
                     testID={action.testID}
                     accessibilityLabel={action.accessibilityLabel || (typeof action.label === 'string' ? action.label : undefined)}
                     style={[
                       styles.actionButton,
+                      action.disabled && { opacity: 0.55 },
                       action.destructive && styles.destructiveButton,
                       action.primary && styles.primaryButton,
                       confirmation && styles.confirmationButton,
