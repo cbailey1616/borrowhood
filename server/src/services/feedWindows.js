@@ -22,18 +22,24 @@ export async function ensureFeedWindowSchema() {
 
 export async function loadFeedWindow(userId, token, filterKey, number) {
   if (!token) return { snapshot_at: await currentSnapshot() };
-  const { rows } = await query(`SELECT *, ${snapshotTimestamp('snapshot_at')} AS snapshot_at FROM feed_windows WHERE user_id=$1 AND token=$2 AND filter_key=$3
-    AND window_number = ANY($4::int[]) AND created_at > NOW()-INTERVAL '1 day'`,
-  [userId,token,filterKey,number ? [number-1,number] : [0]]);
+  // Read the database clock and clean expired sessions in the same round trip.
+  // Keep one clock row even when this is a new session with no saved windows.
+  const { rows } = await query(`WITH expired AS (
+      DELETE FROM feed_windows WHERE user_id=$1 AND token=$2 AND filter_key=$3
+        AND $5::boolean AND created_at<=NOW()-INTERVAL '1 day'
+    ) SELECT w.*, ${snapshotTimestamp('w.snapshot_at')} AS snapshot_at,
+      ${snapshotTimestamp('clock_timestamp()')} AS snapshot_now
+    FROM (SELECT 1) anchor LEFT JOIN feed_windows w
+      ON w.user_id=$1 AND w.token=$2 AND w.filter_key=$3
+      AND w.window_number = ANY($4::int[]) AND w.created_at > NOW()-INTERVAL '1 day'`,
+  [userId,token,filterKey,number ? [number-1,number] : [0],number === 0]);
   const stored = rows.find(row => row.window_number === number);
   if (stored) return stored;
   const previous = rows.find(row => row.window_number === number-1);
   if (number && !previous) {
     const error = new Error('Refresh the feed to continue.'); error.status = 409; throw error;
   }
-  if (!number) await query(`DELETE FROM feed_windows WHERE user_id=$1 AND token=$2
-    AND filter_key=$3 AND created_at<=NOW()-INTERVAL '1 day'`, [userId,token,filterKey]);
-  return { snapshot_at: previous?.snapshot_at || await currentSnapshot(),
+  return { snapshot_at: previous?.snapshot_at || rows[0].snapshot_now,
     before: previous?.next_cursor, exhausted: previous?.has_more === false,
     ribbon_keys: previous?.request_keys, request_count: previous?.request_count,
     latest_post_at: previous?.latest_post_at };

@@ -80,7 +80,7 @@ afterAll(async()=>{
 it.each([10,25,50,100])('handles a burst of %i concurrent synthetic clients',async clients=>{
   const samples=[],errors=[],byRoute={};
   const started=performance.now();
-  await Promise.all(Array.from({length:clients},async(_,n)=>{
+  const outcomes = await Promise.allSettled(Array.from({length:clients},async(_,n)=>{
     const session=randomUUID();
     const paths=[`/feed?layout=sections&session=${session}`,
       `/feed?layout=sections&session=${session}&page=2`,
@@ -94,7 +94,7 @@ it.each([10,25,50,100])('handles a burst of %i concurrent synthetic clients',asy
       const route=path.includes('summary=true')?'feed summary':path.includes('page=2')?'feed next page':path.startsWith('/feed')?'feed first page':path.startsWith('/messages')?'chat':'notifications';
       (byRoute[route]||=[]).push(duration);
       if(res.status!==200)errors.push({path:path.split('?')[0],status:res.status});
-      if(path.startsWith('/feed?layout'))expect(res.body.items?.length).toBeLessThanOrEqual(20);
+      if(res.status===200&&path.startsWith('/feed?layout'))expect(res.body.items?.length).toBeLessThanOrEqual(20);
     }
   }));
   samples.sort((a,b)=>a-b);
@@ -104,6 +104,7 @@ it.each([10,25,50,100])('handles a burst of %i concurrent synthetic clients',asy
       values.sort((a,b)=>a-b);return [route,{requests:values.length,medianMs:Math.round(values[Math.floor(values.length*.5)]),p95Ms:Math.round(values[Math.floor(values.length*.95)])}];
     }))};
   report.runs.push(row);console.log(JSON.stringify(row));
+  expect(outcomes.filter(result=>result.status==='rejected')).toEqual([]);
   expect(errors).toEqual([]);expect(state.maxFeedRows).toBeLessThanOrEqual(201);
 });
 it('persists simultaneous message retries once and queues one delivery per message',async()=>{
