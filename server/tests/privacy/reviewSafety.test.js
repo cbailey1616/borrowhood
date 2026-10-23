@@ -193,3 +193,32 @@ it('upgrades existing reactions without losing data and can rerun safely',async(
   expect((await db.query('SELECT * FROM discussion_votes')).rows).toHaveLength(0);
  } finally {await db.close();}
 });
+
+it('records one report across repeated and simultaneous submissions and keeps it after review',async()=>{
+ const freshViewer=randomUUID();await state.db.query('INSERT INTO users(id) VALUES($1)',[freshViewer]);
+ const path=`/safety/content/listing/${item}/report`;
+ expect((await call('get',path,freshViewer)).body).toEqual({submitted:false});
+ const results=await Promise.all([call('post',path,freshViewer).send({reason:'Harassment'}),call('post',path,freshViewer).send({reason:'Unsafe behavior'})]);
+ expect(results.map(r=>r.status)).toEqual([200,200]);
+ expect((await state.db.query('SELECT * FROM safety_reports')).rows).toHaveLength(1);
+ expect((await call('get',path,freshViewer)).body).toEqual({submitted:true});
+ await state.db.query("UPDATE safety_reports SET status='dismissed'");
+ await call('post',path,freshViewer).send({reason:'Harassment'}).expect(200);
+ expect((await state.db.query('SELECT * FROM safety_reports')).rows).toHaveLength(1);
+ expect((await call('get',path,blocked)).body).toEqual({submitted:false});
+ await call('post',path,blocked).send({reason:'Harassment'}).expect(200);
+ expect((await state.db.query('SELECT * FROM safety_reports')).rows).toHaveLength(2);
+});
+it('backfills existing duplicate reports without deleting evidence',async()=>{
+ await state.db.query(`INSERT INTO safety_reports(reporter_id,reported_id,reason,content_type,content_id) VALUES
+ ($1,$2,'Harassment','listing',$3),($1,$2,'Unsafe behavior','listing',$3)`,[viewer,owner,item]);
+ await ensureSafetyReviewSchema();await ensureSafetyReviewSchema();
+ expect((await state.db.query('SELECT * FROM content_report_submissions')).rows).toHaveLength(1);
+ expect((await state.db.query('SELECT * FROM safety_reports')).rows).toHaveLength(2);
+ expect((await call('get',`/safety/content/listing/${item}/report`)).body).toEqual({submitted:true});
+});
+it('does not expose report status for inaccessible content or another reporter',async()=>{
+ await state.db.query("UPDATE listings SET visibility='private'");
+ await call('get',`/safety/content/listing/${item}/report`).expect(404);
+ await request(app).get(`/safety/content/listing/${item}/report`).expect(401);
+});

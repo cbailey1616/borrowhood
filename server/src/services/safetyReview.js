@@ -29,6 +29,17 @@ export async function ensureSafetyReviewSchema() {
     await db.query('ALTER TABLE safety_review_actions DROP CONSTRAINT IF EXISTS safety_review_actions_action_check');
     await db.query(`ALTER TABLE safety_review_actions ADD CONSTRAINT safety_review_actions_action_check
       CHECK (action IN ('dismiss','reopen','suspend','restore','remove_content'))`);
+    // Keep a durable, race-safe receipt without deleting historical reports.
+    await db.query(`CREATE TABLE IF NOT EXISTS content_report_submissions (
+      reporter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content_type TEXT NOT NULL, content_id UUID NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(reporter_id,content_type,content_id))`);
+    await db.query(`INSERT INTO content_report_submissions(reporter_id,content_type,content_id,created_at)
+      SELECT reporter_id,content_type,content_id,MIN(created_at) FROM safety_reports
+      WHERE reporter_id IS NOT NULL AND content_id IS NOT NULL
+        AND content_type IN ('listing','request','discussion','community_message','message')
+      GROUP BY reporter_id,content_type,content_id ON CONFLICT DO NOTHING`);
     await db.query('ALTER TABLE IF EXISTS listings ADD COLUMN IF NOT EXISTS moderation_removed_at TIMESTAMPTZ');
     await db.query('ALTER TABLE IF EXISTS item_requests ADD COLUMN IF NOT EXISTS moderation_removed_at TIMESTAMPTZ');
     await db.query('CREATE INDEX IF NOT EXISTS safety_reports_queue_idx ON safety_reports(status, created_at DESC)');

@@ -214,6 +214,7 @@ const completeSocialLinkCode = (provider, token, challengeId, code) =>
 const loginWithApple = (identityToken, fullName, authorizationCode) =>
   post('/auth/apple', { identityToken, fullName, authorizationCode });
 
+const getContentReportStatus = (type, id) => get(`/safety/content/${type}/${id}/report`);
 const reportContent = (type, id, reason) => post(`/safety/content/${type}/${id}/report`, { reason });
 const blockContentAuthor = (type, id) => post(`/safety/content/${type}/${id}/block`, {});
 
@@ -900,6 +901,7 @@ export default {
   loginWithGoogle,
   loginWithApple,
   deleteAccount,
+  getContentReportStatus,
   reportContent,
   blockContentAuthor,
   // Users

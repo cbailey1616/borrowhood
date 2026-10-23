@@ -467,6 +467,7 @@ jest.mock('./src/services/api', () => ({
     getUserSafety: jest.fn().mockResolvedValue({ blocked: false }),
     blockUser: jest.fn().mockResolvedValue({ blocked: true }),
     unblockUser: jest.fn().mockResolvedValue({ blocked: false }),
+    getContentReportStatus: jest.fn().mockResolvedValue({ submitted: false }),
     reportContent: jest.fn().mockResolvedValue({ ok: true }),
     blockContentAuthor: jest.fn().mockResolvedValue({ ok: true }),
     reportUser: jest.fn().mockResolvedValue({ ok: true }),
