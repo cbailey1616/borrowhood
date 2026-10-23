@@ -7,7 +7,7 @@ const avatars = {
   taylor: photo(require('./assets/neighbor-taylor.jpg')),
 };
 const photos = {
-  drill: photo(require('./assets/drill.png')),
+  drill: photo(require('./assets/pressure-washer.jpg')),
   tent: photo(require('./assets/tent.jpg')),
   books: photo(require('./assets/books.jpg')),
   bike: photo(require('./assets/bike.jpg')),
@@ -19,9 +19,9 @@ const jamie = { ...user, id: 'demo-jamie', profilePhotoUrl: avatars.jamie, first
 const sam = { ...user, id: 'demo-sam', profilePhotoUrl: avatars.sam, firstName: 'Sam', lastName: 'Rivera', displayName: 'Sam Rivera', totalTransactions: 8 };
 const taylor = { ...user, id: 'demo-taylor', profilePhotoUrl: avatars.taylor, firstName: 'Taylor', lastName: 'Reed', displayName: 'Taylor Reed', totalTransactions: 27 };
 export const listings = [
-  { id: 'demo-drill', title: 'Cordless drill & bits', description: 'Everything you need for a little weekend project. Happy to lend the drill and full bit set.', categoryId: 'tools', owner: jamie, photoUrl: photos.drill },
+  { id: 'demo-drill', title: 'Pressure washer', description: 'A compact pressure washer for a patio refresh. Hose and spray wand included. Happy to lend it to a neighbor.', categoryId: 'tools', owner: jamie, photoUrl: photos.drill },
   { id: 'demo-books', title: 'A few good reads', description: 'A stack of books ready for a new home. Take one or take them all — free to keep.', categoryId: 'other', owner: taylor, photoUrl: photos.books, listingType: 'giveaway' },
-  { id: 'demo-bike', title: 'Weekend city bike', description: 'A comfortable bike for rides around town. Recently serviced and ready for its next adventure.', categoryId: 'outdoors', owner: sam, photoUrl: photos.bike, listingType: 'sell', isFree: false, directFee: { amount: 60, unit: 'flat', currency: 'USD' } },
+  { id: 'demo-bike', title: 'City bicycle', description: 'A comfortable bike for rides around town. Recently serviced and ready for its next adventure.', categoryId: 'outdoors', owner: sam, photoUrl: photos.bike, listingType: 'sell', isFree: false, directFee: { amount: 85, unit: 'flat', currency: 'USD' } },
   { id: 'demo-tent', title: 'Tent for your next adventure', description: 'Easy to pack, easy to pitch. Borrow it for a weekend under the stars.', categoryId: 'outdoors', owner: user, photoUrl: photos.tent },
   { id: 'demo-plants', title: 'Garden trowel & shears', description: 'A spare trowel and pruning shears. Free to a neighbor with a green thumb.', categoryId: 'garden', owner: user, photoUrl: photos.plants, listingType: 'giveaway' },
 ].map((item, index) => ({ type: 'listing', status: 'active', listingType: 'lend', isFree: true, isAvailable: true, isBorrowed: false, condition: 'good', visibility: 'neighborhood', pricePerDay: 0, timesBorrowed: !item.listingType || item.listingType === 'lend' ? 3 + index : 0, pendingRequests: 0, maxBorrowDays: 14, minBorrowDays: 1, createdAt: new Date(Date.now() - (index + 1) * 3600000).toISOString(), ...item, user: item.owner, ownerId: item.owner.id, photos: [item.photoUrl] }));
@@ -57,15 +57,15 @@ export const reviewExchanges = [
 const messageClock = new Date();
 messageClock.setHours(9, 40, 0, 0);
 export const messages = [
-  { content: 'About item: “Cordless drill & bits”\n\nHi Jamie! Could I borrow this on Saturday?', senderId: user.id, isOwnMessage: true },
-  { content: 'Of course! Saturday morning works. I’ll put the bits in the case too.', senderId: jamie.id, isOwnMessage: false },
+  { content: 'About item: “Pressure washer”\n\nHi Jamie! Could I borrow this on Saturday?', senderId: user.id, isOwnMessage: true },
+  { content: 'Of course! Saturday morning works. The hose and spray wand are included.', senderId: jamie.id, isOwnMessage: false },
   { content: 'Thank you! I can pick it up around 10 and bring it back Sunday.', senderId: user.id, isOwnMessage: true },
   { content: 'That works for me. Happy to help with the project!', senderId: jamie.id, isOwnMessage: false },
   { content: 'Perfect! Also, are your garden chairs still available?', senderId: user.id, isOwnMessage: true },
 ].map((message, index) => ({ id: `demo-message-${index}`, ...message, reactions: [], createdAt: new Date(messageClock.getTime() - (6 - index) * 60000).toISOString() }));
 export const threadReplies = [
-  { id:'demo-reply-1',content:'Could I collect it at 10? I’m putting up shelves.',senderId:user.id,isOwnMessage:true },
-  { id:'demo-reply-2',content:'Absolutely! I’ll leave the drill and bits by the garage.',senderId:jamie.id,isOwnMessage:false },
+  { id:'demo-reply-1',content:'Could I collect it at 10? I’m cleaning the patio.',senderId:user.id,isOwnMessage:true },
+  { id:'demo-reply-2',content:'Absolutely! I’ll leave the pressure washer by the garage.',senderId:jamie.id,isOwnMessage:false },
   { id:'demo-reply-3',content:'Perfect. Thank you for making the project easier!',senderId:user.id,isOwnMessage:true },
 ].map((message,index)=>({...message,parentId:'demo-message-1',reactions:index===1?[{userId:user.id,emoji:'❤️'}]:[],createdAt:new Date(messageClock.getTime()-(3-index)*60000).toISOString()}));
 
@@ -73,7 +73,7 @@ export const threadReplies = [
 export const friends = [jamie, sam, taylor];
 // Offline sample neighborhood for the promotional capture. No live membership.
 export const neighborhood = {
-  id: 'demo-town', name: 'Maplewood', role: 'member', memberCount: 4,
+  id: 'demo-town', name: 'Maplewood Estates', role: 'member', memberCount: 4,
   announcement: 'Have something to share? Post it for your neighbors.',
 };
 export const neighborhoodChatSummary = {
@@ -83,6 +83,20 @@ export const neighborhoodMembers = [user, ...friends].map(member => ({
   ...member, role: member.id === taylor.id ? 'organizer' : 'member',
 }));
 export const comments = [
-  { id: 'demo-comment-1', content: 'Does it come with a masonry bit? Hoping to put up a shelf this weekend.', user: sam, createdAt: new Date(Date.now() - 3600000).toISOString(), replyCount: 2 },
+  { id: 'demo-comment-1', content: 'Does it come with a hose? Hoping to clean the patio this weekend.', user: sam, createdAt: new Date(Date.now() - 3600000).toISOString(), replyCount: 2 },
   { id: 'demo-comment-2', content: 'Borrowed this last week. Made my little project so much easier. Thank you!', user: taylor, createdAt: new Date(Date.now() - 86400000).toISOString(), replyCount: 0 },
 ];
+
+
+// Fictional messages rendered by the current native neighborhood chat UI.
+export const neighborhoodMessages = [
+  { content: 'Anyone have a spare ladder?', member: sam },
+  { content: 'I can pick it up after work.', member: sam },
+  { content: 'I’ve got one you can borrow.', member: user },
+].map(({ member, ...message }, index) => ({
+  id: `demo-neighborhood-message-${index}`, ...message, sequence: index + 1,
+  sender: { id: member.id, name: member.displayName, photoUrl: member.profilePhotoUrl },
+  parentId: null, replyCount: 0, deleted: false,
+  reactions: index === 2 ? [{ userId: sam.id, emoji: '👍' }, { userId: jamie.id, emoji: '👍' }] : [],
+  createdAt: new Date(messageClock.getTime() - (6 - index) * 60000).toISOString(),
+}));

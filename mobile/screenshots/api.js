@@ -1,5 +1,5 @@
 import { seasonalProjects, matchesProjectItem } from '../src/preview/projectIdeas';
-import { friends, comments, user, listings, requests, conversation, messages, threadReplies, reviewExchanges, neighborhood, neighborhoodChatSummary, neighborhoodMembers } from './fixtures';
+import { friends, comments, user, listings, requests, conversation, messages, threadReplies, reviewExchanges, neighborhood, neighborhoodChatSummary, neighborhoodMembers, neighborhoodMessages } from './fixtures';
 import { Settings } from 'react-native';
 const noop = async () => ({});
 let feedback = { canRate: true };
@@ -55,16 +55,20 @@ const dateFromToday = offset => {
   return date.toISOString();
 };
 const requestDetail = {
-  ...photoRequest,
+  ...requests[0],
   id: 'demo-request-detail',
+  title: 'A screen for movie night',
+  description: 'Planning an outdoor movie night. Does anyone have a projector screen we can borrow?',
+  requestType: 'item',
+  user, userId: user.id,
   status: 'open',
   isOwner: false,
   isExpired: false,
-  category: 'Tools & hardware',
+  category: 'Electronics',
   neededFrom: dateFromToday(2),
   neededUntil: dateFromToday(4),
   createdAt: dateFromToday(-2),
-  requester: { ...listings[0].owner, endorsement: { count: 20, percent: 100, score: 95 } },
+  requester: user,
 };
 const ideas = () => seasonalProjects(new Date(), user).sort((a,b)=>b.seasonPriority-a.seasonPriority).map(project=>({...project,items:project.items.map(item=>({...item,matches:listings.filter(listing=>matchesProjectItem(listing.title,item.terms))}))}));
 const plan = () => ({ ...ideas().find(project=>project.id==='diy'), id:'demo-plan', templateId:'diy', name:'A little home refresh', items:ideas().find(project=>project.id==='diy').items.map((item,index)=>({...item,id:`demo-plan-item-${index}`,owned:index===2,
@@ -93,6 +97,9 @@ const api = {
   recordFeedEvents: noop,
   getCategories: async () => [{ id: 'tools', name: 'Tools' }, { id: 'outdoors', name: 'Outdoors' }, { id: 'garden', name: 'Garden' }, { id: 'other', name: 'Other' }],
   getCommunities: async () => [neighborhood],
+  getCommunity: async () => neighborhood,
+  getCommunityChat: async () => ({ messages: [...neighborhoodMessages].reverse(), nextBefore: null, muted: false, role: 'member', readSequence: 3 }),
+  markCommunityChatRead: noop,
   getCommunityChatSummary: async id => id === neighborhood.id ? neighborhoodChatSummary : {},
   getCommunityMembers: async id => id === neighborhood.id ? neighborhoodMembers : [],
   getMyListings: async () => listings.map((item, index) => ({ ...item, owner: user, user, ownerId: user.id,
@@ -124,9 +131,7 @@ const api = {
   getDiscussions: async () => ({ posts: comments, total: comments.length, hasMore: false }),
   getRequestDiscussions: async () => ({ posts: [], total: 0 }),
   getRequest: async id => id === requestDetail.id ? requestDetail : requests.find(item => item.id === id),
-  getRequestOffers: async id => id === requestDetail.id ? [{
-    ...listings[0], id: 'demo-private-offer', title: 'Cordless drill with bits and a spare battery', isOwn: true,
-  }] : [],
+  getRequestOffers: async () => [],
   getBadgeCount: async () => {
     const messages = unreadConversations();
     const notifications = activityNotices().filter(item => !item.isRead).length;
@@ -153,3 +158,4 @@ const api = {
 };
 // The capture bundle cannot import or fall through to the production API.
 export default new Proxy(api, { get: (target, name) => name in target ? target[name] : noop });
+

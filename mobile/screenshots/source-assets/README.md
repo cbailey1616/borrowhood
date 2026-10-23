@@ -26,3 +26,8 @@ her late 30s, curly dark hair, medium-brown skin, oatmeal sweater. Sam: man in
 his early 40s, short black hair, tan skin, olive shirt. Taylor: woman in her
 early 50s, silver-brown hair, fair skin, muted rust shirt. Relaxed smiles,
 consistent natural scale and lighting, everyday neighbors, no logos or labels.
+
+## Fictional pressure-washer listing photo
+
+`pressure-washer.jpg` is original AI-generated sample imagery created on October 23, 2026 with the built-in image-generation tool. It depicts an unbranded compact forest-green and charcoal electric pressure washer on a patio. It is used only by isolated screenshot fixtures and is not a real user listing or inventory photo.
+
