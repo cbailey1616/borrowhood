@@ -95,3 +95,13 @@ it('does not submit after leaving while photos upload',async()=>{
   await act(async()=>resolveUpload(['uploaded-photo']));
   expect(api.reportExchangeIssue).not.toHaveBeenCalled();
 });
+
+it('explains that a repeated issue did not create another report', async () => {
+  api.reportExchangeIssue.mockResolvedValue({ id: 'report', alreadyReported: true });
+  const screen = await open();
+  fireEvent.press(screen.getByLabelText('Item was damaged'));
+  fireEvent.press(screen.getByLabelText('Submit report'));
+  await screen.findByText('Already reported');
+  expect(screen.queryByText('Report submitted')).toBeNull();
+  expect(screen.getByText('You already reported this issue for this exchange. No additional report was created.')).toBeTruthy();
+});
