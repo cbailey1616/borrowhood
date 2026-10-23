@@ -67,15 +67,16 @@ export default function ExchangeIssueScreen({ navigation, route }) {
     try {
       const photoUrls = photos.length ? await api.uploadImages(photos, 'listings') : [];
       if (!current()) return;
-      await api.reportExchangeIssue(id, { reason, detail: detail.trim(), photos: photoUrls });
-      if (current()) setCompleted(true);
+      const result = await api.reportExchangeIssue(id, { reason, detail: detail.trim(), photos: photoUrls });
+      if (current()) setCompleted(result.alreadyReported ? 'existing' : true);
     } catch (e) { if (current()) setError(e.message || 'Could not send your report. Your details are still here. Try again.'); }
     finally { flight.current = false; if (current()) setBusy(false); }
   };
 
   if (completed) return <View style={styles.success}>
     <View style={styles.successIcon}><Ionicons name="checkmark-circle-outline" size={44} color={COLORS.primary} /></View>
-    <Text style={styles.heading}>Report submitted</Text>
+    <Text style={styles.heading}>{completed === 'existing' ? 'Already reported' : 'Report submitted'}</Text>
+    {completed === 'existing' && <Text style={styles.body}>You already reported this issue for this exchange. No additional report was created.</Text>}
     <Text style={styles.body}>{REPORT_NOTICE}</Text>
     <ActionButton label="Done" variant="primary" onPress={() => navigation.goBack()} />
   </View>;
