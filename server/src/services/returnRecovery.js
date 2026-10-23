@@ -73,16 +73,9 @@ export async function reportNonReturn(id, ownerId, detail, photos = []) {
     await lockBorrower(db, t.borrower_id);
     const overdue = (await db.query('SELECT $1::date < CURRENT_DATE AS overdue', [t.requested_end_date])).rows[0].overdue;
     if (!overdue) throw fail(409, 'Wait until the agreed return date has passed, or message your neighbor.');
-    const existing = (await db.query(`SELECT *, reported_due_date < $2::date AS new_deadline FROM return_reports WHERE transaction_id=$1`, [id,t.requested_end_date])).rows[0];
-    if (existing) {
-      if (existing.status!=='dismissed' || !existing.new_deadline) return { id: existing.id, alreadyReported: true };
-      await db.query(`INSERT INTO return_review_actions(report_id,reviewer_id,action,note) VALUES($1,$2,'Previous report',$3)`,
-        [existing.id,ownerId,existing.detail + (existing.response ? '\nBorrower response: '+existing.response : '')]);
-      await db.query(`UPDATE return_reports SET status='open',detail=$2,reported_due_date=$3,created_at=NOW(),response_due_at=NOW()+INTERVAL '48 hours',
-        response=NULL,response_at=NULL,confirmed_at=NULL,resolved_at=NULL,appeal=NULL,appeal_status=NULL,photos=$4,version=version+1 WHERE id=$1`,[existing.id,detail,t.requested_end_date,photos]);
-      await notify(db,t.borrower_id,'return_reported_missing',t,`return-report:${existing.id}:${existing.version+1}`);
-      return {id:existing.id};
-    }
+    const existing = (await db.query('SELECT id FROM return_reports WHERE transaction_id=$1', [id])).rows[0];
+    // One lifetime report per exchange, including dismissed reports and extensions.
+    if (existing) return { id: existing.id, alreadyReported: true };
     const r = (await db.query(`INSERT INTO return_reports(transaction_id,owner_id,borrower_id,detail,reported_due_date,photos)
       VALUES($1,$2,$3,$4,$5,$6) RETURNING id`, [id, ownerId, t.borrower_id, detail,t.requested_end_date,photos])).rows[0];
     await notify(db, t.borrower_id, 'return_reported_missing', t, `return-report:${r.id}`);
