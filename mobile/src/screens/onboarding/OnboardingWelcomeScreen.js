@@ -1,5 +1,5 @@
 import { ScrollView } from 'react-native';
-import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HapticPressable from '../../components/HapticPressable';
 import OnboardingProgress from '../../components/OnboardingProgress';
@@ -67,10 +67,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.xxl,
-  },
-  logo: {
-    width: Dimensions.get('window').width * 0.65,
-    height: Dimensions.get('window').width * 0.65,
   },
   title: {
     ...TYPOGRAPHY.largeTitle,

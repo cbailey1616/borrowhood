@@ -261,12 +261,12 @@ export default function ForgotPasswordScreen({ navigation, route }) {
   const strength = getPasswordStrength(newPassword);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.content}
       >
-        <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} contentContainerStyle={{ paddingBottom: SPACING.xl }}>
+        <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} contentContainerStyle={{ width: '100%', maxWidth: 560, alignSelf: 'center', paddingBottom: SPACING.xl }}>
         <HapticPressable style={styles.backButton} onPress={handleBack} >
           <Text maxFontSizeMultiplier={1.4} style={styles.backButtonText}>{'\u2039'}</Text>
         </HapticPressable>

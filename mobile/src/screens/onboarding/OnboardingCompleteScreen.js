@@ -138,6 +138,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
+    width: '100%', maxWidth: 600, alignSelf: 'center',
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',

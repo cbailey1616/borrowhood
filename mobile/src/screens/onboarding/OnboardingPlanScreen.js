@@ -181,6 +181,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollInner: {
+    width: '100%', maxWidth: 600, alignSelf: 'center',
     padding: SPACING.xl,
   },
   title: {

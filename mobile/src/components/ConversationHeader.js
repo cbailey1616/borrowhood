@@ -1,3 +1,4 @@
+import { useTopReservedSpace } from '../context/ReservedRegionsContext';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,11 +9,12 @@ import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 export default function ConversationHeader({ navigation, person, userId }) {
   const insets = useSafeAreaInsets();
+  const reservedBottom = useTopReservedSpace();
   const name = [person?.firstName, person?.lastName].filter(Boolean).join(' ') || (userId ? 'Neighbor' : 'Messages');
   const openProfile = () => {
     if (userId) navigation.navigate('UserProfile', { id: userId });
   };
-  return <View style={[styles.header, { paddingTop: insets.top, paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}>
+  return <View style={[styles.header, { paddingTop: insets.top, minHeight: reservedBottom, paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}>
     <View style={styles.row}>
       <HapticPressable haptic={null} scaleDown={1} accessibilityLabel="Back" style={styles.back} onPress={() => {
         if (navigation.canGoBack()) navigation.goBack();

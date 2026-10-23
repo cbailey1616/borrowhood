@@ -1,3 +1,4 @@
+import { useTopReservedSpace } from '../context/ReservedRegionsContext';
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet, ActivityIndicator, Keyboard, Platform, useWindowDimensions } from 'react-native';
@@ -32,6 +33,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
   const {user,feedWoodlandScene=0}=useAuth();
   const {showError}=useError();
   const insets=useSafeAreaInsets();
+  const reservedBottom=useTopReservedSpace();
   const tabBarHeight=useContext(BottomTabBarHeightContext) || 0;
   const {width,fontScale}=useWindowDimensions();
   const [adding,setAdding]=useState(false);
@@ -121,6 +123,9 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
   if(!data) return <View style={styles.center}>{error?<><Text style={styles.body}>Couldn’t load your plans.</Text><ActionButton label="Try again" onPress={load}/></>:<ActivityIndicator color={COLORS.spinner}/>}</View>;
   const progress=isPlan?projectProgress(data.items):null;
   const compact = width < 360 || fontScale > 1.2;
+  const gridColumns = width >= 700 && fontScale < 1.5 ? (width >= 1200 ? 3 : 2) : 1;
+  const gridCellWidth = (width - 40 - 16 * (gridColumns - 1)) / gridColumns;
+  const checklistColumns = creating ? 1 : gridColumns;
   const openMatches = item => item.matches.length
     ? setSheet({type:'matches',item})
     : navigation.navigate('CreateRequest',{initialTitle:item.label,projectItemId:item.id});
@@ -128,14 +133,14 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
     <BorrowhoodRefreshScrollView testID="Projects.scroll" style={styles.page} contentContainerStyle={{paddingBottom:Math.max(embedded?tabBarHeight:0,insets.bottom)+24}}
       keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" enableOnAndroid extraScrollHeight={Platform.OS==='ios'?32:16}
       refreshing={refreshing} onRefresh={()=>{setRefreshing(true);load();}}>
-      {!embedded&&<View style={[styles.hero,{height:insets.top+(creating?64:88)}]}>
+      {!embedded&&<View style={[styles.hero,{height:Math.max(reservedBottom,insets.top+(creating?64:88))}]}>
         <FeedWoodlandBackdrop width={width} height={Math.max(creating?136:176,insets.top+(creating?84:130))} topOffset={-32} sceneIndex={feedWoodlandScene}/>
         <HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" accessibilityLabel="Back" style={[styles.back,{top:insets.top+8}]}
           onPress={()=>navigation.canGoBack?.() !== false ? navigation.goBack() : navigation.navigate('Main')}>
           <Icon name="chevron-back" size={24}/>
         </HapticPressable>
       </View>}
-      <View style={styles.content}>
+      <View testID="Projects.content" style={[styles.content, creating && styles.readableContent]}>
         {error&&<ActionButton label="Couldn’t refresh. Try again" onPress={load}/>}
         {!embedded&&<Text accessibilityRole="header" style={styles.title}>{creating?'New plan':isPlan?data.name:'Ideas'}</Text>}
         {!isPlan?<>
@@ -155,13 +160,13 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
               const essentials=idea.items;
               const count=essentials.filter(i=>i.matches.length).length;
               return <HapticPressable pressedBackgroundColor={COLORS.cardHover} key={idea.id} disabled={busy} accessibilityRole="button" accessibilityLabel={`View ${idea.name}`}
-                onPress={()=>{const saved=data[1].find(p=>p.templateId===idea.id);navigation.push('Projects',saved?{id:saved.id}:{templateId:idea.id});}} style={styles.idea}>
+                onPress={()=>{const saved=data[1].find(p=>p.templateId===idea.id);navigation.push('Projects',saved?{id:saved.id}:{templateId:idea.id});}} style={[styles.idea, { width: gridCellWidth }]}>
                 <View style={styles.ideaText}>
                   <Text style={styles.headingText}>{idea.name}</Text>
                   <Text style={styles.body}>{idea.description}</Text>
                   {!!count&&<Text style={styles.hint}>{count} of {essentials.length} items nearby</Text>}
                 </View>
-                <ProjectIllustration projectId={idea.id} width={compact?96:120} height={116}/>
+                <ProjectIllustration projectId={idea.id} width={compact || gridCellWidth < 380 ? 96 : 120} height={116}/>
                 <Icon name="chevron-forward" size={16}/>
               </HapticPressable>;
             })}
@@ -180,11 +185,11 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
             </View>
             </>}
           </View>
-          <View style={styles.checklist}>
+          <View style={[styles.checklist, checklistColumns > 1 && styles.checklistGrid]}>
             {data.items.map(item=> {
               const state=projectItemState(item);
               const hasExchange=!!item.transactionId;
-              return <PlanSwipeRow key={item.id} label={item.label} backgroundColor={creating?COLORS.surface:COLORS.background} disabled={busy||editedItem===item.id} onRemove={()=>requestRemoveItem(item)}><View style={styles.item}>
+              return <View key={item.id} style={{ width: checklistColumns > 1 ? gridCellWidth : '100%' }}><PlanSwipeRow label={item.label} backgroundColor={creating?COLORS.surface:COLORS.background} disabled={busy||editedItem===item.id} onRemove={()=>requestRemoveItem(item)}><View style={styles.item}>
                 {editedItem===item.id?<View style={styles.itemEditor}>
                   <Text maxFontSizeMultiplier={1.4} style={styles.label}>Item name</Text>
                   <TextInput accessibilityLabel="Checklist item name" value={editedLabel} onChangeText={setEditedLabel} maxLength={60} autoFocus style={styles.input}/>
@@ -221,7 +226,7 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
                 {!editing&&state.ended&&<HapticPressable pressedBackgroundColor={COLORS.cardHover} disabled={busy} accessibilityRole="button" style={styles.retryItem}
                   onPress={()=>mutate(()=>api.resetProjectItem(id,item.id))}><Text style={styles.textLink}>Find another</Text></HapticPressable>}
                 </>}
-              </View></PlanSwipeRow>;
+              </View></PlanSwipeRow></View>;
             })}
           </View>
           {!creating&&!adding?<ActionButton label="Add item" icon="add" style={styles.addButton} onPress={()=>setAdding(true)}/>:<View style={creating?styles.builderAdd:styles.summary}>
@@ -245,7 +250,8 @@ const styles=StyleSheet.create({
   page:{flex:1,backgroundColor:COLORS.background},
   hero:{overflow:'hidden',backgroundColor:COLORS.background},
   back:{position:'absolute',left:20,width:44,height:44,borderRadius:14,backgroundColor:COLORS.surface,alignItems:'center',justifyContent:'center'},
-  content:{paddingHorizontal:20,paddingTop:16,gap:16,maxWidth:700,width:'100%',alignSelf:'center'},
+  content:{paddingHorizontal:20,paddingTop:16,gap:16,width:'100%',alignSelf:'center'},
+  readableContent:{maxWidth:760},
   center:{flex:1,backgroundColor:COLORS.background,alignItems:'center',justifyContent:'center',gap:16},
   title:{fontSize:TYPOGRAPHY.h1.fontSize,lineHeight:36,fontFamily:'DMSans_600SemiBold',fontWeight:'600',letterSpacing:-0.7,color:COLORS.text},
   subtitle:{...TYPOGRAPHY.body,color:COLORS.textSecondary,marginTop:-8,marginBottom:6},
@@ -254,7 +260,8 @@ const styles=StyleSheet.create({
   label:{fontSize:TYPOGRAPHY.headline.fontSize,lineHeight:22,fontFamily:'DMSans_500Medium',fontWeight:'500',color:COLORS.text},
   body:{...TYPOGRAPHY.subheadline,color:COLORS.textSecondary,lineHeight:21},
   hint:{...TYPOGRAPHY.footnote,color:COLORS.textSecondary,lineHeight:18},
-  ideas:{gap:14},
+  ideas:{gap:16,flexDirection:'row',flexWrap:'wrap',alignItems:'stretch'},
+  checklistGrid:{flexDirection:'row',flexWrap:'wrap',alignItems:'flex-start',gap:16},
   idea:{ ...CARD_SURFACE,paddingVertical:14,paddingHorizontal:16,borderRadius:22,backgroundColor:COLORS.surface,flexDirection:'row',gap:6,alignItems:'center',minHeight:148,borderWidth:1,borderColor:COLORS.border},
   ideaText:{flex:1,gap:7},
   editControl:{flexDirection:'row',alignItems:'center',gap:5,minHeight:44,justifyContent:'center',paddingHorizontal:6},

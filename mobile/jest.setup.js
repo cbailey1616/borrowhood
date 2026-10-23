@@ -255,7 +255,6 @@ jest.mock('@expo/vector-icons', () => {
 jest.mock('react-native-gesture-handler', () => {
   const View = require('react-native').View;
   return {
-    Swipeable: View,
     DrawerLayout: View,
     State: {},
     ScrollView: require('react-native').ScrollView,
@@ -467,6 +466,7 @@ jest.mock('./src/services/api', () => ({
     getUserSafety: jest.fn().mockResolvedValue({ blocked: false }),
     blockUser: jest.fn().mockResolvedValue({ blocked: true }),
     unblockUser: jest.fn().mockResolvedValue({ blocked: false }),
+    getContentReportStatus: jest.fn().mockResolvedValue({ submitted: false }),
     reportContent: jest.fn().mockResolvedValue({ ok: true }),
     blockContentAuthor: jest.fn().mockResolvedValue({ ok: true }),
     reportUser: jest.fn().mockResolvedValue({ ok: true }),
@@ -630,3 +630,6 @@ jest.mock('./src/hooks/useBiometrics', () =>
     refreshBiometrics: jest.fn(),
   }))
 );
+
+// Gesture Handler 3 exposes swipe rows through its dedicated entry point.
+jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => require('react-native').View);

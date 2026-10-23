@@ -12,7 +12,7 @@ vi.mock('../../src/utils/db.js', () => ({ query: async (...args) => {
   return result;
 } }));
 import feed from '../../src/routes/feed.js';
-import { ensureFeedWindowSchema, cleanupFeedHistory } from '../../src/services/feedWindows.js';
+import { ensureFeedWindowSchema, cleanupFeedHistory, loadFeedWindow, saveFeedWindow } from '../../src/services/feedWindows.js';
 const owner=randomUUID(),viewer=randomUUID();
 const app=express();app.use(express.json());app.use('/feed',feed);
 let token;
@@ -133,4 +133,18 @@ it('cleans expired ranking data while retaining current snapshots and recent cli
   expect((await state.db.query('SELECT item_id FROM feed_events WHERE user_id=$1',[viewer])).rows).toEqual([{item_id:recent}]);
   expect((await state.db.query('SELECT token FROM feed_sessions')).rows).toHaveLength(0);
   expect((await state.db.query('SELECT token FROM feed_windows WHERE token=$1',[session])).rows).toHaveLength(1);
+});
+
+it('preserves microseconds when persisting and reusing a feed snapshot',async()=>{
+  const filter='clock-regression', session=randomUUID();
+  {
+    const snapshot=await loadFeedWindow(viewer,session,filter,0);
+    expect(snapshot.snapshot_at).toMatch(/\.\d{6}Z$/);
+    const exact='2026-10-23T12:34:56.123456Z';
+    await saveFeedWindow(viewer,session,filter,0,{snapshot_at:exact,item_keys:[],request_keys:[],next_cursor:null,has_more:true,request_count:0});
+    const stored=await loadFeedWindow(viewer,session,filter,0);
+    expect(stored.snapshot_at).toBe(exact);
+    const next=await loadFeedWindow(viewer,session,filter,1);
+    expect(next.snapshot_at).toBe(exact);
+  }
 });

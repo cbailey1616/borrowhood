@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   Platform,
   ScrollView,
 } from 'react-native';
@@ -28,7 +27,6 @@ import useReduceMotion from '../hooks/useReduceMotion';
 
 const ErrorContext = createContext(null);
 
-const { width } = Dimensions.get('window');
 
 // Error type configurations
 const ERROR_CONFIGS = {

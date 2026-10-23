@@ -1,3 +1,4 @@
+import { useTopReservedSpace } from '../context/ReservedRegionsContext';
 import { View, Text, StyleSheet, ScrollView, Pressable, useWindowDimensions } from 'react-native';
 import Animated, { SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,12 +13,13 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew = false }) {
   const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
+  const reservedBottom = useTopReservedSpace();
   const { height } = useWindowDimensions();
   return <PopupLayer visible={isVisible} onRequestClose={onClose}>
     <View style={styles.container} onAccessibilityEscape={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessible={false} />
       <Animated.View entering={reduceMotion ? undefined : SlideInDown.duration(200)} accessibilityViewIsModal
-        style={[styles.sheet, { maxHeight: height - insets.top - SPACING.md, paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+        style={[styles.sheet, { maxHeight: height - Math.max(insets.top, reservedBottom) - SPACING.md, paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
         <SheetDismissArea onDismiss={onClose}>
         <View style={styles.handle} />
         <View style={styles.header}>

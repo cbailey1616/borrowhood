@@ -1,5 +1,6 @@
+import * as idleTasks from '../../src/utils/runWhenIdle';
 import React from 'react';
-import { AppState, FlatList, InteractionManager, RefreshControl, StyleSheet } from 'react-native';
+import { AppState, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Crypto from 'expo-crypto';
 import { COLORS } from '../../src/utils/config';
@@ -641,7 +642,7 @@ it('does not expand and collapse the empty feed ribbon during refresh', async ()
 
 it('keeps loaded pages, request cards, ranking session, and scroll position when returning from a post', async () => {
   const scroll = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => {});
-  const interact = jest.spyOn(InteractionManager, 'runAfterInteractions').mockImplementation(callback => {
+  const interact = jest.spyOn(idleTasks, 'runWhenIdle').mockImplementation(callback => {
     callback();
     return { cancel: jest.fn() };
   });

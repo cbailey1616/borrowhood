@@ -1,3 +1,4 @@
+import { useTopReservedSpace } from '../context/ReservedRegionsContext';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,13 +8,14 @@ import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 export default function BackHeader({ navigation, title, fallbackTab = 'Feed', fallbackRoute = 'Main', rightElement }) {
   const insets = useSafeAreaInsets();
+  const reservedBottom = useTopReservedSpace();
   const goBack = () => {
     if (navigation.canGoBack()) navigation.goBack();
     else navigation.replace(fallbackRoute, fallbackRoute === 'Main' ? { screen: fallbackTab } : undefined);
   };
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top }]}>
+    <View style={[styles.header, { paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg), paddingTop: insets.top, minHeight: reservedBottom }]}>
       <View style={styles.row}>
         <HapticPressable accessibilityLabel="Back" onPress={goBack} hitSlop={8} style={styles.back}>
           <Ionicons name="chevron-back" size={26} color={COLORS.primary} />

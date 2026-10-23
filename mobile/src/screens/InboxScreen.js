@@ -1,3 +1,7 @@
+import { useContentDimensions } from '../context/MainViewportContext';
+import { useContext } from 'react';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
+import { runWhenIdle } from '../utils/runWhenIdle';
 import NotificationIcon from '../components/NotificationIcon';
 import { listingIcon } from '../utils/listingPresentation';
 import ShimmerImage from '../components/ShimmerImage';
@@ -12,7 +16,6 @@ import {
   Text,
   StyleSheet,
   Image,
-  InteractionManager,
   Linking,
   Platform,
   ActivityIndicator, } from 'react-native';
@@ -43,6 +46,11 @@ const HIDDEN_ACTIVITY_TYPES = new Set(['item_match', 'new_message', 'new_rating'
 const visibleActivity = item => !HIDDEN_ACTIVITY_TYPES.has(item.type);
 
 export default function InboxScreen({ navigation, route, onRead }) {
+  const { width, fontScale } = useContentDimensions();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) || 0;
+  const columns = width >= 700 && fontScale < 1.5 ? 2 : 1;
+  const cellWidth = (width - SPACING.lg * 2 - SPACING.lg * (columns - 1)) / columns;
+  const renderCell = render => info => <View style={columns > 1 ? { width: cellWidth } : undefined}>{render(info)}</View>;
   const { user } = useAuth();
   const { showToast } = useError();
   const [activeTab, setActiveTab] = useState(route?.params?.tab === 'messages' ? 0 : 1);
@@ -153,7 +161,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
 
   useFocusEffect(
     useCallback(() => {
-      const task = InteractionManager.runAfterInteractions(() => {
+      const task = runWhenIdle(() => {
         fetchData();
         checkNotifPermission();
         onRead?.();
@@ -391,9 +399,13 @@ export default function InboxScreen({ navigation, route, onRead }) {
       ) : activeTab === 1 ? (
         <BorrowhoodRefreshList
           data={unreadOnly ? notifications.filter(item => !item.isRead) : notifications}
-          renderItem={renderNotification}
+          testID="Inbox.list"
+          key={`activity-${columns}`}
+          numColumns={columns}
+          columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
+          renderItem={renderCell(renderNotification)}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + SPACING.lg }]}
           refreshing={isRefreshing}
           onRefresh={onRefresh}
           ListHeaderComponent={
@@ -435,9 +447,13 @@ export default function InboxScreen({ navigation, route, onRead }) {
       ) : (
         <BorrowhoodRefreshList
           data={unreadOnly ? conversations.filter(item => item.unreadCount > 0) : conversations}
-          renderItem={renderConversation}
+          testID="Inbox.list"
+          key={`messages-${columns}`}
+          numColumns={columns}
+          columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
+          renderItem={renderCell(renderConversation)}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + SPACING.lg }]}
           refreshing={isRefreshing}
           onRefresh={onRefresh}
           ListHeaderComponent={loadError.messages ? renderRetry('Couldn’t refresh messages.') : null}

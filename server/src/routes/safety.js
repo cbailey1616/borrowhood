@@ -1,12 +1,24 @@
 import { resolveReportContent } from '../services/contentReports.js';
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { query } from '../utils/db.js';
+import { query, withTransaction } from '../utils/db.js';
 import rateLimit from 'express-rate-limit';
 const router = Router();
 router.use(authenticate);
 const reportLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false,
   keyGenerator: req => req.user.id, message: { error: 'Please try again later or contact chris@borrowhood.net.' } });
+router.get('/content/:type/:id/report', async (req, res) => {
+  const { type, id } = req.params;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+    || !['listing','request','discussion','community_message','message'].includes(type)) {
+    return res.status(400).json({ error: 'Choose valid content.' });
+  }
+  try {
+    await resolveReportContent(type, id, req.user.id);
+    const result = await query('SELECT 1 FROM content_report_submissions WHERE reporter_id=$1 AND content_type=$2 AND content_id=$3', [req.user.id,type,id]);
+    res.json({ submitted: result.rows.length > 0 });
+  } catch (error) { res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not check report status. Please try again.' }); }
+});
 router.post('/content/:type/:id/:action', reportLimit, async (req, res) => {
   const { type, id, action } = req.params;
   const reasons = ['Scam or fraud','Harassment','Unsafe behavior','Inappropriate content'];
@@ -20,9 +32,14 @@ router.post('/content/:type/:id/:action', reportLimit, async (req, res) => {
     if (action === 'block') {
       await query('INSERT INTO user_blocks(user_id,blocked_id) VALUES($1,$2) ON CONFLICT DO NOTHING', [req.user.id,item.author]);
     } else {
-      await query(`INSERT INTO safety_reports(reporter_id,reported_id,reason,content_type,content_id,content_snapshot)
-        VALUES($1,$2,$3,$4,$5,$6::jsonb)`, [req.user.id,item.author,req.body.reason,type,id,
-        JSON.stringify({ title:item.title, content:item.content, photos:item.photos })]);
+      await withTransaction(async db => {
+        const receipt = await db.query(`INSERT INTO content_report_submissions(reporter_id,content_type,content_id)
+          VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING reporter_id`, [req.user.id,type,id]);
+        if (!receipt.rows.length) return;
+        await db.query(`INSERT INTO safety_reports(reporter_id,reported_id,reason,content_type,content_id,content_snapshot)
+          VALUES($1,$2,$3,$4,$5,$6::jsonb)`, [req.user.id,item.author,req.body.reason,type,id,
+          JSON.stringify({ title:item.title, content:item.content, photos:item.photos })]);
+      });
     }
     res.json({ ok: true });
   } catch (error) { res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not complete that action. Please try again.' }); }

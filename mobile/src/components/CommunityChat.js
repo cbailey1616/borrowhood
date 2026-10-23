@@ -227,7 +227,7 @@ export default function CommunityChat({ community, navigation }) {
     {loading ? <ActivityIndicator style={styles.conversation} color={COLORS.spinner} /> : <FlatList
       ref={list} style={styles.conversation} data={chronologicalMessages} keyExtractor={item => item.id}
       keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive"
-      contentContainerStyle={[styles.messages, !chronologicalMessages.length && styles.emptyMessages, { paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}
+      contentContainerStyle={[styles.messages, !chronologicalMessages.length && styles.emptyMessages, { paddingLeft: SPACING.lg, paddingRight: SPACING.lg }]}
       maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
       onScroll={({ nativeEvent: { contentOffset, contentSize, layoutMeasurement } }) => {
         nearBottom.current = contentSize.height - layoutMeasurement.height - contentOffset.y < 80;
@@ -246,7 +246,7 @@ export default function CommunityChat({ community, navigation }) {
       ListFooterComponentStyle={quiet ? styles.quietFooter : undefined}
       renderItem={renderMessage}
     />}
-    <View testID="CommunityChat.composerDock" style={[styles.dock, { paddingBottom: keyboardVisible ? SPACING.sm : Math.max(insets.bottom, SPACING.lg), paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}>
+    <View testID="CommunityChat.composerDock" style={[styles.dock, { paddingBottom: keyboardVisible ? SPACING.sm : Math.max(insets.bottom, SPACING.lg), paddingLeft: SPACING.lg, paddingRight: SPACING.lg }]}>
       {!!attachment && <View style={styles.attachment}>
         <ShimmerImage source={{ uri: attachment.uri }} style={styles.attachmentPhoto} accessibilityLabel="Selected chat photo" />
         <Text style={styles.attachmentLabel}>Photo selected</Text>

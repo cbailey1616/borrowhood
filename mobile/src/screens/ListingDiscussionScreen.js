@@ -607,7 +607,7 @@ export default function ListingDiscussionScreen({ route, navigation }) {
   return (
     <ComposerKeyboardView
       testID="Comments.keyboardLayout"
-      style={[styles.container,{paddingLeft:insets.left,paddingRight:insets.right}]}
+      style={styles.container}
       onKeyboardVisibilityChange={setKeyboardVisible}
     >
       <View ref={listViewportRef} collapsable={false} style={styles.list}

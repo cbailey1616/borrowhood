@@ -1,5 +1,5 @@
 import 'react-native-get-random-values';
-import { StatusBar } from 'expo-status-bar';
+import { ReservedRegionsProvider } from './src/context/ReservedRegionsContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
@@ -53,6 +53,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: COLORS.background }}>
       <ErrorBoundary>
         <SafeAreaProvider>
+          <ReservedRegionsProvider>
           <AuthProvider navigationRef={navigationRef}>
             <NavigationContainer
               theme={navigationTheme}
@@ -62,10 +63,10 @@ export default function App() {
               <ErrorProvider navigationRef={navigationRef}>
                 <RootNavigator navigationRef={navigationRef} />
                 <ThemedAlertHost />
-                <StatusBar style="dark" />
               </ErrorProvider>
             </NavigationContainer>
           </AuthProvider>
+          </ReservedRegionsProvider>
         </SafeAreaProvider>
       </ErrorBoundary>
     </GestureHandlerRootView>

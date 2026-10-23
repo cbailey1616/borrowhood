@@ -1,3 +1,7 @@
+import { useMemo } from 'react';
+import { useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MainViewportContext } from '../context/MainViewportContext';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { COLORS } from '../utils/config';
 import useInboxBadges, { FeedSeenContext } from '../hooks/useInboxBadges';
@@ -14,12 +18,18 @@ const Tab = createBottomTabNavigator();
 
 export default function MainNavigator() {
   const { user } = useAuth();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  // Use the full window on every display; navigation stays below the content.
+  const viewport = useMemo(() => ({ width, height, insets }),
+    [width, height, insets.top, insets.bottom, insets.left, insets.right]);
   const { badgeCounts, refresh: fetchBadgeCount, hasNewFeed, markFeedSeen } = useInboxBadges(user.id);
 
   return (
     <FeedSeenContext.Provider value={markFeedSeen}>
+    <MainViewportContext.Provider value={viewport}>
     <Tab.Navigator
-      tabBar={(props) => <BlurTabBar {...props} profilePhotoUrl={user?.profilePhotoUrl} unreadCount={badgeCounts.messages + badgeCounts.notifications} hasNewFeed={hasNewFeed} />}
+      tabBar={(props) => <BlurTabBar {...props} windowInsets={insets} profilePhotoUrl={user?.profilePhotoUrl} unreadCount={badgeCounts.messages + badgeCounts.notifications} hasNewFeed={hasNewFeed} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
@@ -56,6 +66,7 @@ export default function MainNavigator() {
         options={{ title: 'Profile' }}
       />
     </Tab.Navigator>
+    </MainViewportContext.Provider>
     </FeedSeenContext.Provider>
   );
 }

@@ -1,10 +1,10 @@
-import React, { useCallback, useContext } from 'react';
+import React, { useContext } from 'react';
 import { BottomTabBarHeightCallbackContext } from '@react-navigation/bottom-tabs';
 import { View, Text, Platform, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from './Icon';
-import { COLORS, TYPOGRAPHY } from '../utils/config';
+import { COLORS, SPACING, TYPOGRAPHY } from '../utils/config';
 import HapticPressable from './HapticPressable';
 import ShimmerImage from './ShimmerImage';
 
@@ -79,13 +79,14 @@ function TabButton({ route, isFocused, onPress, onLongPress, hasUpdate, unreadCo
   );
 }
 
-export default function BlurTabBar({ state, descriptors, navigation, unreadCount = 0, hasNewFeed = false, profilePhotoUrl }) {
-  const insets = useSafeAreaInsets();
+export default function BlurTabBar({ state, descriptors, navigation, unreadCount = 0, hasNewFeed = false, profilePhotoUrl, windowInsets }) {
+  const deviceInsets = useSafeAreaInsets();
+  const insets = windowInsets || deviceInsets;
   const reportHeight = useContext(BottomTabBarHeightCallbackContext);
   const onLayout = event => reportHeight?.(event.nativeEvent.layout.height);
 
   const content = (
-    <View style={[styles.inner, { paddingBottom: insets.bottom || 16 }]}>
+    <View style={[styles.inner, { paddingBottom: insets.bottom || 16, paddingLeft: SPACING.lg, paddingRight: SPACING.lg }]}>
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const isFocused = state.index === index;
@@ -126,7 +127,7 @@ export default function BlurTabBar({ state, descriptors, navigation, unreadCount
 
   if (Platform.OS === 'ios') {
     return (
-      <View style={styles.container} onLayout={onLayout}>
+      <View testID="TabBar.container" style={styles.container} onLayout={onLayout}>
         <View style={styles.separator} />
         <BlurView intensity={80} tint="light" style={styles.blur}>
           <View style={styles.blurOverlay}>{content}</View>
@@ -136,7 +137,7 @@ export default function BlurTabBar({ state, descriptors, navigation, unreadCount
   }
 
   return (
-    <View style={[styles.container, styles.androidFallback]} onLayout={onLayout}>
+    <View testID="TabBar.container" style={[styles.container, styles.androidFallback]} onLayout={onLayout}>
       <View style={styles.separator} />
       {content}
     </View>

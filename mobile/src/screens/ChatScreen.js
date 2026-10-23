@@ -1,3 +1,4 @@
+import { useTopReservedSpace } from '../context/ReservedRegionsContext';
 import useReduceMotion from '../hooks/useReduceMotion';
 import { StatusBar } from 'expo-status-bar';
 import ContentSafetyActions from '../components/ContentSafetyActions';
@@ -46,9 +47,9 @@ import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 export default function ChatScreen(props) {
   const { width, fontScale } = useWindowDimensions();
-  const wide = width >= 900 && fontScale < 1.5;
+  const wide = width >= 820 && fontScale < 1.5;
   return <View style={{ flex: 1, flexDirection: 'row', backgroundColor: COLORS.background }}>
-    {wide && <View style={{ width: 300, borderRightWidth: 1, borderRightColor: COLORS.separator }}>
+    {wide && <View style={{ width: Math.min(300, width * 0.32), borderRightWidth: 1, borderRightColor: COLORS.separator }}>
       <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title2, color: COLORS.primary, padding: SPACING.lg }}>Messages</Text>
       <ConversationsScreen navigation={props.navigation} selectedId={props.route.params?.conversationId}
         onSelect={id => { if (id !== props.route.params?.conversationId) props.navigation.replace('Chat', { conversationId: id }); }} />
@@ -58,6 +59,7 @@ export default function ChatScreen(props) {
 }
 
 function ChatConversation({ route, navigation }) {
+  const reservedBottom = useTopReservedSpace();
   const reduceMotion = useReduceMotion();
   const { conversationId, recipientId, recipient, threadContext, listingId, listing: passedListing } = route.params || {};
   const isFocused = useIsFocused();
@@ -533,7 +535,7 @@ function ChatConversation({ route, navigation }) {
       onKeyboardVisibilityChange={setKeyboardVisible}
     >
       <StatusBar style="dark"/>
-      {safeThreads && activeThreadId && <View style={[styles.threadBar, { paddingTop: insets.top + 8 }]}>
+      {safeThreads && activeThreadId && <View style={[styles.threadBar, { paddingTop: insets.top + 8, minHeight: reservedBottom, paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}>
         <HapticPressable accessibilityLabel="Back to conversation" onPress={closeThread} disabled={isSending || isUploading || !!composer.pending} style={styles.threadBack}>
           <Ionicons name="chevron-back" size={25} color={COLORS.text}/>
         </HapticPressable>
@@ -549,7 +551,7 @@ function ChatConversation({ route, navigation }) {
         data={visibleMessages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.messagesContent, { paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}
+        contentContainerStyle={[styles.messagesContent, { paddingLeft: SPACING.lg, paddingRight: SPACING.lg }]}
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
@@ -598,7 +600,7 @@ function ChatConversation({ route, navigation }) {
           <Ionicons name="close" size={22} color={COLORS.primary} />
         </HapticPressable>
       </View>}
-      <View testID="Chat.composerDock" style={[styles.inputContainer, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, SPACING.lg), paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}>
+      <View testID="Chat.composerDock" style={[styles.inputContainer, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, SPACING.lg), paddingLeft: SPACING.lg, paddingRight: SPACING.lg }]}>
         {!!contextPrefix && !composer.pending && <View testID="Chat.postReference" style={styles.postReference}>
           <HapticPressable style={styles.postReferenceLink} accessibilityLabel={`View ${activeContext.title}`}
             onPress={() => navigation.navigate(activeContext.type === 'request' ? 'RequestDetail' : 'ListingDetail', { id: activeContext.id })}>
@@ -651,7 +653,7 @@ function ChatConversation({ route, navigation }) {
       >
         <Pressable style={styles.fullscreenOverlay} onPress={() => setFullscreenImage(null)}>
           <Image source={{ uri: fullscreenImage }} style={styles.fullscreenImage} resizeMode="contain" />
-          <View style={styles.fullscreenClose}>
+          <View style={[styles.fullscreenClose, { top: Math.max(insets.top, 16), right: Math.max(insets.right, 16) }]}>
             <Ionicons name="close" size={28} color={COLORS.white} />
           </View>
         </Pressable>

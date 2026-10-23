@@ -1,3 +1,6 @@
+import { useTopReservedSpace } from '../context/ReservedRegionsContext';
+import { useContentDimensions as useWindowDimensions, useContentInsets as useSafeAreaInsets } from '../context/MainViewportContext';
+import { runWhenIdle } from '../utils/runWhenIdle';
 import useReduceMotion from '../hooks/useReduceMotion';
 import { listingIcon } from '../utils/listingPresentation';
 import RequestTypeIcon from '../components/RequestTypeIcon';
@@ -10,12 +13,10 @@ import LayeredCard from '../components/LayeredCard';
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useContext } from 'react';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { FeedSeenContext } from '../hooks/useInboxBadges';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { randomUUID } from 'expo-crypto';
 import { Image } from 'expo-image';
 import FeedWoodlandBackdrop from '../components/FeedWoodlandBackdrop';
-import FeedHeaderTextFade from '../components/FeedHeaderTextFade';
 import BorrowhoodRefreshList from '../components/BorrowhoodRefreshList';
 import {
   View,
@@ -26,9 +27,7 @@ import {
   Animated,
   ActivityIndicator,
   AppState,
-  InteractionManager,
   Platform,
-  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '../components/Icon';
 import CategoryIcon from '../components/CategoryIcon';
@@ -89,6 +88,7 @@ export default function FeedScreen({ navigation, route }) {
   const reduceMotion = useReduceMotion();
   const markFeedSeen = useContext(FeedSeenContext);
   const insets = useSafeAreaInsets();
+  const reservedBottom = useTopReservedSpace();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
   const { user, refreshUser, isGracePeriodActive, feedWoodlandScene = 0 } = useAuth();
   const { showToast, showError } = useError();
@@ -96,9 +96,12 @@ export default function FeedScreen({ navigation, route }) {
   const [feed, setFeed] = useState([]);
   const [requestCards, setRequestCards] = useState([]);
   const { width, fontScale } = useWindowDimensions();
-  const columns = width >= 768 && fontScale < 1.5 ? (width >= 1200 ? 3 : 2) : 1;
-  const feedWidth = Math.min(width, columns > 1 ? 1440 : 660);
+  // The list starts below the header's reserved system area and can use the full window.
+  const availableWidth = width;
+  const columns = availableWidth >= 700 && fontScale < 1.5 ? (availableWidth >= 1200 ? 3 : 2) : 1;
+  const feedWidth = availableWidth;
   const tileWidth = (feedWidth - SPACING.lg * 2 - SPACING.lg * (columns - 1)) / columns;
+  const requestTileWidth = columns > 1 ? tileWidth : Math.max(0, Math.min(feedWidth - SPACING.lg * 2, 360));
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [page, setPage] = useState(1);
@@ -106,7 +109,7 @@ export default function FeedScreen({ navigation, route }) {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
-  const feedHeader = useFeedHeader({ pinned: searchFocused || reduceMotion, columns });
+  const feedHeader = useFeedHeader({ pinned: searchFocused || reduceMotion || reservedBottom > 0, columns });
   const [activeFilters, setActiveFilters] = useState([]);
   const consumedBrowse = useRef(route?.params?.browseItems);
   const [neighborhood, setNeighborhood] = useState(route?.params?.neighborhoodItems || null);
@@ -303,7 +306,7 @@ export default function FeedScreen({ navigation, route }) {
       // Returning from a post keeps the loaded pages, ranking session, and
       // scroll position. Only the independent account/exchange notices refresh.
       pending?.cancel?.();
-      pending = InteractionManager.runAfterInteractions(() => {
+      pending = runWhenIdle(() => {
         fetchActiveDisputes();
         fetchBannerData();
       });
@@ -588,9 +591,9 @@ export default function FeedScreen({ navigation, route }) {
         <Text accessibilityRole="header" style={{ ...TYPOGRAPHY.title3,color:COLORS.primary,fontWeight:'600' }}>Neighbors are looking for</Text>
       </View>
       <FlatList horizontal testID="Feed.requests.carousel" data={carouselRequests} keyExtractor={request => request.id}
-        showsHorizontalScrollIndicator={false} snapToInterval={Math.min(width-64,360)+12} decelerationRate="fast"
+        showsHorizontalScrollIndicator={false} snapToInterval={requestTileWidth + 12} decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged} viewabilityConfig={{ itemVisiblePercentThreshold:50,minimumViewTime:800 }}
-        renderItem={({item:request}) => <View style={{ width:Math.min(width-64,360),marginRight:12 }}>{renderRibbonRequest(request)}</View>} />
+        renderItem={({item:request}) => <View style={{ width:requestTileWidth,marginRight:12 }}>{renderRibbonRequest(request)}</View>} />
     </View>;
     if (item.type === 'feed-banners') return renderBanners();
     if (item.type === 'listing-heading') return <View style={{ borderTopWidth:1,borderTopColor:COLORS.borderBrown,paddingTop:SPACING.lg,marginBottom:SPACING.md }}>
@@ -618,13 +621,10 @@ export default function FeedScreen({ navigation, route }) {
     <View style={[styles.container, { paddingBottom: tabBarHeight }]}>
       <View style={styles.feedViewport}>
         <Animated.View testID="Feed.header" onLayout={feedHeader.onLayout}
-          style={[styles.feedHeader, { width: feedWidth, left: (width - feedWidth) / 2 }, feedHeader.style]}>
-          <FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} height={192 + insets.top} topOffset={-28} />
-          <FeedHeaderTextFade width={feedWidth} topOffset={insets.top} />
-          <NativeHeader
-            includeTopInset={false}
+          style={[styles.feedHeader, { width: feedWidth, left: (availableWidth - feedWidth) / 2 }, feedHeader.style]}>
+          <NativeHeader backdrop={<FeedWoodlandBackdrop width={feedWidth} sceneIndex={feedWoodlandScene} />}
             title="Borrowhood"
-            style={[styles.feedHeaderSurface, { paddingTop: insets.top + SPACING.sm }, width < 375 && styles.feedHeaderSurfaceCompact]}
+            style={[styles.feedHeaderSurface, width < 375 && styles.feedHeaderSurfaceCompact]}
             titleStyle={[styles.feedTitle, width < 375 && styles.feedTitleCompact]}
             titleRowStyle={styles.feedTitleRow}
             leftElement={<Image source={require('../../assets/logo.png')} contentFit="contain" transition={0}
@@ -936,7 +936,7 @@ const styles = StyleSheet.create({
   addButtonText: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_500Medium', color: COLORS.surface, fontWeight: '500' },
   feedTitle: { ...TYPOGRAPHY.h1, lineHeight: 36, fontFamily: 'DMSans_700Bold', fontWeight: '700', letterSpacing: 0, color: COLORS.primaryDark },
   feedTitleCompact: { ...TYPOGRAPHY.title2, lineHeight: 32, fontFamily: 'DMSans_600SemiBold', fontWeight: '600' },
-  feedTitleRow: { marginBottom: 44 },
+  feedTitleRow: { marginBottom: SPACING.lg },
   brandMark: { width: 36, height: 36, flexShrink: 0 },
   typeRibbon: { flexGrow: 0, flexShrink: 0 },
   typeRibbonCompact: { marginHorizontal: -SPACING.lg },
@@ -1078,7 +1078,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_500Medium',
   },
   listContent: {
-    paddingHorizontal: SPACING.lg, paddingTop: 0, paddingBottom: SPACING.md, width: '100%', maxWidth: 660, alignSelf: 'center',
+    paddingHorizontal: SPACING.lg, paddingTop: 0, paddingBottom: SPACING.md, width: '100%', alignSelf: 'center',
   },
   gridRow: {
     justifyContent: 'space-between',
