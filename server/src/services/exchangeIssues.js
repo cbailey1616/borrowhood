@@ -25,7 +25,7 @@ export async function reportExchangeIssue(id, reporterId, { reason, detail = '',
       throw fail(409, 'This exchange is no longer awaiting a return. Refresh the exchange.');
     }
     const existing = (await db.query(`SELECT id FROM safety_reports WHERE content_type='exchange'
-      AND content_id=$1 AND reporter_id=$2 AND reason='Item was damaged' AND status!='dismissed'
+      AND content_id=$1 AND reporter_id=$2 AND reason='Item was damaged'
       ORDER BY created_at DESC LIMIT 1`, [id, reporterId])).rows[0];
     if (existing) return { id: existing.id, alreadyReported: true };
     // A borrower can disclose damage to their own borrowed item. Record that
