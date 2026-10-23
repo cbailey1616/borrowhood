@@ -119,3 +119,15 @@ it('exposes authenticated issue reporting with optional details and rejects malf
   expect((await post(id).send({ reason: 'damage', detail: 'x'.repeat(2001) })).status).toBe(400);
   expect((await request(app).post(`/return-help/exchange/${id}/issue`).send({ reason: 'damage' })).status).toBe(401);
 });
+
+it('keeps dismissed damage reports deduplicated without changing the original evidence', async () => {
+  const id = await seed();
+  const first = await reportExchangeIssue(id, owner, { reason: 'damage', detail: 'Original evidence' });
+  await state.db.query("UPDATE safety_reports SET status='dismissed' WHERE id=$1", [first.id]);
+  expect(await reportExchangeIssue(id, owner, { reason: 'damage', detail: 'Repeated claim' })).toEqual({ id: first.id, alreadyReported: true });
+  const saved = await rows('SELECT * FROM safety_reports');
+  expect(saved).toHaveLength(1);
+  expect(saved[0]).toMatchObject({ status: 'dismissed', content_snapshot: { content: 'Original evidence' } });
+  expect(await reportExchangeIssue(await seed(), owner, { reason: 'damage' })).toHaveProperty('id');
+  expect(await rows('SELECT * FROM safety_reports')).toHaveLength(2);
+});
