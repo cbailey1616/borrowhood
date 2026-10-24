@@ -10,7 +10,7 @@ export async function autoCloseReturns() {
   const { rows } = await query(`SELECT id FROM borrow_transactions WHERE ${eligible}
     AND NOT EXISTS (SELECT 1 FROM disputes WHERE transaction_id=borrow_transactions.id)
     AND NOT EXISTS (SELECT 1 FROM return_reports WHERE transaction_id=borrow_transactions.id AND resolved_at IS NULL AND status!='dismissed')
-    AND NOT EXISTS (SELECT 1 FROM safety_reports WHERE content_type='exchange' AND content_id=borrow_transactions.id AND status!='dismissed')
+    AND NOT EXISTS (SELECT 1 FROM safety_reports WHERE content_type='exchange' AND content_id=borrow_transactions.id AND status='open')
     ORDER BY return_requested_at LIMIT 100`);
   for (const candidate of rows) {
     try {
@@ -22,13 +22,13 @@ export async function autoCloseReturns() {
         if (!listing || ['giveaway','sell'].includes(listing.listing_type)) return;
         const { rows: [issue] } = await runQuery(`SELECT 1 WHERE EXISTS (SELECT 1 FROM disputes WHERE transaction_id=$1)
           OR EXISTS (SELECT 1 FROM return_reports WHERE transaction_id=$1 AND resolved_at IS NULL AND status!='dismissed')
-          OR EXISTS (SELECT 1 FROM safety_reports WHERE content_type='exchange' AND content_id=$1 AND status!='dismissed')`, [borrow.id]);
+          OR EXISTS (SELECT 1 FROM safety_reports WHERE content_type='exchange' AND content_id=$1 AND status='open')`, [borrow.id]);
         if (issue) return;
         await runQuery(`UPDATE borrow_transactions SET status='completed', actual_return_at=return_requested_at,
           return_auto_closed_at=NOW(), payment_status='none' WHERE id=$1`, [borrow.id]);
         await runQuery(`UPDATE listings l SET times_borrowed=COALESCE(times_borrowed,0)+1,
           is_available=CASE WHEN l.status='active' AND NOT EXISTS (SELECT 1 FROM borrow_transactions bt
-            WHERE bt.listing_id=l.id AND bt.status IN ('approved','paid','picked_up','return_pending'))
+            WHERE bt.listing_id=l.id AND bt.status IN ('approved','paid','picked_up','return_pending','closed_not_returned'))
             THEN true ELSE l.is_available END WHERE l.id=$1`, [borrow.listing_id]);
         for (const recipient of new Set([borrow.borrower_id, borrow.lender_id])) {
           const saved = await sendNotification(recipient, 'return_confirmed', { transactionId: borrow.id,

@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import { body, param, query as checkQuery, validationResult } from 'express-validator';
-import { reportNonReturn, extendReturn, returnHelp, respondReturnReport, reviewReturnReport } from '../services/returnRecovery.js';
-import { reportExchangeIssue } from '../services/exchangeIssues.js';
+import { reportNonReturn, extendReturn, returnHelp, respondReturnReport, reviewReturnReport, followUpReturnReport } from '../services/returnRecovery.js';
+import { reportExchangeIssue, exchangeIssueStatus } from '../services/exchangeIssues.js';
 import rateLimit from 'express-rate-limit';
 const router=Router();
 router.use(authenticate);
@@ -15,6 +15,8 @@ const run=(fn,validationError='Check your details. Notes must be 10–2,000 char
 };
 router.get('/',checkQuery('transactionId').optional().isUUID(),checkQuery('page').optional().isInt({min:1,max:10000}),run(req=>returnHelp(req.user.id,false,Number(req.query.page)||1,req.query.transactionId)));
 router.get('/admin',requireAdmin,checkQuery('page').optional().isInt({min:1,max:10000}),checkQuery('reportId').optional().isUUID(),run(req=>returnHelp(req.user.id,true,Math.max(1,Math.min(10000,Number(req.query.page)||1)),null,req.query.reportId)));
+router.get('/exchange/:id/issue-status',id,run(req=>exchangeIssueStatus(req.params.id,req.user.id)));
+router.post('/:id/follow-up',id,text('text'),version,run(req=>followUpReturnReport(req.params.id,req.user.id,req.body.text,req.body.version)));
 router.post('/exchange/:id/report',id,text('detail'),run(req=>reportNonReturn(req.params.id,req.user.id,req.body.detail)));
 router.post('/exchange/:id/issue',rateLimit({windowMs:60*60*1000,max:10,standardHeaders:true,legacyHeaders:false,
   keyGenerator:req=>req.user.id,message:{error:'You have submitted several reports. Please try again later.'}}),

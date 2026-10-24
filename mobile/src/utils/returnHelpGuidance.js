@@ -26,7 +26,7 @@ export function returnHelpGuidance(transaction, now = new Date()) {
   const name = neighbor?.firstName || (owner ? 'your neighbor' : 'the owner');
   const isTransfer = isTransferListing({ listingType: transaction.listing?.listingType || transaction.listingType });
   const active = !isTransfer && !!transaction.actualPickupAt && !transaction.actualReturnAt
-    && !transaction.hasDispute && ['picked_up', 'return_pending'].includes(transaction.status);
+    && !transaction.hasDispute && ['picked_up', 'return_pending', 'account_deleted'].includes(transaction.status);
   const due = parseCalendarDate(transaction.endDate);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const overdue = !!due && due < today;
@@ -39,11 +39,11 @@ export function returnHelpGuidance(transaction, now = new Date()) {
     ...borrowGuidance({ ...transaction, isGiveaway: isTransfer }),
     neighbor,
     messageLabel: neighbor?.firstName ? `Message ${name}` : owner ? 'Message borrower' : 'Message owner',
-    canMessage: !!neighbor?.id && transaction.status !== 'account_deleted',
+    canMessage: !!neighbor?.id && !transaction.contactUnavailable && transaction.status !== 'account_deleted',
     canExtend: owner && active,
     canRequestTime: !!transaction.isBorrower && active && !pending,
     canReport: owner && active && overdue,
-    exchangeFirst: !active || (owner && pending),
+    exchangeFirst: transaction.status === 'account_deleted' || !active || (owner && pending),
     exchangeDescription: 'See the details and next steps',
     icon: 'return-down-back-outline',
     overdue: active && overdue && !pending,

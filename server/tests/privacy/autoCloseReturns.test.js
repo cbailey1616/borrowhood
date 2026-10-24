@@ -132,3 +132,9 @@ it.each(['dismissed','resolved','paid','returned','giveaway'])('does not archive
   if (kind==='giveaway') await state.db.exec("UPDATE listings SET listing_type='giveaway'");
   await autoCloseMissingReturns(); expect((await row()).missing_closed_at).toBeNull();
 });
+
+it.each(['reviewed','dismissed'])('closes a return with a %s damage report without changing the report',async status=>{
+ await ageReturn();await state.db.query("INSERT INTO safety_reports(content_type,content_id,status) VALUES('exchange','borrow',$1)",[status]);
+ await autoCloseReturns();expect((await row()).status).toBe('completed');
+ expect((await state.db.query('SELECT status FROM safety_reports')).rows[0].status).toBe(status);
+});

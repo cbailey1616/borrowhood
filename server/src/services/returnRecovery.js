@@ -13,6 +13,7 @@ export async function ensureReturnRecoverySchema() {
       confirmed_at TIMESTAMPTZ, resolved_at TIMESTAMPTZ, version INTEGER NOT NULL DEFAULT 0,
       appeal TEXT, appeal_status TEXT CHECK(appeal_status IN ('pending','upheld','denied')));
       ALTER TABLE return_reports ADD COLUMN IF NOT EXISTS reported_due_date DATE;
+      ALTER TABLE return_reports ADD COLUMN IF NOT EXISTS extension_due_date DATE;
       ALTER TABLE return_reports ADD COLUMN IF NOT EXISTS photos TEXT[] NOT NULL DEFAULT '{}';
       CREATE TABLE IF NOT EXISTS borrowing_restrictions (
         user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -63,7 +64,7 @@ async function exchange(db, id, userId, admin = false) {
 }
 function activeLoan(t) {
   if (['sell','giveaway'].includes(t.listing_type) || !t.actual_pickup_at || t.actual_return_at ||
-    !['picked_up','return_pending'].includes(t.status)) throw fail(409, 'This item is not currently awaiting return. Refresh the exchange.');
+    !['picked_up','return_pending','account_deleted'].includes(t.status)) throw fail(409, 'This item is not currently awaiting return. Refresh the exchange.');
 }
 export async function reportNonReturn(id, ownerId, detail, photos = []) {
   return withTransaction(async db => {
@@ -82,6 +83,27 @@ export async function reportNonReturn(id, ownerId, detail, photos = []) {
     return r;
   });
 }
+// A newly missed agreed date updates the existing case, never creates another.
+export async function followUpReturnReport(reportId, ownerId, detail, version) {
+  return withTransaction(async db => {
+    const lookup=(await db.query('SELECT transaction_id FROM return_reports WHERE id=$1 AND owner_id=$2',[reportId,ownerId])).rows[0];
+    if(!lookup) throw fail(404,'Report not found.');
+    const t=await exchange(db,lookup.transaction_id,ownerId); activeLoan(t);
+    await lockBorrower(db,t.borrower_id);
+    const r=(await db.query(`SELECT *,extension_due_date=$2::date AND extension_due_date>reported_due_date
+      AND $2::date<CURRENT_DATE AS eligible FROM return_reports WHERE id=$1 FOR UPDATE`,[reportId,t.requested_end_date])).rows[0];
+    if(r.version!==version) throw fail(409,'This report changed. Refresh before adding an update.');
+    if(r.status!=='dismissed'||!r.eligible) throw fail(409,'Follow up only after the agreed later return date has passed.');
+    await db.query(`INSERT INTO return_review_actions(report_id,reviewer_id,action,note) VALUES($1,$2,'Earlier report',$3)`,
+      [reportId,ownerId,r.detail+(r.response?'\nBorrower response: '+r.response:'')]);
+    await db.query(`UPDATE return_reports SET status='open',detail=$2,reported_due_date=$3,
+      response_due_at=NOW()+INTERVAL '48 hours',response=NULL,response_at=NULL,resolved_at=NULL,
+      confirmed_at=NULL,extension_due_date=NULL,version=version+1 WHERE id=$1`,[reportId,detail,t.requested_end_date]);
+    await db.query(`INSERT INTO return_review_actions(report_id,reviewer_id,action,note) VALUES($1,$2,'Missed extended date',$3)`,[reportId,ownerId,detail]);
+    await notify(db,t.borrower_id,'return_reported_missing',t,`return-followup:${reportId}:${version}`);
+    return {id:reportId};
+  });
+}
 export async function extendReturn(id, ownerId, date) {
   return withTransaction(async db => {
     const t = await exchange(db, id, ownerId);
@@ -93,8 +115,8 @@ export async function extendReturn(id, ownerId, date) {
     await lockBorrower(db, t.borrower_id);
     await db.query('UPDATE borrow_transactions SET requested_end_date=$2, reminder_day_before_sent=false, reminder_day_of_sent=false WHERE id=$1', [id, date]);
     // An agreed new deadline ends an unconfirmed allegation. It never erases a reviewed incident.
-    await db.query(`UPDATE return_reports SET status='dismissed', resolved_at=NOW(), version=version+1
-      WHERE transaction_id=$1 AND status='open'`, [id]);
+    await db.query(`UPDATE return_reports SET status='dismissed', resolved_at=NOW(), extension_due_date=$2, version=version+1
+      WHERE transaction_id=$1 AND (status='open' OR (status='dismissed' AND extension_due_date IS NOT NULL))`, [id,date]);
     await notify(db, t.borrower_id, 'return_date_extended', t, `return-date:${id}:${date}`);
     return { ok: true };
   });
@@ -102,6 +124,9 @@ export async function extendReturn(id, ownerId, date) {
 export async function returnHelp(userId, admin = false, page = 1, transactionId = null, reportId = null) {
   const reports = (await query(`SELECT r.*, l.title, t.status AS exchange_status, t.requested_end_date AS due_date,
     t.actual_pickup_at, t.actual_return_at,
+    COALESCE((r.owner_id=$1 AND r.status='dismissed' AND r.extension_due_date=t.requested_end_date
+      AND r.extension_due_date>r.reported_due_date AND t.requested_end_date<CURRENT_DATE
+      AND t.actual_return_at IS NULL AND t.status IN ('picked_up','return_pending','account_deleted')),false) AS can_follow_up,
     COALESCE(NULLIF(o.display_name,''),o.first_name,'Deleted account') AS owner_name,
     COALESCE(NULLIF(b.display_name,''),b.first_name,'Deleted account') AS borrower_name
     FROM return_reports r JOIN borrow_transactions t ON t.id=r.transaction_id JOIN listings l ON l.id=t.listing_id
@@ -164,7 +189,7 @@ export async function reviewReturnReport(reportId, adminId, action, note, versio
       if (r.status!=='open') throw fail(409,'This report has already been reviewed.');
       if (action==='confirm' && (!r.response_due && !r.response)) throw fail(409,'Allow the borrower 48 hours to respond before confirming this report.');
       if (action==='confirm' && r.resolved_at) throw fail(409,'The item was returned or its deadline extended. A late return alone is not a non-return.');
-      await db.query(`UPDATE return_reports SET status=$2,confirmed_at=CASE WHEN $2='confirmed' THEN NOW() ELSE NULL END WHERE id=$1`,[reportId,action==='confirm'?'confirmed':'dismissed']);
+      await db.query(`UPDATE return_reports SET status=$2,confirmed_at=CASE WHEN $2='confirmed' THEN NOW() ELSE NULL END,extension_due_date=NULL WHERE id=$1`,[reportId,action==='confirm'?'confirmed':'dismissed']);
       if (action==='confirm') await reconcileRestriction(db,t.borrower_id);
     } else if (['overturn','uphold'].includes(action)) {
       if (r.appeal_status!=='pending') throw fail(409,'There is no pending appeal.');

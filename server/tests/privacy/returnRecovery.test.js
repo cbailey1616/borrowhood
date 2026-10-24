@@ -7,7 +7,8 @@ vi.mock('../../src/services/notifications.js',()=>({sendNotification:vi.fn(async
  const r=await runQuery('INSERT INTO notices(user_id,type,transaction_id,key) VALUES($1,$2,$3,$4) ON CONFLICT(key) DO UPDATE SET key=EXCLUDED.key RETURNING id',[userId,type,data.transactionId,dedupeKey]);return r.rows[0].id;
 })}));
 import { sendNotification } from '../../src/services/notifications.js';
-import { ensureReturnRecoverySchema,reportNonReturn,extendReturn,returnHelp,respondReturnReport,reviewReturnReport } from '../../src/services/returnRecovery.js';
+import { deliverMessage } from '../../src/services/chatDelivery.js';
+import { followUpReturnReport,ensureReturnRecoverySchema,reportNonReturn,extendReturn,returnHelp,respondReturnReport,reviewReturnReport } from '../../src/services/returnRecovery.js';
 import { completeFreeReturn } from '../../src/services/borrowReturn.js';
 const owner=randomUUID(),owner2=randomUUID(),owner3=randomUUID(),borrower=randomUUID(),admin=randomUUID(),outsider=randomUUID();
 const rows=async(sql,args)=>(await state.db.query(sql,args)).rows;
@@ -28,12 +29,13 @@ beforeAll(async()=>{
  CREATE TABLE borrow_transactions(id UUID PRIMARY KEY,listing_id UUID REFERENCES listings(id),lender_id UUID REFERENCES users(id),borrower_id UUID REFERENCES users(id),status TEXT,
  actual_pickup_at TIMESTAMPTZ,actual_return_at TIMESTAMPTZ,return_requested_at TIMESTAMPTZ,requested_end_date DATE,condition_at_pickup TEXT DEFAULT 'good',condition_at_return TEXT,condition_notes TEXT,payment_status TEXT,stripe_payment_intent_id TEXT,
  reminder_day_before_sent BOOLEAN DEFAULT true,reminder_day_of_sent BOOLEAN DEFAULT true);
+ CREATE TABLE user_blocks(user_id UUID,blocked_id UUID);
  CREATE TABLE notices(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id UUID,type TEXT,transaction_id UUID,key TEXT UNIQUE);`);
  await ensureReturnRecoverySchema();await ensureReturnRecoverySchema();
 },20000);
 afterAll(()=>state.db.close());
 beforeEach(async()=>{
- vi.clearAllMocks();await state.db.exec('TRUNCATE users,listings,borrow_transactions,return_reports,return_review_actions,borrowing_restrictions,notices CASCADE');
+ vi.clearAllMocks();await state.db.exec('TRUNCATE users,listings,borrow_transactions,return_reports,return_review_actions,borrowing_restrictions,notices,user_blocks CASCADE');
  for(const id of [owner,owner2,owner3,borrower,admin,outsider])await state.db.query('INSERT INTO users(id,is_admin) VALUES($1,$2)',[id,id===admin]);
 });
 it('accepts one report per overdue picked-up loan and gives 48 hours to respond',async()=>{
@@ -132,4 +134,40 @@ it('does not reopen a dismissed report after an extended deadline',async()=>{
  expect(await reportNonReturn(id,owner,'The later deadline passed.')).toEqual({id:r,alreadyReported:true});
  expect(await report(r)).toEqual(before);
  expect(await rows('SELECT * FROM return_reports')).toHaveLength(1);
+});
+
+it('updates one case after a genuinely missed extension, preserving evidence and stale-version protection',async()=>{
+ const id=await seed(),rid=await reported(id);
+ await extendReturn(id,owner,new Date(Date.now()+86400000).toISOString().slice(0,10));
+ const dismissed=await report(rid);
+ await expect(followUpReturnReport(rid,owner,'The new deadline has passed.',dismissed.version)).rejects.toMatchObject({status:409});
+ await state.db.query('UPDATE borrow_transactions SET requested_end_date=CURRENT_DATE-1 WHERE id=$1',[id]);
+ await state.db.query('UPDATE return_reports SET extension_due_date=CURRENT_DATE-1 WHERE id=$1',[rid]);
+ expect((await returnHelp(owner)).reports[0].can_follow_up).toBe(true);
+ await expect(followUpReturnReport(rid,borrower,'Not the owner.',dismissed.version)).rejects.toMatchObject({status:404});
+ expect(await followUpReturnReport(rid,owner,'The agreed later date passed and my ladder is still missing.',dismissed.version)).toEqual({id:rid});
+ const updated=await report(rid);expect(updated.status).toBe('open');expect(updated.response_due_at>new Date()).toBe(true);
+ expect((await rows('SELECT * FROM return_reports'))).toHaveLength(1);
+ expect((await returnHelp(owner)).reports[0].history.map(h=>h.note).join(' ')).toContain('My ladder has not been returned');
+ await expect(followUpReturnReport(rid,owner,'Repeated stale update.',dismissed.version)).rejects.toMatchObject({status:409});
+});
+it('never follows up an administrator-dismissed report just because the deadline changes',async()=>{
+ const id=await seed(),rid=await reported(id);await review(rid,'dismiss');
+ await state.db.query('UPDATE borrow_transactions SET requested_end_date=CURRENT_DATE-1 WHERE id=$1',[id]);
+ const dismissed=await report(rid);
+ expect((await returnHelp(owner)).reports[0].can_follow_up).toBe(false);
+ await expect(followUpReturnReport(rid,owner,'This should not reopen a dismissed case.',dismissed.version)).rejects.toMatchObject({status:409});
+});
+it('preserves reporting and owner confirmation when the borrower deleted their account',async()=>{
+ const id=await seed(owner,'account_deleted'),rid=await reported(id);
+ expect((await returnHelp(owner)).reports[0].id).toBe(rid);
+ await completeFreeReturn(id,owner,'good');expect((await report(rid)).resolved_at).toBeTruthy();
+});
+
+it('keeps reporting and response available between blocked neighbors while blocking direct messages',async()=>{
+ const id=await seed();await state.db.query('INSERT INTO user_blocks VALUES($1,$2)',[owner,borrower]);
+ await expect(deliverMessage(state.db,{senderId:borrower,recipientId:owner,content:'Hello'})).rejects.toMatchObject({status:403});
+ const rid=await reported(id);
+ await respondReturnReport(rid,borrower,'I can return the item via our agreed arrangement.',(await report(rid)).version);
+ expect((await returnHelp(owner)).reports[0].response).toContain('agreed arrangement');
 });
