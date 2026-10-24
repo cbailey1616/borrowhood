@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   capture:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 50
     defaults:
       run:
@@ -57,7 +57,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator"
           ditto -x -k "$RUNNER_TEMP/borrowhood-native-cache/borrowhood-simulator-app.zip" "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator"
-          node node_modules/@expo/cli/build/bin/cli export:embed --entry-file screenshots/index.js --platform ios --dev false --bytecode --bundle-output "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app/main.jsbundle" --assets-dest "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app"
+          node node_modules/expo/bin/cli export:embed --entry-file screenshots/index.js --platform ios --dev false --bytecode --bundle-output "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app/main.jsbundle" --assets-dest "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app"
       - name: Prepare native dependencies
         if: steps.restore-native.outcome != 'success'
         run: pod install --project-directory=ios
@@ -109,6 +109,7 @@ jobs:
       - name: Capture native UI review screens
         env:
           BORROWHOOD_CAPTURE_REVIEW_ONLY: 'true'
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: '600000'
         run: |
           "$RUNNER_TEMP/borrowhood-capture-python/bin/python" screenshots/capture.py "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app" "$RUNNER_TEMP/ui-review"
       - name: Save screenshots and build log

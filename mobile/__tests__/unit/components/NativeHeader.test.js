@@ -1,6 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { Text, View, StyleSheet } from 'react-native';
 
 jest.mock('../../../src/context/AuthContext', () => ({
   useAuth: () => ({ user: null }),
@@ -51,4 +51,24 @@ describe('NativeHeader', () => {
     );
     expect(getByText('Search bar here')).toBeTruthy();
   });
+});
+
+it('fills the larger Duo status gap without moving the heading', () => {
+  const regions = require('../../../src/context/ReservedRegionsContext');
+  const reserved = jest.spyOn(regions, 'useTopReservedSpace').mockReturnValue(124);
+  try {
+    const NativeHeader = require('../../../src/components/NativeHeader').default;
+    const screen = render(<NativeHeader title="Ideas" backdrop={<View />} />);
+    const frame = () => ({
+      height: StyleSheet.flatten(screen.getByTestId('Header.artworkBand', { includeHiddenElements: true }).props.style).height,
+      offset: StyleSheet.flatten(screen.getByTestId('Header.content').props.style).marginTop,
+    });
+    const open = frame();
+    reserved.mockReturnValue(174);
+    screen.rerender(<NativeHeader title="Ideas" backdrop={<View />} />);
+    const folded = frame();
+    expect(folded.height - open.height).toBe(50);
+    expect(folded.height + folded.offset).toBe(open.height + open.offset);
+    expect(174 - folded.height).toBeLessThanOrEqual(8);
+  } finally { reserved.mockRestore(); }
 });

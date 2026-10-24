@@ -73,7 +73,7 @@ export default function FindAccountScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -234,6 +234,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
+    width: '100%', maxWidth: 560, alignSelf: 'center',
     flexGrow: 1,
     padding: SPACING.xl,
   },

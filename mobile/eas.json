@@ -35,18 +35,35 @@
       "distribution": "store",
       "ios": {
         "buildConfiguration": "Release",
-        "autoIncrement": "buildNumber"
+        "autoIncrement": "buildNumber",
+        "image": "macos-tahoe-26.6-xcode-27.1"
       }
     },
     "production": {
       "distribution": "store",
       "ios": {
         "buildConfiguration": "Release",
-        "autoIncrement": "buildNumber"
+        "autoIncrement": "buildNumber",
+        "image": "macos-tahoe-26.6-xcode-27.1"
       },
       "android": {
         "buildType": "app-bundle",
         "autoIncrement": "versionCode"
+      }
+    },
+    "duo-qa": {
+      "extends": "preview",
+      "ios": {
+        "image": "macos-tahoe-26.6-xcode-27.1",
+        "simulator": true,
+        "buildConfiguration": "Release"
+      },
+      "environment": "development"
+    },
+    "launch-qa": {
+      "extends": "development",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://127.0.0.1:3101"
       }
     }
   },

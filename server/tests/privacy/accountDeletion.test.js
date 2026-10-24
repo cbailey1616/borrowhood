@@ -15,6 +15,7 @@ vi.mock('../../src/middleware/auth.js', () => ({ generateTokens: vi.fn(), authen
 import { ensureAppleSignInSchema, encryptAppleToken } from '../../src/services/appleSignInTokens.js';
 import routes from '../../src/routes/auth.js';
 import { sendNotification } from '../../src/services/notifications.js';
+import { deleteAccount } from '../../src/services/accountDeletion.js';
 import { cancelPaymentIntent } from '../../src/services/stripe.js';
 let app;
 beforeAll(async () => {
@@ -164,4 +165,13 @@ it('clears provider identities, precise location and push registrations from ret
   expect(u).toMatchObject({ google_id:null,city:null,address_line2:null,push_token:null,is_verified:false });
   expect(u.token_invalidated_at).toBeTruthy();
   expect(await rows("SELECT * FROM push_devices WHERE user_id='borrower'")).toHaveLength(0);
+});
+
+it('retains an archived missing exchange when its borrower deletes their account',async()=>{
+ await seed('closed_not_returned');
+ await state.db.query("INSERT INTO return_reports(transaction_id) VALUES('exchange')");
+ await deleteAccount('borrower');
+ expect((await rows("SELECT status FROM borrow_transactions WHERE id='exchange'"))[0].status).toBe('account_deleted');
+ expect(await rows("SELECT * FROM return_reports WHERE transaction_id='exchange'")).toHaveLength(1);
+ expect((await rows("SELECT email FROM users WHERE id='borrower'"))[0].email).toContain('@deleted.borrowhood.com');
 });

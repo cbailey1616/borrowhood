@@ -128,3 +128,25 @@ describe('BlurTabBar', () => {
     expect(props.navigation.navigate).not.toHaveBeenCalled();
   });
 });
+
+
+it('keeps bottom navigation full width, selection, and badges when safe areas change', () => {
+  const Bar = require('../../../src/components/BlurTabBar').default;
+  const { BottomTabBarHeightCallbackContext } = require('@react-navigation/bottom-tabs');
+  const reportHeight = jest.fn();
+  const props = createTabBarProps(3);
+  const renderBar = insets => <BottomTabBarHeightCallbackContext.Provider value={reportHeight}>
+    <Bar {...props} windowInsets={insets} unreadCount={5} />
+  </BottomTabBarHeightCallbackContext.Provider>;
+  const screen = render(renderBar({ top: 24, right: 0, bottom: 20, left: 0 }));
+  fireEvent(screen.getByTestId('TabBar.container'), 'layout', { nativeEvent: { layout: { height: 86 } } });
+  expect(reportHeight).toHaveBeenLastCalledWith(86);
+  screen.rerender(renderBar({ top: 0, right: 48, bottom: 20, left: 0 }));
+  expect(StyleSheet.flatten(screen.getByTestId('TabBar.container').props.style)).toMatchObject({ bottom: 0, left: 0, right: 0 });
+  fireEvent(screen.getByTestId('TabBar.container'), 'layout', { nativeEvent: { layout: { height: 80 } } });
+  expect(reportHeight).toHaveBeenLastCalledWith(80);
+  expect(screen.getByTestId('TabBar.Activity').props.accessibilityState.selected).toBe(true);
+  expect(screen.getByText('5')).toBeTruthy();
+  fireEvent.press(screen.getByLabelText('Home'));
+  expect(props.navigation.navigate).toHaveBeenCalledWith('Feed');
+});

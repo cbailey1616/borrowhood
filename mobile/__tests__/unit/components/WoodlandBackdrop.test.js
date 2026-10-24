@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
-import { render } from '@testing-library/react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { render, fireEvent } from '@testing-library/react-native';
 import FeedWoodlandBackdrop from '../../../src/components/FeedWoodlandBackdrop';
 import WoodlandHeader from '../../../src/components/WoodlandHeader';
 import { FEED_WOODLAND_SCENES, feedWoodlandSvg } from '../../../src/assets/feed-woodland-scenes';
@@ -27,15 +26,13 @@ it('preserves the default geometry and rejects invalid canvas dimensions', () =>
   expect(feedWoodlandSvg(0, NaN, Infinity)).toContain('width="402" height="176" viewBox="0 0 402 176"');
 });
 
-it('fades only behind ribbon content without adding a selectable surface', () => {
-  const screen = render(<WoodlandHeader title="My Posts"><Text>Items</Text></WoodlandHeader>);
-  const fade = screen.UNSAFE_getAllByType(LinearGradient).find(node => node.props.testID === 'Woodland.tabs.fade');
-  expect(fade.props.pointerEvents).toBe('none');
-  expect(fade.props.accessible).toBe(false);
-  expect(fade.props.locations).toEqual([0, 0.3, 0.7, 1]);
-  expect(fade.props.colors[1]).toMatch(/EF$/);
-  expect(screen.getByText('Items')).toBeTruthy();
-  screen.rerender(<WoodlandHeader title="Profile" />);
+it('overlaps the bold heading with the scene while keeping tabs separate', () => {
+  const screen = render(<WoodlandHeader title="My items"><Text>Items</Text></WoodlandHeader>);
+  const artworkBand = screen.getByTestId('Header.artworkBand', { includeHiddenElements: true });
+  const content = screen.getByTestId('Header.content');
+  expect(artworkBand.findAllByType(Text)).toHaveLength(0);
+  expect(content.findAllByType(Text).map(node => node.props.children)).toEqual(['My items', 'Items']);
+  expect(StyleSheet.flatten(content.props.style)).toMatchObject({ backgroundColor: 'transparent', marginTop: -88 });
   expect(screen.queryByTestId('Woodland.tabs.fade', { includeHiddenElements: true })).toBeNull();
 });
 
@@ -43,4 +40,22 @@ it('keeps the semibold profile heading without decorative artwork', () => {
   const screen = render(<WoodlandHeader title="Profile" artwork={false} />);
   expect(screen.queryByTestId('Woodland.artwork', { includeHiddenElements: true })).toBeNull();
   expect(StyleSheet.flatten(screen.getByText('Profile').props.style).fontFamily).toBe('DMSans_600SemiBold');
+});
+
+// A scene can live inside a sheet or a header narrower than the device window.
+it('uses the measured header bounds without squeezing the artwork', () => {
+  const screen = render(<FeedWoodlandBackdrop width={951} />);
+  fireEvent(screen.getByTestId('Woodland.frame', { includeHiddenElements: true }), 'layout', {
+    nativeEvent: { layout: { width: 760, height: 128 } },
+  });
+  const image = screen.getByTestId('Woodland.artwork', { includeHiddenElements: true });
+  const source = Array.isArray(image.props.source) ? image.props.source[0] : image.props.source;
+  expect(decodeURIComponent(source.uri.split(',')[1])).toContain('width="760" height="128" viewBox="0 48 760 128"');
+  expect(image.props.contentFit).toBe('cover');
+});
+
+it('crops a short ribbon while retaining the original scene geometry', () => {
+  const svg = feedWoodlandSvg(0, 466, 128);
+  expect(svg).toContain(FEED_WOODLAND_SCENES[0].draw(466));
+  expect(svg).toContain('viewBox="0 48 466 128"');
 });

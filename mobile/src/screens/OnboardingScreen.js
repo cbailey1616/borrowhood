@@ -8,7 +8,6 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
-  Dimensions,
   KeyboardAvoidingView,
   Platform, } from 'react-native';
 import * as Location from 'expo-location';
@@ -22,7 +21,6 @@ import api from '../services/api';
 import { haptics } from '../utils/haptics';
 import { CARD_SURFACE, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
-const { width } = Dimensions.get('window');
 
 export default function OnboardingScreen({ onComplete }) {
   const { user, refreshUser } = useAuth();

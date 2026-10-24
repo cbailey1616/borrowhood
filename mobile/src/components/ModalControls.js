@@ -1,3 +1,4 @@
+import { useTopReservedSpace } from '../context/ReservedRegionsContext';
 import React from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -10,8 +11,9 @@ import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
 // A custom header also avoids a second native glass capsule around the button.
 export function ModalHeader({ title }) {
   const insets = useSafeAreaInsets();
+  const reservedBottom = useTopReservedSpace();
   return (
-    <View testID="Modal.header" style={[styles.header, { paddingTop: Platform.OS === 'ios' ? SPACING.sm : insets.top + SPACING.sm }]}>
+    <View testID="Modal.header" style={[styles.header, { paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg), minHeight: insets.left || insets.right ? reservedBottom : 0, paddingTop: Platform.OS === 'ios' ? SPACING.sm : insets.top + SPACING.sm }]}>
       <View style={styles.headerRow}>
         <View testID="Modal.headerSpacer" accessible={false} style={styles.spacer} />
         <ModalTitle title={title} />

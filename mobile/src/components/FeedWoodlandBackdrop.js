@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,21 +7,29 @@ import { feedWoodlandSvg, getFeedWoodlandScene } from '../assets/feed-woodland-s
 
 export const FEED_HEADER_BACKGROUND = getFeedWoodlandScene(0).sky;
 
-// Decorative SVG stays light and sharp at every screen width. It never receives
-// touches or enters the accessibility tree, so feed controls keep their behavior.
-export default function FeedWoodlandBackdrop({ width = 402, sceneIndex = 0, height = 176, topOffset = 0 }) {
+// Draw in the actual header's coordinates. Circle and tree geometry stays at
+// its original proportions; a smaller ribbon crops the scene instead of warping it.
+export default function FeedWoodlandBackdrop({ width = 402, sceneIndex = 0, height, topOffset = 0 }) {
+  const [frame, setFrame] = useState({ width: 0, height: 0 });
+  const onLayout = useCallback(({ nativeEvent: { layout } }) => {
+    setFrame(previous => previous.width === layout.width && previous.height === layout.height
+      ? previous : { width: layout.width, height: layout.height });
+  }, []);
   const scene = getFeedWoodlandScene(sceneIndex);
+  const artWidth = frame.width || width;
+  const artHeight = height ?? (frame.height || 176);
   const source = useMemo(() => ({
-    uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(feedWoodlandSvg(sceneIndex, width, height))}`,
-  }), [width, sceneIndex, height]);
+    uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(feedWoodlandSvg(sceneIndex, artWidth, artHeight))}`,
+  }), [artWidth, sceneIndex, artHeight]);
 
-  return <View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>
-    <LinearGradient colors={[scene.sky, COLORS.background]} style={[styles.landscape, { height, top: topOffset }]} />
-    <Image testID="Woodland.artwork" source={source} contentFit="fill" transition={0} accessible={false}
-      style={[styles.landscape, { height, top: topOffset }]} />
+  return <View testID="Woodland.frame" onLayout={onLayout} pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants"
+    style={[StyleSheet.absoluteFill, styles.clip]}>
+    <LinearGradient colors={[scene.sky, COLORS.background]} style={[styles.landscape, { height: artHeight, top: topOffset }]} />
+    <Image testID="Woodland.artwork" source={source} contentFit="cover" contentPosition="bottom" transition={0} accessible={false}
+      style={[styles.landscape, { height: artHeight, top: topOffset }]} />
   </View>;
 }
-
 const styles = StyleSheet.create({
-  landscape: { position: 'absolute', top: 0, left: 0, right: 0, height: 176 },
+  clip: { overflow: 'hidden' },
+  landscape: { position: 'absolute', top: 0, left: 0, right: 0 },
 });

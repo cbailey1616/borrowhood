@@ -1,3 +1,4 @@
+import { useTopReservedSpace } from '../context/ReservedRegionsContext';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import PopupLayer from './PopupLayer';
@@ -26,7 +27,8 @@ export default function ActionSheet({
 }) {
   const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
+  const reservedBottom = useTopReservedSpace();
+  const { height, width } = useWindowDimensions();
   const confirmation = variant === 'confirmation';
   const itemMenu = variant === 'item';
   const options = variant === 'options' || itemMenu;
@@ -53,6 +55,7 @@ export default function ActionSheet({
 
   const handleAction = useCallback(
     (action) => {
+      if (action.disabled) return;
       const feedback = action.haptic || (action.destructive ? 'warning' : null);
       if (feedback && haptics[feedback]) haptics[feedback]();
       if (multiSelect) action.onPress?.();
@@ -86,7 +89,7 @@ export default function ActionSheet({
         <Animated.View
           entering={reduceMotion ? undefined : SlideInDown.duration(200)}
           exiting={reduceMotion ? undefined : SlideOutDown.duration(150)}
-          style={[styles.sheetContainer, itemMenu && styles.itemSheetContainer, { paddingBottom: bottomPad, maxHeight: height - insets.top - SPACING.md }]}
+          style={[styles.sheetContainer, itemMenu && styles.itemSheetContainer, { width: Math.min(572, Math.max(0, width - SPACING.lg * 2)), paddingBottom: bottomPad, maxHeight: height - Math.max(insets.top, reservedBottom) - SPACING.md }]}
         >
           <LayeredCard style={styles.sheetDepth} radius={itemMenu ? 28 : RADIUS.xl}>
             <ScrollView style={[styles.sheetCard, itemMenu && styles.itemSheetCard]} contentContainerStyle={[confirmation && styles.confirmationCard, options && styles.optionsCard, itemMenu && styles.itemCard]} bounces={false}>
@@ -114,16 +117,18 @@ export default function ActionSheet({
                 {actions.map((action, index) => (
                   <HapticPressable
                     key={index}
+                    disabled={action.disabled}
                     onPress={() => handleAction(action)}
                     haptic={null}
                     scaleDown={action.primary ? 0.97 : 1}
                     pressedBackgroundColor={action.primary || action.destructive ? undefined : COLORS.cardHover}
                     accessibilityRole={options && typeof action.selected === 'boolean' ? 'checkbox' : 'button'}
-                    accessibilityState={options && typeof action.selected === 'boolean' ? { checked: action.selected } : undefined}
+                    accessibilityState={{ ...(options && typeof action.selected === 'boolean' ? { checked: action.selected } : {}), ...(action.disabled ? { disabled: true } : {}) }}
                     testID={action.testID}
                     accessibilityLabel={action.accessibilityLabel || (typeof action.label === 'string' ? action.label : undefined)}
                     style={[
                       styles.actionButton,
+                      action.disabled && { opacity: 0.55 },
                       action.destructive && styles.destructiveButton,
                       action.primary && styles.primaryButton,
                       confirmation && styles.confirmationButton,
@@ -220,8 +225,6 @@ const styles = StyleSheet.create({
   sheetContainer: {
     position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: SPACING.md,
     width: '100%',
     maxWidth: 572,

@@ -4,15 +4,10 @@
     "slug": "borrowhood",
     "scheme": "borrowhood",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "light",
     "backgroundColor": "#F3EBDD",
-    "splash": {
-      "image": "./src/assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F3EBDD"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -24,7 +19,7 @@
         "NSCameraUsageDescription": "Allow Borrowhood to take photos for your posts, profile, neighborhood cover, and chats.",
         "NSPhotoLibraryUsageDescription": "Allow Borrowhood to select photos for your posts, profile, neighborhood cover, and chats.",
         "NSLocationWhenInUseUsageDescription": "Borrowhood can use your current location to suggest your town. You can also enter it yourself.",
-        "NSFaceIDUsageDescription": "Allow Borrowhood to use Face ID for secure and quick sign-in.",
+        "NSFaceIDUsageDescription": "Allow Borrowhood to use device biometrics for secure and quick sign-in.",
         "NSContactsUsageDescription": "Borrowhood uses your contacts to help you find friends who are already on the app.",
         "UIBackgroundModes": [
           "remote-notification"
@@ -34,7 +29,8 @@
           "NSAllowsArbitraryLoads": false,
           "NSAllowsLocalNetworking": false
         },
-        "NSLocalNetworkUsageDescription": "Allow Borrowhood to connect to your Mac for live UI previews during development."
+        "NSLocalNetworkUsageDescription": "Allow Borrowhood to connect to your Mac for live UI previews during development.",
+        "UIViewControllerBasedStatusBarAppearance": true
       },
       "associatedDomains": [
         "applinks:borrowhood.com",
@@ -110,7 +106,11 @@
           "imageWidth": 200,
           "resizeMode": "contain"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-image",
+      "expo-status-bar",
+      "./plugins/withReservedRegions"
     ],
     "extra": {
       "eas": {

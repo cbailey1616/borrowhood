@@ -4,7 +4,7 @@ import {render,fireEvent,waitFor,act} from '@testing-library/react-native';
 import api from '../../src/services/api';
 import ProjectsScreen from '../../src/screens/ProjectsScreen';
 import {projectItemState,projectProgress} from '../../src/utils/projectProgress';
-jest.mock('react-native-gesture-handler',()=>({GestureHandlerRootView:require('react-native').View,Swipeable:require('react').forwardRef(({children,renderRightActions},ref)=><>{children}{renderRightActions?.()}</>)}));
+jest.mock('react-native-gesture-handler/ReanimatedSwipeable',()=>require('react').forwardRef(({children,renderRightActions},ref)=><>{children}{renderRightActions?.()}</>));
 jest.mock('../../src/context/AuthContext',()=>({useAuth:()=>({user:{id:'me'}})}));
 jest.mock('../../src/context/ErrorContext',()=>({useError:()=>({showError:jest.fn()})}));
 const navigation={navigate:jest.fn(),push:jest.fn(),replace:jest.fn(),goBack:jest.fn(),addListener:jest.fn(()=>jest.fn())};

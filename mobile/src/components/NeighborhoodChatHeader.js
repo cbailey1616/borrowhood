@@ -1,3 +1,4 @@
+import { useTopReservedSpace } from '../context/ReservedRegionsContext';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,10 +9,11 @@ import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
 // A single bar owns the group identity and both navigation controls.
 export default function NeighborhoodChatHeader({ name, memberCount, muted, thread, onBack, onOptions }) {
   const insets = useSafeAreaInsets();
+  const reservedBottom = useTopReservedSpace();
   const count = Number.isInteger(memberCount) && memberCount >= 0
     ? `${memberCount} ${memberCount === 1 ? 'neighbor' : 'neighbors'}` : 'Your neighbors';
   const subtitle = [count, thread ? 'Replies' : muted ? 'Muted' : null].filter(Boolean).join(' · ');
-  return <View style={[styles.header, { paddingTop: insets.top, paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}>
+  return <View style={[styles.header, { paddingTop: insets.top, minHeight: reservedBottom, paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg) }]}>
     <View style={styles.row}>
       <HapticPressable haptic={null} scaleDown={1} onPress={onBack} style={styles.back}
         accessibilityRole="button" accessibilityLabel={thread ? 'Back to neighborhood chat' : 'Back'}>

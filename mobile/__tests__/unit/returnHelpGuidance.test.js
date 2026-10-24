@@ -105,3 +105,7 @@ it('keeps calendar-day limits across daylight-saving changes', () => {
 it.each(['2026-12-24', '2026-12-25'])('does not suggest a date beyond the limit when due %s', endDate => {
   expect(returnExtensionDates(endDate, now)).toMatchObject({ available: false, initialDate: new Date(2026, 11, 24, 12) });
 });
+
+it('does not offer messaging for a blocked or deleted contact',()=>{
+ expect(returnHelpGuidance({status:'picked_up',isLender:true,contactUnavailable:true,actualPickupAt:'2026-09-01',borrower:{id:'other'},endDate:'2026-09-02'}).canMessage).toBe(false);
+});

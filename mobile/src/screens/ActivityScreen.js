@@ -98,6 +98,7 @@ export default function ActivityScreen({ navigation }) {
       case 'completed':
       case 'returned':
         return COLORS.secondary;
+      case 'closed_not_returned':
       case 'cancelled':
       case 'disputed':
         return COLORS.danger;

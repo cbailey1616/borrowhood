@@ -1,3 +1,4 @@
+import { useTopReservedSpace } from '../../context/ReservedRegionsContext';
 import TextInput from '../../components/AppTextInput';
 import BiometricIcon from '../../components/BiometricIcon';
 import { useState, useEffect, useRef } from 'react';
@@ -25,6 +26,7 @@ import { CARD_SURFACE, BASE_URL, COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../
 
 export default function WelcomeScreen({ navigation, showBackButton = false }) {
   const { login } = useAuth();
+  const reservedBottom = useTopReservedSpace();
 
   const { showError } = useError();
   const {
@@ -124,7 +126,7 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
     onCancel={() => { resetLink(); setSocialBusy(false); }}/>;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <WoodlandBackdrop fullScreen />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -140,7 +142,7 @@ export default function WelcomeScreen({ navigation, showBackButton = false }) {
               disabled={isLoading || socialBusy} accessibilityRole="button" accessibilityLabel="Go back">
               <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
             </HapticPressable>}
-            <View style={styles.logoContainer}>
+            <View style={[styles.logoContainer, { minHeight: reservedBottom }]}>
               <View style={styles.brandRow}>
                 <Image source={require('../../../assets/logo.png')} style={styles.logo} accessible={false} />
                 <Text maxFontSizeMultiplier={1.4} accessibilityRole="header" style={styles.wordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>Borrowhood</Text>

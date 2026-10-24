@@ -337,7 +337,7 @@ export default function RequestDetailScreen({ route, navigation }) {
       actions={[{ label: 'Withdraw offer', destructive: true, onPress: performWithdraw }]} />
     <RankInfoSheet isVisible={showRank && privateAccess} onClose={() => setShowRank(false)} currentRank={reputation.rank} isNew={reputation.isNew} />
     <PopupLayer visible={showPhoto} onRequestClose={() => setShowPhoto(false)}>
-      <View style={[styles.photoViewer, { paddingTop: insets.top, paddingBottom: insets.bottom }]} onAccessibilityEscape={() => setShowPhoto(false)}>
+      <View style={[styles.photoViewer, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]} onAccessibilityEscape={() => setShowPhoto(false)}>
         <HapticPressable style={styles.photoClose} onPress={() => setShowPhoto(false)} accessibilityRole="button" accessibilityLabel="Close photo">
           <Ionicons name="close" size={24} color={COLORS.surface} />
         </HapticPressable>

@@ -60,7 +60,7 @@ export default function VerifySignupEmailScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <HapticPressable onPress={() => navigation.goBack()} disabled={!!busy} accessibilityLabel="Back to create account" accessibilityRole="button" style={styles.back}>
           <Icon name="chevron-back" size={22} />

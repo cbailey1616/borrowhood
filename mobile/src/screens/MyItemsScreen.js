@@ -1,3 +1,5 @@
+import { useContentDimensions as useWindowDimensions } from '../context/MainViewportContext';
+import { runWhenIdle } from '../utils/runWhenIdle';
 import useReduceMotion from '../hooks/useReduceMotion';
 import { listingIcon } from '../utils/listingPresentation';
 import ListingTypeIcon from '../components/ListingTypeIcon';
@@ -8,19 +10,19 @@ import { listingAvailability } from '../utils/listingAvailability';
 import { isTransferListing } from '../utils/directFee';
 import { exchangeIsActive, exchangeStatus, isBorrower } from '../utils/homeAction';
 import ExchangeOverviewLink from '../components/ExchangeOverviewLink';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useContext } from 'react';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import {
   View,
   Text,
   StyleSheet,
-  useWindowDimensions,
-  Animated as RNAnimated,
-  InteractionManager, } from 'react-native';
+  } from 'react-native';
 import ShimmerImage from '../components/ShimmerImage';
 import ItemPhotoPlaceholder from '../components/ItemPhotoPlaceholder';
 import LayeredCard from '../components/LayeredCard';
 import ListingOffer from '../components/ListingOffer';
-import { Swipeable } from 'react-native-gesture-handler';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Reanimated, { useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
 import { Ionicons } from '../components/Icon';
 import HeroIcon from '../components/HeroIcon';
 import HapticPressable from '../components/HapticPressable';
@@ -44,11 +46,29 @@ const shortDate = value => {
 const requestDateRange = item => isTransferListing(item) ? ''
   : [shortDate(item.startDate), shortDate(item.endDate)].filter(Boolean).join(' – ');
 
+function SwipeDeleteAction({ translation, onDelete, reduceMotion }) {
+  const reveal = useAnimatedStyle(() => ({
+    opacity: interpolate(translation.value, [-12, 0], [1, 0], Extrapolation.CLAMP),
+  }));
+  const animation = useAnimatedStyle(() => ({
+    transform: [{ scale: reduceMotion ? 1 : interpolate(translation.value, [-100, 0], [1, 0.5], Extrapolation.CLAMP) }],
+  }));
+  return <Reanimated.View style={[styles.deleteAction, reveal]}><HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.deleteActionButton}
+    accessibilityRole="button" accessibilityLabel="Delete" onPress={onDelete} haptic={null}>
+    <Reanimated.View style={animation}>
+      <Ionicons name="trash-outline" size={24} color={COLORS.white} />
+      <Text maxFontSizeMultiplier={1.4} style={styles.deleteActionText}>Delete</Text>
+    </Reanimated.View>
+  </HapticPressable></Reanimated.View>;
+}
+
 export default function MyItemsScreen({ navigation }) {
   const reduceMotion = useReduceMotion();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) || 0;
   const { width, fontScale } = useWindowDimensions();
-  const columns = width >= 900 && fontScale < 1.5 ? 2 : 1;
-  const gridWidth = Math.min(width, 1200);
+  const availableWidth = width;
+  const columns = availableWidth >= 700 && fontScale < 1.5 ? (availableWidth >= 1200 ? 3 : 2) : 1;
+  const gridWidth = availableWidth;
   const cellWidth = (gridWidth - SPACING.lg * 2 - SPACING.lg * (columns - 1)) / columns;
   const { showError } = useError();
   const { user } = useAuth();
@@ -114,13 +134,15 @@ export default function MyItemsScreen({ navigation }) {
   }, [fetchData]);
 
   useEffect(() => {
+    let pending;
     const unsubscribe = navigation.addListener('focus', () => {
+      pending?.cancel();
       // Delay fetch until modal dismiss animation completes
-      InteractionManager.runAfterInteractions(() => {
+      pending = runWhenIdle(() => {
         fetchData();
       });
     });
-    return unsubscribe;
+    return () => { unsubscribe(); pending?.cancel(); };
   }, [navigation, fetchData]);
 
   const onRefresh = () => {
@@ -151,42 +173,25 @@ export default function MyItemsScreen({ navigation }) {
     setPendingDelete({ item, type });
   };
 
-  const renderRightActions = (progress, dragX, onDelete) => {
-    const scale = reduceMotion ? 1 : dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [1, 0.5],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <HapticPressable pressedBackgroundColor={COLORS.cardHover}
-        style={styles.deleteAction}
-        accessibilityRole="button"
-        onPress={onDelete}
-        haptic={null}
-      >
-        <RNAnimated.View style={{ transform: [{ scale }] }}>
-          <Ionicons name="trash-outline" size={24} color={COLORS.white} />
-          <Text maxFontSizeMultiplier={1.4} style={styles.deleteActionText}>Delete</Text>
-        </RNAnimated.View>
-      </HapticPressable>
-    );
-  };
+  const renderRightActions = (_progress, translation, onDelete) => (
+    <SwipeDeleteAction translation={translation} onDelete={onDelete} reduceMotion={reduceMotion} />
+  );
 
   const renderListingItem = ({ item }) => {
     const availability = listingAvailability(item);
     const sharing = listingSharingDetails(item);
     const exchange = lendingDetails(item.activeExchange);
     return (
-    <View>
+    <View style={styles.swipeRow}>
       <Swipeable
+        containerStyle={styles.swipeContainer}
         overshootRight={!reduceMotion}
         ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
           renderRightActions(progress, dragX, () => requestDelete(item, 'listing'))
         }
       >
-        <LayeredCard style={styles.cardDepth}>
+        <LayeredCard>
           <HapticPressable pressedBackgroundColor={COLORS.cardHover}
             style={styles.card}
             scaleDown={item.photoUrl ? 0.97 : 1}
@@ -194,9 +199,9 @@ export default function MyItemsScreen({ navigation }) {
             haptic={null}
           >
             {item.photoUrl ? (
-              <ShimmerImage source={{ uri: item.photoUrl }} placeholderIcon={listingIcon(item)} category={item.category} title={item.title} style={styles.cardImage} />
+              <ShimmerImage source={{ uri: item.photoUrl }} placeholderIcon={listingIcon(item)} category={item.category} title={item.title} style={[styles.cardImage, columns > 1 && styles.cardImageWide]} />
             ) : (
-              <ItemPhotoPlaceholder category={item.category} title={item.title} style={styles.cardImage} />
+              <ItemPhotoPlaceholder category={item.category} title={item.title} style={[styles.cardImage, columns > 1 && styles.cardImageWide]} />
             )}
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
@@ -261,15 +266,16 @@ export default function MyItemsScreen({ navigation }) {
   };
 
   const renderRequestItem = ({ item, index }) => (
-    <View>
+    <View style={styles.swipeRow}>
       <Swipeable
+        containerStyle={styles.swipeContainer}
         overshootRight={!reduceMotion}
         ref={ref => { swipeableRefs.current[item.id] = ref; }}
         renderRightActions={(progress, dragX) =>
           renderRightActions(progress, dragX, () => requestDelete(item, 'request'))
         }
       >
-        <LayeredCard style={styles.cardDepth}>
+        <LayeredCard>
           <HapticPressable pressedBackgroundColor={COLORS.cardHover}
             style={[styles.requestCard, item.isExpired && styles.requestCardExpired]}
             onPress={() => navigation.navigate('RequestDetail', { id: item.id })}
@@ -404,10 +410,10 @@ export default function MyItemsScreen({ navigation }) {
       </HapticPressable>
     </View>
   ) : null;
-  const contentContainerStyle = [styles.listContent, { width: '100%', maxWidth: gridWidth, alignSelf: 'center' }];
+  const contentContainerStyle = [styles.listContent, { width: '100%', paddingBottom: tabBarHeight + SPACING.lg }];
 
   return (
-    <View style={styles.container}>
+    <View testID="MyItems.page" style={styles.container}>
       {activeTab!==3 && !isLoading && !loadError && visibleItems.length === 0 && <WoodlandBackdrop fullScreen />}
       <WoodlandHeader title="My items" titleStyle={{ flexShrink: 1 }} rightElement={activeTab < 2 &&
         <HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" accessibilityLabel={activeTab === 0 ? 'Add an item' : 'Post in Wanted'}
@@ -431,11 +437,12 @@ export default function MyItemsScreen({ navigation }) {
       {!!loadError && <View style={{ padding: 16, backgroundColor: COLORS.primaryMuted }}><Text accessibilityRole="alert" style={{ color: COLORS.text }}>{loadError}</Text><HapticPressable pressedBackgroundColor={COLORS.cardHover} accessibilityRole="button" onPress={fetchData} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ ...TYPOGRAPHY.button, color: COLORS.primary }}>Try again</Text></HapticPressable></View>}
 
       <BorrowhoodRefreshList
+        testID="MyItems.list"
         key={`posts-${activeTab}-${columns}`}
         numColumns={columns}
         columnWrapperStyle={columns > 1 ? { gap: SPACING.lg, alignItems: 'flex-start' } : undefined}
         data={visibleItems}
-        renderItem={info => <View style={columns > 1 ? { width: cellWidth } : undefined}>
+        renderItem={info => <View testID={`MyItems.cell.${info.item.id}`} style={columns > 1 ? { width: cellWidth } : undefined}>
           {activeTab === 0 ? renderListingItem(info) : activeTab === 1 ? renderRequestItem(info) : renderSentRequest(info.item)}
         </View>}
         keyExtractor={(item) => item.id}
@@ -498,6 +505,9 @@ const styles = StyleSheet.create({
     color: COLORS.background,
   },
   cardDepth: { marginBottom: SPACING.xl },
+  swipeRow: { marginBottom: SPACING.xl },
+  swipeContainer: { borderRadius: RADIUS.lg, overflow: 'hidden' },
+  cardImageWide: { width: 104, height: 104 },
   sharingRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, alignSelf: 'stretch' },
   summaryMeta: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, flexShrink: 1 },
   exchangeSummary: { marginHorizontal: SPACING.sm, marginBottom: SPACING.sm, padding: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.borderLight, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
@@ -757,9 +767,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: 80,
-    marginBottom: SPACING.md,
     borderRadius: RADIUS.lg,
   },
+  deleteActionButton: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' },
   deleteActionText: {
     color: COLORS.white,
     ...TYPOGRAPHY.caption1,

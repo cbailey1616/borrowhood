@@ -1,22 +1,20 @@
+import * as idleTasks from '../../src/utils/runWhenIdle';
 import React from 'react';
-import { RefreshControl, InteractionManager } from 'react-native';
+import { RefreshControl } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { Image } from 'expo-image';
 import api from '../../src/services/api';
 
-jest.mock('react-native-gesture-handler', () => {
+jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
   const React = require('react');
   const { View } = require('react-native');
-  return {
-    GestureHandlerRootView: View,
-    Swipeable: React.forwardRef(({ children, renderRightActions, onSwipeableOpen }, ref) => {
-      React.useImperativeHandle(ref, () => ({ close: jest.fn() }));
-      return <View testID="post-swipe" onSwipe={() => onSwipeableOpen?.('right')}>
-        {children}
-        {renderRightActions?.({}, { interpolate: () => 1 })}
-      </View>;
-    }),
-  };
+  return React.forwardRef(({ children, renderRightActions, onSwipeableOpen }, ref) => {
+    React.useImperativeHandle(ref, () => ({ close: jest.fn() }));
+    return <View testID="post-swipe" onSwipe={() => onSwipeableOpen?.('right')}>
+      {children}
+      {renderRightActions?.({ value: 1 }, { value: -100 })}
+    </View>;
+  });
 });
 
 jest.mock('expo-image', () => {
@@ -179,7 +177,7 @@ describe('MyItemsScreen', () => {
     await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false), { timeout: 2500 });
 
     api.getMyListings.mockResolvedValue([{ ...listing }]);
-    const interact = jest.spyOn(InteractionManager, 'runAfterInteractions').mockImplementation(callback => {
+    const interact = jest.spyOn(idleTasks, 'runWhenIdle').mockImplementation(callback => {
       callback();
       return { cancel: jest.fn() };
     });

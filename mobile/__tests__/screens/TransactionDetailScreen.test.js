@@ -157,12 +157,12 @@ describe('TransactionDetailScreen', () => {
   });
 
   it('lets the owner report a return issue without completing the exchange', async () => {
-    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'return_pending', isLender: true, isBorrower: false,
+    api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'return_pending', isLender: true, isBorrower: false, actualPickupAt:'2026-09-25T12:00:00Z',
       borrower: { id: 'user-3', firstName: 'Bob', lastName: 'S' } });
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
     const reportButton = await screen.findByTestId('Transaction.button.reportReturnIssue');
-    expect(reportButton).toHaveStyle({ backgroundColor: COLORS.danger, minHeight: 52 });
+    expect(reportButton).toHaveStyle({ backgroundColor: COLORS.surface });
     fireEvent.press(reportButton);
     expect(mockNavigation.navigate).toHaveBeenCalledWith('ExchangeIssue', { transactionId: 'txn-1' });
     expect(api.getConversations).not.toHaveBeenCalled();
@@ -448,4 +448,19 @@ it('keeps a reserved request waiting without promising a pickup', async () => {
  await screen.findByText('Reserved for another neighbor');
  expect(screen.queryByTestId('Transaction.button.confirmPickup')).toBeNull();
  expect(screen.getByLabelText('Cancel request')).toBeTruthy();
+});
+
+it('shows a clean unavailable state for an old exchange link',async()=>{
+ api.getTransaction.mockRejectedValue(Object.assign(new Error('Not found'),{status:404}));
+ const Screen=require('../../src/screens/TransactionDetailScreen').default;
+ const s=render(<Screen navigation={mockNavigation} route={{params:{id:'old'}}}/>);
+ await s.findByText('Exchange unavailable');
+ expect(s.queryByText('Try again')).toBeNull();expect(s.queryByTestId('Transaction.button.confirmReturn')).toBeNull();
+});
+it('keeps return confirmation and reporting available without opening chat to a blocked neighbor',async()=>{
+ api.getTransaction.mockResolvedValue({...mockTransaction,status:'picked_up',isLender:true,isBorrower:false,contactUnavailable:true,actualPickupAt:'2026-09-25T12:00:00Z'});
+ const Screen=require('../../src/screens/TransactionDetailScreen').default;
+ const s=render(<Screen navigation={mockNavigation} route={{params:{id:'txn-1'}}}/>);
+ await s.findByTestId('Transaction.button.confirmReturn');
+ expect(s.getByTestId('Transaction.button.reportReturnIssue')).toBeTruthy();expect(s.queryByTestId('Transaction.button.message')).toBeNull();
 });

@@ -1,3 +1,4 @@
+import { withReadableLayout } from '../components/ReadableScreen';
 import OnboardingTownScreen from '../screens/onboarding/OnboardingTownScreen';
 import BackHeader from '../components/BackHeader';
 import { ModalHeader } from '../components/ModalControls';
@@ -15,6 +16,7 @@ import OnboardingCompleteScreen from '../screens/onboarding/OnboardingCompleteSc
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import IdentityVerificationScreen from '../screens/IdentityVerificationScreen';
 
+const ReadableOnboardingFriends = withReadableLayout(OnboardingFriendsScreen);
 const Stack = createNativeStackNavigator();
 
 export default function OnboardingNavigator({ initialStep = 1 }) {
@@ -49,7 +51,7 @@ export default function OnboardingNavigator({ initialStep = 1 }) {
       />
       <Stack.Screen
         name="OnboardingFriends"
-        component={OnboardingFriendsScreen}
+        component={ReadableOnboardingFriends}
       />
       <Stack.Screen
         name="OnboardingVerify"

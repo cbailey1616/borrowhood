@@ -255,7 +255,6 @@ jest.mock('@expo/vector-icons', () => {
 jest.mock('react-native-gesture-handler', () => {
   const View = require('react-native').View;
   return {
-    Swipeable: View,
     DrawerLayout: View,
     State: {},
     ScrollView: require('react-native').ScrollView,
@@ -467,6 +466,7 @@ jest.mock('./src/services/api', () => ({
     getUserSafety: jest.fn().mockResolvedValue({ blocked: false }),
     blockUser: jest.fn().mockResolvedValue({ blocked: true }),
     unblockUser: jest.fn().mockResolvedValue({ blocked: false }),
+    getContentReportStatus: jest.fn().mockResolvedValue({ submitted: false }),
     reportContent: jest.fn().mockResolvedValue({ ok: true }),
     blockContentAuthor: jest.fn().mockResolvedValue({ ok: true }),
     reportUser: jest.fn().mockResolvedValue({ ok: true }),
@@ -597,6 +597,8 @@ jest.mock('./src/services/api', () => ({
     getEarnings: jest.fn().mockResolvedValue({ balance: { available: 0 }, stats: { totalEarned: 0, totalRentals: 0, averagePerRental: 0, activeRentals: 0 }, recentTransactions: [], payouts: [], hasConnectAccount: true }),
     // Cancel rental
     cancelRental: jest.fn(),
+    getExchangeIssueStatus: jest.fn().mockResolvedValue({damageSubmitted:false,missingSubmitted:false}),
+    followUpReturnReport: jest.fn().mockResolvedValue({}),
     getReturnHelp: jest.fn().mockResolvedValue({reports:[],restriction:null}),
     getAdminReports: jest.fn().mockResolvedValue({reports:[],counts:{total:0,ready:0,waiting:0,appeals:0,reviewed:0},page:1,hasMore:false}),
   reportNonReturn: jest.fn(), extendReturn: jest.fn(), respondReturnReport: jest.fn(), reviewReturnReport: jest.fn(),
@@ -630,3 +632,6 @@ jest.mock('./src/hooks/useBiometrics', () =>
     refreshBiometrics: jest.fn(),
   }))
 );
+
+// Gesture Handler 3 exposes swipe rows through its dedicated entry point.
+jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => require('react-native').View);

@@ -1,7 +1,8 @@
 import ShimmerImage from '../components/ShimmerImage';
 import LayeredCard from '../components/LayeredCard';
 import BiometricIcon from '../components/BiometricIcon';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import {
   View,
   Text,
@@ -23,11 +24,15 @@ import ActionSheet from '../components/ActionSheet';
 import { useAuth } from '../context/AuthContext';
 import { useError } from '../context/ErrorContext';
 import useBiometrics from '../hooks/useBiometrics';
+import { useContentDimensions } from '../context/MainViewportContext';
 import api from '../services/api';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY, ENABLE_PAID_TIERS } from '../utils/config';
 
 export default function ProfileScreen({ navigation, route }) {
   const { user, logout, refreshUser } = useAuth();
+  const { width, fontScale } = useContentDimensions();
+  const wide = width >= 700 && fontScale < 1.5;
+  const tabBarHeight = useContext(BottomTabBarHeightContext) || 0;
   const { showError, showToast } = useError();
   const {
     isBiometricsAvailable,
@@ -155,8 +160,9 @@ export default function ProfileScreen({ navigation, route }) {
       <WoodlandHeader title="Profile" />
 
       <ScrollView
+        testID="Profile.scroll"
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + SPACING.lg }]}
         showsVerticalScrollIndicator={false}
       >
         {__DEV__ && (
@@ -216,6 +222,8 @@ export default function ProfileScreen({ navigation, route }) {
           </HapticPressable>
         )}
 
+        <View style={[styles.sections, wide && styles.sectionsWide]}>
+        <View style={[styles.sectionColumn, wide && { flex: 1 }]}>
         {/* Account Section */}
         <GroupedListSection header="Account">
           <GroupedListItem
@@ -261,6 +269,8 @@ export default function ProfileScreen({ navigation, route }) {
           </GroupedListSection>
         )}
 
+        </View>
+        <View style={[styles.sectionColumn, wide && { flex: 1 }]}>
         {/* Settings Section */}
         <GroupedListSection header="Settings">
           {isBiometricsAvailable && (
@@ -315,6 +325,8 @@ export default function ProfileScreen({ navigation, route }) {
           />
         </GroupedListSection>
 
+        </View>
+        </View>
         <Text style={styles.version}>Borrowhood {Application.nativeApplicationVersion || appConfig.expo.version} · {Application.nativeBuildVersion ? `Build ${Application.nativeBuildVersion}` : 'Local preview'}</Text>
       </ScrollView>
 
@@ -398,10 +410,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  sections: { gap: SPACING.lg },
+  sectionsWide: { flexDirection: 'row', alignItems: 'flex-start' },
+  sectionColumn: { minWidth: 0 },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
+    width: '100%', alignSelf: 'center',
     paddingTop: SPACING.md,
     paddingHorizontal: SPACING.lg,
     paddingBottom: 120,

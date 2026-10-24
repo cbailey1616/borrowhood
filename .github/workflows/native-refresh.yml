@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   refresh:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 50
     defaults:
       run:
@@ -33,6 +33,10 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: mobile/package-lock.json
+      - name: Verify supported native toolchain
+        run: |
+          xcodebuild -version
+          xcrun swift --version
       - name: Install dependencies and fixture assets
         run: |
           npm ci
@@ -59,7 +63,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator"
           ditto -x -k "$RUNNER_TEMP/borrowhood-native-cache/borrowhood-simulator-app.zip" "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator"
-          node node_modules/@expo/cli/build/bin/cli export:embed --entry-file screenshots/index.js --platform ios --dev false --bytecode --bundle-output "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app/main.jsbundle" --assets-dest "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app"
+          node node_modules/expo/bin/cli export:embed --entry-file screenshots/index.js --platform ios --dev false --bytecode --bundle-output "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app/main.jsbundle" --assets-dest "$RUNNER_TEMP/borrowhood-capture-build/Build/Products/Release-iphonesimulator/Borrowhood.app"
       - name: Build native app when native inputs changed
         if: steps.restore-native.outcome != 'success'
         env:
@@ -88,7 +92,7 @@ jobs:
         env:
           BORROWHOOD_CAPTURE_REFRESH_ONLY: 'true'
           # A cold hosted simulator can take longer to start the XCTest driver.
-          MAESTRO_DRIVER_STARTUP_TIMEOUT: '240000'
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: '600000'
         run: |
           python3 -m venv "$RUNNER_TEMP/borrowhood-refresh-python"
           "$RUNNER_TEMP/borrowhood-refresh-python/bin/pip" install Pillow

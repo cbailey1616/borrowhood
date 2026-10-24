@@ -1,14 +1,15 @@
+import { useContentDimensions as useWindowDimensions } from '../context/MainViewportContext';
+import { runWhenIdle } from '../utils/runWhenIdle';
 import useReduceMotion from '../hooks/useReduceMotion';
 import { listingIcon } from '../utils/listingPresentation';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import ListingOffer from '../components/ListingOffer';
 import LayeredCard from '../components/LayeredCard';
 import {
   View,
   Text,
   StyleSheet,
-  useWindowDimensions,
-  InteractionManager,
 } from 'react-native';
 import ShimmerImage from '../components/ShimmerImage';
 import Animated, {
@@ -56,9 +57,11 @@ function HeartButton({ onUnsave, title }) {
 }
 
 export default function SavedScreen({ navigation, embedded = false }) {
-  const { width } = useWindowDimensions();
-  const columns = width >= 1100 ? 4 : width >= 768 ? 3 : 2;
-  const gridWidth = Math.min(width, 1440);
+  const tabBarHeight = useContext(BottomTabBarHeightContext) || 0;
+  const { width, fontScale } = useWindowDimensions();
+  const availableWidth = width;
+  const columns = fontScale >= 1.5 ? (width >= 700 ? 2 : 1) : width >= 1200 ? 4 : width >= 900 ? 3 : 2;
+  const gridWidth = availableWidth;
   const cardWidth = (gridWidth - SPACING.lg * 2 - GRID_GAP * (columns - 1)) / columns;
   const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,12 +84,14 @@ export default function SavedScreen({ navigation, embedded = false }) {
   }, [fetchSaved]);
 
   useEffect(() => {
+    let pending;
     const unsubscribe = navigation.addListener('focus', () => {
-      InteractionManager.runAfterInteractions(() => {
+      pending?.cancel();
+      pending = runWhenIdle(() => {
         fetchSaved();
       });
     });
-    return unsubscribe;
+    return () => { unsubscribe(); pending?.cancel(); };
   }, [navigation, fetchSaved]);
 
   const onRefresh = () => {
@@ -148,12 +153,13 @@ export default function SavedScreen({ navigation, embedded = false }) {
       {!embedded && <WoodlandHeader title="Saved" />}
 
       <BorrowhoodRefreshList
+        testID="Saved.list"
         data={listings}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         key={`saved-${columns}`}
         numColumns={columns}
-        contentContainerStyle={[styles.listContent, { maxWidth: gridWidth }]}
+        contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + SPACING.lg }]}
         refreshing={isRefreshing}
         onRefresh={onRefresh}
         ListEmptyComponent={
@@ -188,7 +194,6 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     paddingBottom: 100,
     width: '100%',
-    maxWidth: 660,
     alignSelf: 'center',
   },
   // Card grid

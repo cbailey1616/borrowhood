@@ -1,3 +1,4 @@
+import { withReadableLayout } from '../components/ReadableScreen';
 import ProjectsScreen from '../screens/ProjectsScreen';
 import ReturnHelpScreen from '../screens/ReturnHelpScreen';
 import TextInput from '../components/AppTextInput';
@@ -65,6 +66,52 @@ import RespondToDisputeScreen from '../screens/RespondToDisputeScreen';
 import TransactionHistoryScreen from '../screens/TransactionHistoryScreen';
 import ExchangesScreen from '../screens/ExchangesScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+
+// Resolve wrappers once so folding and resizing preserve navigation and form state.
+const readableScreens = {
+  OfferItem: withReadableLayout(OfferItemScreen, 760),
+  RequestQueue: withReadableLayout(RequestQueueScreen, 960),
+  Insights: withReadableLayout(InsightsScreen, 960),
+  ReturnHelp: withReadableLayout(ReturnHelpScreen, 960),
+  ExchangeIssue: withReadableLayout(ExchangeIssueScreen, 760),
+  AdminReports: withReadableLayout(AdminReportsScreen, 960),
+  SafetyReports: withReadableLayout(SafetyReportsScreen, 960),
+  TransactionDetail: withReadableLayout(TransactionDetailScreen, 960),
+  UserProfile: withReadableLayout(UserProfileScreen, 960),
+  DisputeDetail: withReadableLayout(DisputeDetailScreen, 960),
+  CreateListing: withReadableLayout(CreateListingScreen, 760),
+  EditListing: withReadableLayout(EditListingScreen, 760),
+  BorrowRequest: withReadableLayout(BorrowRequestScreen, 760),
+  EditProfile: withReadableLayout(EditProfileScreen, 760),
+  WantedPosts: withReadableLayout(WantedPostsScreen, 960),
+  CreateRequest: withReadableLayout(CreateRequestScreen, 760),
+  RequestDetail: withReadableLayout(RequestDetailScreen, 960),
+  EditRequest: withReadableLayout(EditRequestScreen, 760),
+  Conversations: withReadableLayout(ConversationsScreen, 960),
+  Friends: withReadableLayout(FriendsScreen, 960),
+  MyQRCode: withReadableLayout(MyQRCodeScreen, 960),
+  MyCommunity: withReadableLayout(MyCommunityScreen, 960),
+  NotificationSettings: withReadableLayout(NotificationSettingsScreen, 960),
+  PrivacySafety: withReadableLayout(PrivacySafetyScreen, 960),
+  Disputes: withReadableLayout(DisputesScreen, 960),
+  ListingDiscussion: withReadableLayout(ListingDiscussionScreen, 960),
+  Subscription: withReadableLayout(SubscriptionScreen, 760),
+  JoinCommunity: withReadableLayout(JoinCommunityScreen, 760),
+  InviteMembers: withReadableLayout(InviteMembersScreen, 760),
+  CommunityMembers: withReadableLayout(CommunityMembersScreen, 960),
+  CommunitySettings: withReadableLayout(CommunitySettingsScreen, 960),
+  Referral: withReadableLayout(ReferralScreen, 760),
+  VerifyIdentity: withReadableLayout(VerifyIdentityScreen, 760),
+  IdentityVerification: withReadableLayout(IdentityVerificationScreen, 760),
+  LendingCircles: withReadableLayout(LendingCirclesScreen, 960),
+  CircleDetail: withReadableLayout(CircleDetailScreen, 760),
+  DamageClaim: withReadableLayout(DamageClaimScreen, 760),
+  ReportIssue: withReadableLayout(ReportIssueScreen, 760),
+  RespondToDispute: withReadableLayout(RespondToDisputeScreen, 760),
+  Exchanges: withReadableLayout(ExchangesScreen, 960),
+  TransactionHistory: withReadableLayout(TransactionHistoryScreen, 960),
+  ChangePassword: withReadableLayout(ForgotPasswordScreen, 760),
+};
 
 const Stack = createNativeStackNavigator();
 
@@ -140,89 +187,89 @@ export default function RootNavigator({ navigationRef }) {
 
   return (
     <>
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'default' }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'default', statusBarStyle: 'dark' }}>
       {!isAuthenticated ? (
         <Stack.Screen name="Auth" component={AuthNavigator} />
       ) : (
         <>
           <Stack.Screen name="Main" component={MainNavigator} />
-          <Stack.Screen name="OfferItem" component={OfferItemScreen} options={modalScreenOptions("Private offer")} />
+          <Stack.Screen name="OfferItem" component={readableScreens.OfferItem} options={modalScreenOptions("Private offer")} />
           <Stack.Screen
             name="ListingDetail"
             getId={detailRouteIds.ListingDetail}
             component={ListingDetailScreen}
             options={{ ...sharedScreenOptions, ...itemDetailsHeaderOptions }}
           />
-          <Stack.Screen name="RequestQueue" getId={detailRouteIds.RequestQueue} component={RequestQueueScreen} options={{ ...sharedScreenOptions, ...requestQueueHeaderOptions }} />
-          <Stack.Screen name="Insights" component={InsightsScreen} options={{ ...sharedScreenOptions, title: 'App insights' }} />
-          <Stack.Screen name="ReturnHelp" component={ReturnHelpScreen} options={({ route }) => ({ ...sharedScreenOptions,
+          <Stack.Screen name="RequestQueue" getId={detailRouteIds.RequestQueue} component={readableScreens.RequestQueue} options={{ ...sharedScreenOptions, ...requestQueueHeaderOptions }} />
+          <Stack.Screen name="Insights" component={readableScreens.Insights} options={{ ...sharedScreenOptions, title: 'App insights' }} />
+          <Stack.Screen name="ReturnHelp" component={readableScreens.ReturnHelp} options={({ route }) => ({ ...sharedScreenOptions,
             title: route.params?.admin ? 'Return reviews' : route.params?.reports ? 'Return reports' : route.params?.transaction ? 'Return options' : 'Return reports' })} />
-          <Stack.Screen name="ExchangeIssue" component={ExchangeIssueScreen} options={modalScreenOptions('Report an issue')} />
-          <Stack.Screen name="AdminReports" component={AdminReportsScreen} options={{ ...sharedScreenOptions, title: 'Reports' }} />
-          <Stack.Screen name="SafetyReports" component={SafetyReportsScreen} options={{ ...sharedScreenOptions, title: 'Safety reports' }} />
+          <Stack.Screen name="ExchangeIssue" component={readableScreens.ExchangeIssue} options={modalScreenOptions('Report an issue')} />
+          <Stack.Screen name="AdminReports" component={readableScreens.AdminReports} options={{ ...sharedScreenOptions, title: 'Reports' }} />
+          <Stack.Screen name="SafetyReports" component={readableScreens.SafetyReports} options={{ ...sharedScreenOptions, title: 'Safety reports' }} />
           <Stack.Screen
             name="TransactionDetail"
             getId={detailRouteIds.TransactionDetail}
-            component={TransactionDetailScreen}
+            component={readableScreens.TransactionDetail}
             options={{ ...sharedScreenOptions, title: 'Borrow details' }}
           />
           <Stack.Screen
             name="UserProfile"
             getId={detailRouteIds.UserProfile}
-            component={UserProfileScreen}
+            component={readableScreens.UserProfile}
             options={{ ...sharedScreenOptions, title: 'Profile' }}
           />
           <Stack.Screen
             name="DisputeDetail"
-            component={DisputeDetailScreen}
+            component={readableScreens.DisputeDetail}
             options={{ ...sharedScreenOptions, title: 'Dispute' }}
           />
           <Stack.Screen
             name="CreateListing"
-            component={CreateListingScreen}
+            component={readableScreens.CreateListing}
             options={modalScreenOptions('Add an item')}
           />
           <Stack.Screen
             name="EditListing"
-            component={EditListingScreen}
+            component={readableScreens.EditListing}
             options={modalScreenOptions('Edit item')}
           />
           <Stack.Screen
             name="BorrowRequest"
-            component={BorrowRequestScreen}
+            component={readableScreens.BorrowRequest}
             options={({ route }) => modalScreenOptions(
               route.params?.listing?.listingType === 'sell' ? 'Request to Buy' : route.params?.listing?.listingType === 'giveaway' ? 'Request Free Item' : 'Request to Borrow'
             )}
           />
           <Stack.Screen
             name="EditProfile"
-            component={EditProfileScreen}
+            component={readableScreens.EditProfile}
             options={modalScreenOptions('Edit Profile')}
           />
           <Stack.Screen
             name="WantedPosts"
-            component={WantedPostsScreen}
+            component={readableScreens.WantedPosts}
             options={{ ...sharedScreenOptions, title: 'Wanted' }}
           />
           <Stack.Screen
             name="CreateRequest"
-            component={CreateRequestScreen}
+            component={readableScreens.CreateRequest}
             options={modalScreenOptions('Post in Wanted')}
           />
           <Stack.Screen
             name="RequestDetail"
             getId={detailRouteIds.RequestDetail}
-            component={RequestDetailScreen}
+            component={readableScreens.RequestDetail}
             options={{ ...sharedScreenOptions, title: 'Wanted post' }}
           />
           <Stack.Screen
             name="EditRequest"
-            component={EditRequestScreen}
+            component={readableScreens.EditRequest}
             options={modalScreenOptions('Edit wanted post')}
           />
           <Stack.Screen
             name="Conversations"
-            component={ConversationsScreen}
+            component={readableScreens.Conversations}
             options={{ ...sharedScreenOptions, title: 'Messages' }}
           />
           <Stack.Screen
@@ -233,15 +280,15 @@ export default function RootNavigator({ navigationRef }) {
           />
           <Stack.Screen
             name="Friends"
-            component={FriendsScreen}
+            component={readableScreens.Friends}
             options={({ route }) => route.params?.fromPosting
               ? modalScreenOptions('Friends')
               : { ...sharedScreenOptions, title: 'Friends' }}
           />
-          <Stack.Screen name="MyQRCode" component={MyQRCodeScreen} options={{ ...sharedScreenOptions, title: 'My QR code' }} />
+          <Stack.Screen name="MyQRCode" component={readableScreens.MyQRCode} options={{ ...sharedScreenOptions, title: 'My QR code' }} />
           <Stack.Screen
             name="MyCommunity"
-            component={MyCommunityScreen}
+            component={readableScreens.MyCommunity}
             options={{ ...sharedScreenOptions, title: 'My Neighborhood' }}
           />
           <Stack.Screen
@@ -252,22 +299,22 @@ export default function RootNavigator({ navigationRef }) {
           />
           <Stack.Screen
             name="NotificationSettings"
-            component={NotificationSettingsScreen}
+            component={readableScreens.NotificationSettings}
             options={{ ...sharedScreenOptions, title: 'Notification Settings' }}
           />
           <Stack.Screen
             name="PrivacySafety"
-            component={PrivacySafetyScreen}
+            component={readableScreens.PrivacySafety}
             options={{ ...sharedScreenOptions, title: 'Privacy & safety' }}
           />
           <Stack.Screen
             name="Disputes"
-            component={DisputesScreen}
+            component={readableScreens.Disputes}
             options={{ ...sharedScreenOptions, title: 'Disputes' }}
           />
           <Stack.Screen
             name="ListingDiscussion"
-            component={ListingDiscussionScreen}
+            component={readableScreens.ListingDiscussion}
             options={({ route }) => ({
               ...sharedScreenOptions,
               title: 'Comments',
@@ -275,61 +322,61 @@ export default function RootNavigator({ navigationRef }) {
           />
           <Stack.Screen
             name="Subscription"
-            component={SubscriptionScreen}
+            component={readableScreens.Subscription}
             options={modalScreenOptions('Verification')}
           />
           <Stack.Screen
             name="JoinCommunity"
-            component={JoinCommunityScreen}
+            component={readableScreens.JoinCommunity}
             options={({ route }) => route.params?.fromPosting
               ? modalScreenOptions('Find your neighborhood')
               : { ...sharedScreenOptions, title: 'Find Your Neighborhood' }}
           />
           <Stack.Screen
             name="InviteMembers"
-            component={InviteMembersScreen}
+            component={readableScreens.InviteMembers}
             options={{ ...sharedScreenOptions, title: 'Invite Neighbors' }}
           />
           <Stack.Screen
             name="CommunityMembers"
-            component={CommunityMembersScreen}
+            component={readableScreens.CommunityMembers}
             options={{ ...sharedScreenOptions, title: 'Members' }}
           />
           <Stack.Screen
             name="CommunitySettings"
-            component={CommunitySettingsScreen}
+            component={readableScreens.CommunitySettings}
             options={{ ...sharedScreenOptions, title: 'Neighborhood Settings' }}
           />
           <Stack.Screen
             name="Referral"
-            component={ReferralScreen}
+            component={readableScreens.Referral}
             options={{ ...sharedScreenOptions, title: 'Invite Friends' }}
           />
           <Stack.Screen
             name="VerifyIdentity"
-            component={VerifyIdentityScreen}
+            component={readableScreens.VerifyIdentity}
             options={{ ...sharedScreenOptions, title: 'Verification' }}
           />
           <Stack.Screen
             name="IdentityVerification"
-            component={IdentityVerificationScreen}
+            component={readableScreens.IdentityVerification}
             options={modalScreenOptions('Verification')}
           />
-          <Stack.Screen name="LendingCircles" component={LendingCirclesScreen} options={modalScreenOptions('Lending circles')} />
-          <Stack.Screen name="CircleDetail" component={CircleDetailScreen} options={modalScreenOptions('Circle')} />
+          <Stack.Screen name="LendingCircles" component={readableScreens.LendingCircles} options={modalScreenOptions('Lending circles')} />
+          <Stack.Screen name="CircleDetail" component={readableScreens.CircleDetail} options={modalScreenOptions('Circle')} />
           <Stack.Screen
             name="DamageClaim"
-            component={DamageClaimScreen}
+            component={readableScreens.DamageClaim}
             options={modalScreenOptions('Damage Claim')}
           />
           <Stack.Screen
             name="ReportIssue"
-            component={ReportIssueScreen}
+            component={readableScreens.ReportIssue}
             options={modalScreenOptions('Report an Issue')}
           />
           <Stack.Screen
             name="RespondToDispute"
-            component={RespondToDisputeScreen}
+            component={readableScreens.RespondToDispute}
             options={({ route }) => modalScreenOptions(
               route.params?.mode === 'counter' ? 'Counter Proposal' : 'Decline Claim'
             )}
@@ -337,17 +384,17 @@ export default function RootNavigator({ navigationRef }) {
           <Stack.Screen name="Projects" component={ProjectsScreen} options={{ ...sharedScreenOptions, title: 'Make a little happen', headerShown: false }} />
           <Stack.Screen
             name="Exchanges"
-            component={ExchangesScreen}
+            component={readableScreens.Exchanges}
             options={{ ...sharedScreenOptions, title: 'Your exchanges' }}
           />
           <Stack.Screen
             name="TransactionHistory"
-            component={TransactionHistoryScreen}
+            component={readableScreens.TransactionHistory}
             options={{ ...sharedScreenOptions, title: 'Past exchanges' }}
           />
           <Stack.Screen
             name="ChangePassword"
-            component={ForgotPasswordScreen}
+            component={readableScreens.ChangePassword}
             options={modalScreenOptions('Change Password')}
           />
         </>

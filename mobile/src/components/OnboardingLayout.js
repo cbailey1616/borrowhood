@@ -40,7 +40,7 @@ export default function OnboardingLayout({
       <ScrollView key={step} style={styles.scroll} keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}>
         <View style={styles.sheet}>
-          <View style={styles.brandRow}>
+          <View style={[styles.brandRow, { marginLeft: insets.left, marginRight: insets.right }]}>
             <View style={styles.brand}>
               <Image source={require('../../assets/logo.png')} style={styles.logo} accessible={false} />
               <Text style={styles.wordmark}>Borrowhood</Text>

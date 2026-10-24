@@ -1,3 +1,4 @@
+import { useTopReservedSpace } from '../context/ReservedRegionsContext';
 import { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +13,7 @@ export default function VerificationBenefits() {
   const [visible, setVisible] = useState(false);
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const reservedBottom = useTopReservedSpace();
   const close = () => setVisible(false);
   return <>
     <View style={styles.card}>
@@ -28,7 +30,7 @@ export default function VerificationBenefits() {
     {visible && <PopupLayer visible onRequestClose={close}>
       <View style={styles.overlay} onAccessibilityEscape={close}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessible={false} />
-        <View style={[styles.sheet, { maxHeight: height - insets.top - 20, paddingBottom: Math.max(insets.bottom, 20) }]} accessibilityViewIsModal>
+        <View style={[styles.sheet, { maxHeight: height - Math.max(insets.top, reservedBottom) - 20, paddingBottom: Math.max(insets.bottom, 20) }]} accessibilityViewIsModal>
           <ScrollView contentContainerStyle={styles.content}>
             <SheetDismissArea onDismiss={close}>
               <View style={styles.header}><Text accessibilityRole="header" style={styles.sheetTitle}>What does verification unlock?</Text>
