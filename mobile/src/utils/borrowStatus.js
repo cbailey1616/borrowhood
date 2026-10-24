@@ -31,6 +31,7 @@ export function borrowGuidance({ status, isBorrower, isGiveaway, hasDispute, len
         ? { title: `Waiting for ${neighbor} to confirm`, detail: 'The return is recorded. The owner still needs to confirm receipt and release the deposit.' }
         : { title: 'Your turn: confirm the return', detail: 'Confirm you have the item back to finish the exchange and release the deposit.' };
       // Falls through: current fee-free returns finish immediately.
+    case 'closed_not_returned': return { title: 'Closed — not returned', detail: 'This exchange left your active list after 48 hours. The missing-item report remains available for review. The owner can confirm if the item comes back later.' };
     case 'completed': return { title: 'Exchange complete', detail: isGiveaway ? 'The handoff is complete. Nothing else to do.' : 'The item has been returned. Nothing else to do.' };
     case 'cancelled': return { title: 'Request cancelled', detail: 'No pickup is expected. Nothing else to do for this exchange.' };
     case 'declined': return { title: 'Request declined', detail: 'No pickup is expected. You can look for another item nearby.' };
