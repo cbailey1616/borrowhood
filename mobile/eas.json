@@ -65,6 +65,18 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "http://127.0.0.1:3101"
       }
+    },
+    "android-preview": {
+      "extends": "preview",
+      "environment": "production",
+      "android": {
+        "buildType": "apk",
+        "autoIncrement": "versionCode"
+      }
+    },
+    "android-store": {
+      "extends": "production",
+      "environment": "production"
     }
   },
   "submit": {
@@ -83,6 +95,11 @@
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "internal"
+      }
+    },
+    "android-store": {
+      "android": {
         "track": "internal"
       }
     }

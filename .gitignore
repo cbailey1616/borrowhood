@@ -51,3 +51,11 @@ temp/
 *.mobileprovision
 *.orig.*
 web-build/
+
+# Android credentials and generated native project
+*.keystore
+credentials.json
+google-services.json
+google-play-service-account.json
+*-firebase-adminsdk-*.json
+mobile/android/
