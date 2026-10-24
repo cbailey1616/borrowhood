@@ -7,6 +7,7 @@ vi.mock('../../src/services/notifications.js', () => ({ sendNotification: async 
   await options.runQuery('INSERT INTO notifications(transaction_id,type,user_id,created_at) VALUES($1,$2,$3,NOW())', [data.transactionId,type,user]);
   return 'saved';
 } }));
+import { autoCloseMissingReturns } from '../../src/services/autoCloseMissingReturns.js';
 import { autoCloseReturns } from '../../src/services/autoCloseReturns.js';
 import { completeFreeReturn } from '../../src/services/borrowReturn.js';
 import { ensureExchangeCompletionSchema } from '../../src/services/exchangeCompletionSchema.js';
@@ -20,7 +21,7 @@ beforeAll(async () => {
       condition_at_pickup TEXT DEFAULT 'good', condition_at_return TEXT, condition_notes TEXT);
     CREATE TABLE notifications(transaction_id TEXT, type TEXT, user_id TEXT, created_at TIMESTAMPTZ);
     CREATE TABLE disputes(transaction_id TEXT);
-    CREATE TABLE return_reports(transaction_id TEXT,status TEXT,resolved_at TIMESTAMPTZ);
+    CREATE TABLE return_reports(transaction_id TEXT,status TEXT,resolved_at TIMESTAMPTZ,response_due_at TIMESTAMPTZ DEFAULT NOW()+INTERVAL '48 hours');
     CREATE TABLE safety_reports(content_type TEXT,content_id TEXT,status TEXT);`);
   await ensureExchangeCompletionSchema();
 }, 15000);
@@ -59,7 +60,7 @@ it('closes after 48 hours, restores inventory and notifies both once', async () 
 it.each(['dispute','report','damage','condition','paid'])('keeps a %s return open for review', async kind => {
   await ageReturn();
   if(kind==='dispute') await state.db.exec("INSERT INTO disputes VALUES('borrow')");
-  if(kind==='report') await state.db.exec("INSERT INTO return_reports VALUES('borrow','open',NULL)");
+  if(kind==='report') await state.db.exec("INSERT INTO return_reports(transaction_id,status,resolved_at) VALUES('borrow','open',NULL)");
   if(kind==='damage') await state.db.exec("INSERT INTO safety_reports VALUES('exchange','borrow','open')");
   if(kind==='condition') await state.db.exec("UPDATE borrow_transactions SET condition_at_return='worn'");
   if(kind==='paid') await state.db.exec('UPDATE borrow_transactions SET rental_fee=5');
@@ -103,4 +104,31 @@ it('backfills old pending returns from the original return notice', async () => 
   expect((await row()).return_requested_at).toEqual(first);
   await autoCloseReturns();
   expect((await row()).status).toBe('completed');
+});
+
+
+it('archives missing returns after 48 hours while preserving the case and allowing owner-confirmed late return', async () => {
+  await state.db.exec("INSERT INTO return_reports(transaction_id,status,response_due_at) VALUES('borrow','open',NOW()+INTERVAL '1 hour')");
+  await autoCloseMissingReturns(); expect((await row()).status).toBe('picked_up');
+  await state.db.exec("UPDATE return_reports SET response_due_at=NOW()-INTERVAL '1 second'");
+  await autoCloseMissingReturns();
+  const closed = await row();
+  expect(closed.status).toBe('closed_not_returned'); expect(closed.missing_closed_at).toBeTruthy();
+  expect(closed.actual_return_at).toBeNull();
+  expect(await listing()).toMatchObject({is_available:false,times_borrowed:0});
+  expect((await state.db.query('SELECT * FROM return_reports')).rows[0]).toMatchObject({status:'open',resolved_at:null});
+  await autoCloseMissingReturns(); expect((await row()).missing_closed_at).toEqual(closed.missing_closed_at);
+  expect((await completeFreeReturn('borrow','borrower','good')).status).toBe(409);
+  await completeFreeReturn('borrow','owner','good');
+  expect((await row()).status).toBe('completed'); expect((await row()).actual_return_at).toBeTruthy();
+  expect(await listing()).toMatchObject({is_available:true,times_borrowed:1});
+});
+it.each(['dismissed','resolved','paid','returned','giveaway'])('does not archive a %s missing case', async kind => {
+  await state.db.exec("INSERT INTO return_reports(transaction_id,status,response_due_at) VALUES('borrow','open',NOW()-INTERVAL '1 hour')");
+  if (kind==='dismissed') await state.db.exec("UPDATE return_reports SET status='dismissed'");
+  if (kind==='resolved') await state.db.exec('UPDATE return_reports SET resolved_at=NOW()');
+  if (kind==='paid') await state.db.exec('UPDATE borrow_transactions SET deposit_amount=10');
+  if (kind==='returned') await state.db.exec('UPDATE borrow_transactions SET actual_return_at=NOW()');
+  if (kind==='giveaway') await state.db.exec("UPDATE listings SET listing_type='giveaway'");
+  await autoCloseMissingReturns(); expect((await row()).missing_closed_at).toBeNull();
 });
