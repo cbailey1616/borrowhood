@@ -5,7 +5,7 @@ const exchange = { id: 'ladder-borrow', status: 'picked_up', isBorrower: true,
   listing: { id: 'ladder', title: 'Ladder' }, endDate: '2026-09-20' };
 const action = overrides => exchangeHomeAction({ ...exchange, ...overrides }, 'me', now);
 
-it.each(['pending', 'completed', 'declined', 'cancelled', 'returned', 'return_pending'])('does not interrupt the borrower for %s', status => {
+it.each(['pending', 'completed', 'declined', 'cancelled', 'returned', 'return_pending', 'closed_not_returned'])('does not interrupt the borrower for %s', status => {
   expect(action({ status })).toBeNull();
 });
 
@@ -74,4 +74,8 @@ it('shows a dispute only when this person has a response to give', () => {
   expect(nextHomeAction([], [{ ...issue, status: 'underReview' }], 'me', now)).toBeNull();
   expect(nextHomeAction([], [{ ...issue, status: 'counterPending' }], 'sam', now).id).toBe('issue');
   expect(action({ status: 'disputed', endDate: '2026-09-15' })).toBeNull();
+});
+
+it('labels a missing closed exchange without calling it returned', () => {
+  expect(exchangeStatus({...exchange,status:'closed_not_returned'},'me',now)).toBe('Closed — not returned');
 });
