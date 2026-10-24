@@ -44,7 +44,7 @@ if [[ -f "$TOOLS/borrowhood-development.apk" ]]; then
       sleep 1
     done
   fi
-  "$ADB" -s "$SERIAL" shell am start -a android.intent.action.VIEW -d 'borrowhood://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8097' com.borrowhood.app
+  "$ADB" -s "$SERIAL" shell 'am start -a android.intent.action.VIEW -d "borrowhood://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8097&__expo_disable_fab=1&__expo_disable_auto_launch=1&__expo_disable_onboarding=1" com.borrowhood.app'
 else
   echo "Installing Borrowhood's signed test APK..."
   "$ADB" -s "$SERIAL" install -r "$TOOLS/borrowhood-preview.apk"
