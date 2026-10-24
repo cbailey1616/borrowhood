@@ -45,7 +45,7 @@ beforeAll(async () => {
     CREATE TABLE borrow_transactions(id UUID PRIMARY KEY, listing_id UUID, borrower_id UUID, lender_id UUID,
       status TEXT, requested_end_date DATE, actual_pickup_at TIMESTAMPTZ DEFAULT NOW(), actual_return_at TIMESTAMPTZ,
       reminder_day_before_sent BOOLEAN DEFAULT false, reminder_day_of_sent BOOLEAN DEFAULT false);
-    CREATE TABLE return_reports(transaction_id UUID REFERENCES borrow_transactions(id), status TEXT, resolved_at TIMESTAMPTZ, version INT DEFAULT 0);
+    CREATE TABLE return_reports(transaction_id UUID REFERENCES borrow_transactions(id), status TEXT, resolved_at TIMESTAMPTZ, extension_due_date DATE, version INT DEFAULT 0);
     CREATE TABLE notifications(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES users(id), type TEXT, title TEXT, body TEXT,
       from_user_id UUID, transaction_id UUID, listing_id UUID, request_id UUID, conversation_id UUID, dispute_id UUID,
       is_read BOOLEAN DEFAULT false, read_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), push_sent BOOLEAN DEFAULT false);

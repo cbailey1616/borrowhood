@@ -23,6 +23,8 @@ export default function ExchangeIssueScreen({ navigation, route }) {
   const id = route.params?.transactionId;
   const startTask = useNavigationTask(navigation, id);
   const [transaction, setTransaction] = useState(null);
+  const [receipt, setReceipt] = useState(null);
+  const [unavailable,setUnavailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reason, setReason] = useState(null);
   const [detail, setDetail] = useState('');
@@ -36,19 +38,22 @@ export default function ExchangeIssueScreen({ navigation, route }) {
 
   const load = useCallback(async () => {
     const current = startTask();
-    setLoading(true); setError('');
+    setLoading(true); setTransaction(null); setReceipt(null); setUnavailable(false); setError('');
     try {
-      const result = await api.getTransaction(id);
-      if (current()) setTransaction(result);
+      const [result,saved] = await Promise.all([api.getTransaction(id),api.getExchangeIssueStatus(id)]);
+      if (current()) { setTransaction(result); setReceipt(saved); }
     } catch (e) {
-      if (current()) { setTransaction(null); setError(e.message || 'Could not load this exchange. Try again.'); }
+      if (current()) { setTransaction(null); setUnavailable([403,404].includes(e.status)); setError([403,404].includes(e.status) ? '' : e.message || 'Could not load this exchange. Try again.'); }
     } finally { if (current()) setLoading(false); }
   }, [id, startTask]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const active = !!transaction?.actualPickupAt && !transaction?.actualReturnAt
-    && ['picked_up', 'return_pending'].includes(transaction?.status)
+    && ['picked_up', 'return_pending', 'account_deleted'].includes(transaction?.status)
     && !['sell', 'giveaway'].includes(transaction?.listingType || transaction?.listing?.listingType);
+  const canReportDamage = !!transaction?.actualPickupAt && ['picked_up','return_pending','returned','completed','closed_not_returned','account_deleted'].includes(transaction?.status)
+    && !['sell','giveaway'].includes(transaction?.listingType || transaction?.listing?.listingType);
+  const alreadyReported = reason === 'damage' ? receipt?.damageSubmitted : reason === 'non_return' ? receipt?.missingSubmitted : false;
   const canReportMissing = returnHelpGuidance(transaction)?.canReport;
   const pickPhotos = async () => {
     if (flight.current || picking || photos.length >= 5) return;
@@ -61,7 +66,7 @@ export default function ExchangeIssueScreen({ navigation, route }) {
     finally { if (current()) setPicking(false); }
   };
   const submit = async () => {
-    if (flight.current || picking || !active || !reason || (reason === 'non_return' && !canReportMissing)) return;
+    if (flight.current || picking || !canReportDamage || alreadyReported || !reason || (reason === 'non_return' && !canReportMissing)) return;
     flight.current = true; setBusy(true); setError('');
     const current = startTask();
     try {
@@ -87,13 +92,15 @@ export default function ExchangeIssueScreen({ navigation, route }) {
       <View style={styles.itemCopy}><Text style={styles.eyebrow}>This exchange</Text><Text style={styles.itemTitle}>{transaction.listing?.title}</Text></View>
     </LayeredCard>}
     {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-    {!loading && !transaction && <ActionButton label="Try again" onPress={load} />}
-    {!loading && transaction && !active && <Text style={styles.body}>This exchange is no longer awaiting a return. A new return issue cannot be reported here.</Text>}
-    {!loading && active && <>
+    {unavailable && <LayeredCard style={styles.receipt}><Ionicons name="leaf-outline" size={28} color={COLORS.primary}/><Text style={styles.heading}>Exchange unavailable</Text><Text style={styles.body}>This exchange is no longer available. Your other exchanges are still in Activity.</Text><ActionButton label="Go back" onPress={() => navigation.goBack()} /></LayeredCard>}
+    {!loading && !transaction && !unavailable && <ActionButton label="Try again" onPress={load} />}
+    {!loading && transaction && !canReportDamage && <LayeredCard style={styles.receipt}><Ionicons name="leaf-outline" size={28} color={COLORS.primary}/><Text style={styles.heading}>Nothing to report here</Text><Text style={styles.body}>Reports are available for borrowed items after pickup. You can go back to see the latest exchange details.</Text><ActionButton label="Back to exchange" onPress={() => navigation.goBack()} /></LayeredCard>}
+    {!loading && canReportDamage && <>
       <Text style={styles.heading}>What happened?</Text>
       <LayeredCard style={styles.reasons}>
-        {reasons.filter(option => transaction.isLender || option.key !== 'non_return').map((option, index) => {
-          const disabled = busy || picking || (option.key === 'non_return' && !canReportMissing);
+        {reasons.filter(option => option.key === 'damage' || transaction.isLender && (active || receipt?.missingSubmitted)).map((option, index) => {
+          const submitted = option.key === 'damage' ? receipt?.damageSubmitted : receipt?.missingSubmitted;
+          const disabled = busy || picking || (option.key === 'non_return' && !canReportMissing && !submitted);
           const selected = reason === option.key;
           return <HapticPressable key={option.key} accessibilityRole="radio" accessibilityLabel={option.label}
             accessibilityState={{ checked: selected, disabled }} disabled={disabled}
@@ -101,13 +108,24 @@ export default function ExchangeIssueScreen({ navigation, route }) {
             style={[styles.reason, index > 0 && styles.reasonBorder, selected && styles.selected]}>
             <Ionicons name={option.icon} size={24} color={disabled ? COLORS.textSecondary : COLORS.primary} />
             <View style={styles.reasonCopy}><Text style={[styles.reasonLabel, disabled && styles.disabledLabel]}>{option.label}</Text>
-              {option.key === 'non_return' && !canReportMissing && <Text style={styles.caption}>Available after the agreed return date</Text>}
+              {submitted && <Text style={styles.caption}>Already reported · View your report</Text>}
+              {option.key === 'non_return' && !canReportMissing && !submitted && <Text style={styles.caption}>Available after the agreed return date</Text>}
               {option.key === 'damage' && transaction.isBorrower && <Text style={styles.caption}>Report damage to the item you borrowed</Text>}
             </View>
             <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={selected ? COLORS.primary : COLORS.border} />
           </HapticPressable>;
         })}
       </LayeredCard>
+      {alreadyReported ? <LayeredCard style={styles.receipt} accessibilityLiveRegion="polite">
+        <View style={styles.receiptHeading}><Ionicons name="shield-checkmark-outline" size={26} color={COLORS.primary}/><Text style={styles.heading}>Already reported</Text></View>
+        <Text style={styles.body}>Your original report is saved. You don’t need to submit it again.</Text>
+        {reason === 'damage' && receipt.damageReport && <>
+          <Text style={styles.receiptStatus}>{receipt.damageReport.status === 'open' ? 'Awaiting review' : receipt.damageReport.status === 'dismissed' ? 'Report dismissed' : 'Review complete'}</Text>
+          {!!receipt.damageReport.detail && <Text style={styles.body}>{receipt.damageReport.detail}</Text>}
+          {receipt.damageReport.photos.map((uri,index) => <ShimmerImage key={index} source={{uri}} accessibilityLabel="Report photo" style={styles.savedPhoto}/>)}
+        </>}
+        <ActionButton label={reason === 'non_return' ? 'View report' : 'Done'} variant="primary" onPress={() => reason === 'non_return' ? navigation.navigate('ReturnHelp',{transaction:{id},reports:true}) : navigation.goBack()} />
+      </LayeredCard> : <>
       <View style={styles.section}><Text style={styles.label}>Details <Text style={styles.optional}>(optional)</Text></Text>
         <TextInput accessibilityLabel="Issue details" value={detail} onChangeText={setDetail} maxLength={2000} multiline
           editable={!busy} placeholder="Describe what happened" placeholderTextColor={COLORS.textSecondary} style={styles.input} />
@@ -125,6 +143,7 @@ export default function ExchangeIssueScreen({ navigation, route }) {
       <View style={styles.notice}><Ionicons name="shield-outline" size={22} color={COLORS.primary} /><Text style={[styles.caption, styles.noticeText]}>{REPORT_NOTICE}</Text></View>
       <ActionButton label="Submit report" variant="primary" icon="flag-outline" loading={busy}
         disabled={!reason || busy || picking || (reason === 'non_return' && !canReportMissing)} onPress={submit} />
+      </>}
     </>}
   </ScrollView>;
 }
@@ -135,6 +154,10 @@ const styles = StyleSheet.create({
   heading: { ...TYPOGRAPHY.title2, color: COLORS.primary }, body: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, lineHeight: 25 },
   item: { padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }, itemPhoto: { width: 60, height: 68, borderRadius: RADIUS.md },
   itemCopy: { flex: 1, gap: 4 }, itemTitle: { ...TYPOGRAPHY.headline, color: COLORS.text }, eyebrow: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
+  receipt: { padding: SPACING.lg, gap: SPACING.md, backgroundColor: COLORS.surface },
+  receiptHeading: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  receiptStatus: { ...TYPOGRAPHY.footnote, color: COLORS.primary, backgroundColor: COLORS.primaryMuted, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADIUS.md },
+  savedPhoto: { width: '100%', height: 180, borderRadius: RADIUS.md },
   reasons: { overflow: 'hidden' }, reason: { minHeight: 78, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
   reasonCopy: { flex: 1, gap: 4 }, reasonLabel: { ...TYPOGRAPHY.headline, color: COLORS.text }, reasonBorder: { borderTopWidth: 1, borderTopColor: COLORS.border },
   selected: { backgroundColor: COLORS.primaryMuted }, disabledLabel: { color: COLORS.textSecondary },

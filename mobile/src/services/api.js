@@ -871,6 +871,8 @@ export default {
   deleteCommunityMessage: (id, messageId) => del(`/communities/${id}/chat/${messageId}`),
   getReturnHelp: (admin = false, page = 1, transactionId, reportId) => get(`/return-help${admin ? '/admin' : ''}?page=${page}${transactionId ? '&transactionId='+encodeURIComponent(transactionId) : ''}${admin && reportId ? '&reportId='+encodeURIComponent(reportId) : ''}`),
   reportNonReturn: (id, detail) => post(`/return-help/exchange/${id}/report`, { detail }),
+  getExchangeIssueStatus: id => get(`/return-help/exchange/${id}/issue-status`),
+  followUpReturnReport: (id, text, version) => post(`/return-help/${id}/follow-up`, {text,version}),
   reportExchangeIssue: (id, report) => post(`/return-help/exchange/${id}/issue`, report),
   extendReturn: (id, date) => post(`/return-help/exchange/${id}/extend`, { date }),
   respondReturnReport: (id, text, version, appeal = false) => post(`/return-help/${id}/${appeal ? 'appeal' : 'respond'}`, { text, version }),

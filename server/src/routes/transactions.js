@@ -405,7 +405,10 @@ router.get('/:id', authenticate, async (req, res) => {
               b.profile_photo_url as borrower_photo, b.rating as borrower_rating, b.rating_count as borrower_rating_count,
               COALESCE(lnd.display_name, lnd.first_name) as lender_first_name,
               CASE WHEN lnd.display_name IS NOT NULL THEN '' ELSE lnd.last_name END as lender_last_name,
-              lnd.profile_photo_url as lender_photo
+              lnd.profile_photo_url as lender_photo,
+              (b.email LIKE '%@deleted.borrowhood.com' OR lnd.email LIKE '%@deleted.borrowhood.com'
+                OR EXISTS(SELECT 1 FROM user_blocks ub WHERE (ub.user_id=t.borrower_id AND ub.blocked_id=t.lender_id)
+                  OR (ub.user_id=t.lender_id AND ub.blocked_id=t.borrower_id))) AS contact_unavailable
        FROM borrow_transactions t
        JOIN listings l ON t.listing_id = l.id
        JOIN users b ON t.borrower_id = b.id
@@ -458,6 +461,7 @@ router.get('/:id', authenticate, async (req, res) => {
       actualPickupAt: t.actual_pickup_at,
       pickupReview: pickupReviewState(t, req.user.id),
       actualReturnAt: t.actual_return_at,
+      contactUnavailable: !!t.contact_unavailable,
       rentalDays: t.rental_days,
       dailyRate: parseFloat(t.daily_rate),
       rentalFee: parseFloat(t.rental_fee),

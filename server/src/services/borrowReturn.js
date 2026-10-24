@@ -12,7 +12,7 @@ export async function completeFreeReturn(id, userId, condition, notes) {
     const { rows: [listing] } = await client.query('SELECT * FROM listings WHERE id = $1 FOR UPDATE', [borrow.listing_id]);
     if (['giveaway', 'sell'].includes(listing?.listing_type)) return { status: 400, error: 'Sales and giveaways do not have a return step.' };
     if (['returned', 'completed'].includes(borrow.status) && borrow.actual_return_at) return { alreadyConfirmed: true };
-    if (!(borrow.status === 'closed_not_returned' && borrow.lender_id === userId) && !['picked_up', 'return_pending'].includes(borrow.status)) return { status: 409, error: 'This item is not currently borrowed. Refresh to see its latest status.' };
+    if (!(['closed_not_returned','account_deleted'].includes(borrow.status) && borrow.lender_id === userId) && !['picked_up', 'return_pending'].includes(borrow.status)) return { status: 409, error: 'This item is not currently borrowed. Refresh to see its latest status.' };
     if (borrow.borrower_id === userId) {
       if (borrow.status === 'return_pending') return { alreadyConfirmed: true, pendingOwner: true };
       await client.query("UPDATE borrow_transactions SET status='return_pending', return_requested_at=NOW(), condition_notes=$2 WHERE id=$1", [id, notes]);
@@ -28,7 +28,7 @@ export async function completeFreeReturn(id, userId, condition, notes) {
     await client.query(`UPDATE listings l SET times_borrowed = COALESCE(times_borrowed, 0) + 1,
       is_available = CASE WHEN l.status = 'active' AND NOT EXISTS (
         SELECT 1 FROM borrow_transactions bt WHERE bt.listing_id = l.id
-        AND bt.status IN ('approved', 'paid', 'picked_up', 'return_pending')) THEN true ELSE l.is_available END
+        AND bt.status IN ('approved', 'paid', 'picked_up', 'return_pending', 'closed_not_returned')) THEN true ELSE l.is_available END
       WHERE l.id = $1`, [borrow.listing_id]);
     return { borrow };
   });

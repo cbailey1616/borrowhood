@@ -57,6 +57,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const { showError, showToast } = useError();
   const reduceMotion = useReduceMotion();
   const [transaction, setTransaction] = useState(null);
+  const fetchGeneration = useRef(0);
+  const [unavailable, setUnavailable] = useState(false);
   const [fetchError, setFetchError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -73,10 +75,11 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const revealDetails = useRef(false);
 
   useFocusEffect(useCallback(() => {
+    setTransaction(null); setIsLoading(true); setUnavailable(false);
     fetchTransaction();
     dismissRelatedNotifications(id);
     pollRef.current = setInterval(fetchTransaction, 10000);
-    return () => clearInterval(pollRef.current);
+    return () => { fetchGeneration.current++; clearInterval(pollRef.current); };
   }, [id]));
 
   const isGiveaway = isTransferListing(transaction);
@@ -86,16 +89,20 @@ export default function TransactionDetailScreen({ route, navigation }) {
   useEffect(() => { cancelReturnReminders(id); }, [id]);
 
   const fetchTransaction = async () => {
+    const generation = ++fetchGeneration.current;
+    const current = startNavigationTask();
     try {
       const data = await api.getTransaction(id);
-      setTransaction(data);
+      if (!current() || generation !== fetchGeneration.current) return;
+      setUnavailable(false); setTransaction(data);
       setFetchError(null);
     } catch (error) {
-      console.error('Failed to fetch transaction:', error);
-      setFetchError('Could not load this exchange. Check your connection and try again.');
+      if (!current() || generation !== fetchGeneration.current) return;
+      const missing = [403,404].includes(error.status);
+      if (missing) { setTransaction(null); setUnavailable(true); clearInterval(pollRef.current); }
+      setFetchError(missing ? 'This exchange is no longer available. You can still find your other exchanges in Activity.' : 'Could not load this exchange. Check your connection and try again.');
     } finally {
-      setIsLoading(false);
-      setRefreshing(false);
+      if (current() && generation === fetchGeneration.current) { setIsLoading(false); setRefreshing(false); }
     }
   };
 
@@ -197,9 +204,9 @@ export default function TransactionDetailScreen({ route, navigation }) {
       <View style={styles.errorContainer}>
         <Text style={styles.errorTitle}>Exchange unavailable</Text>
         <Text style={styles.errorSubtext}>{fetchError || 'This exchange may have been removed or is no longer accessible.'}</Text>
-        <HapticPressable accessibilityRole="button" style={styles.errorButton} onPress={fetchTransaction}>
+        {!unavailable && <HapticPressable accessibilityRole="button" style={styles.errorButton} onPress={fetchTransaction}>
           <Text maxFontSizeMultiplier={1.4} style={styles.errorButtonText}>Try again</Text>
-        </HapticPressable>
+        </HapticPressable>}
         <HapticPressable
           style={styles.errorButton}
           onPress={() => navigation.goBack()}
@@ -228,7 +235,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
                 } catch { if (isCurrent()) navigation.navigate('Chat', params); }
   };
   const needsReturn = !isGiveaway && ((transaction.isBorrower && transaction.status === 'picked_up')
-    || (transaction.isLender && ['picked_up', 'return_pending', 'closed_not_returned'].includes(transaction.status))
+    || (transaction.isLender && ['picked_up', 'return_pending', 'closed_not_returned', 'account_deleted'].includes(transaction.status))
     || (transaction.isLender && transaction.status === 'returned' && transaction.paymentStatus === 'authorized' && !transaction.hasDispute));
   const needsPickup = (transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt
     && !transaction.hasDispute && ['approved', 'paid'].includes(transaction.status);
@@ -257,7 +264,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       navigation.replace('RequestQueue', params);
     }
   };
-  const primaryAction = transaction.status === 'account_deleted'
+  const primaryAction = ((transaction.status === 'account_deleted' || transaction.contactUnavailable) && !needsPickup && !needsReturn)
     ? { label: 'Contact support', testID: 'Transaction.button.support', onPress: async () => {
       try { await Linking.openURL(`mailto:chris@borrowhood.net?subject=${encodeURIComponent(`Help with exchange ${id}`)}`); }
       catch { showError({ message: 'Email chris@borrowhood.net for help with this exchange.' }); }
@@ -271,7 +278,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const activeReturn = !isGiveaway && !transaction.hasDispute && ['picked_up', 'return_pending'].includes(transaction.status);
   const waitingForReturn = activeReturn && transaction.isLender && transaction.status === 'picked_up';
   const returnDue = formatCalendarDate(transaction.endDate, { weekday: 'short', month: 'short', day: 'numeric' });
-  const showMessageRow = !primaryIsMessage && !finished && !needsPickupReview;
+  const showMessageRow = !transaction.contactUnavailable && !primaryIsMessage && !finished && !needsPickupReview;
+  const canReportDamage = !!transaction.actualPickupAt && !isGiveaway && ['picked_up','return_pending','returned','completed','closed_not_returned','account_deleted'].includes(transaction.status);
   const showReturnHelp = transaction.status === 'closed_not_returned' || activeReturn && transaction.isLender && !!transaction.actualPickupAt;
 
   return (
@@ -309,7 +317,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
               <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
             </HapticPressable>
             <View style={styles.cardDivider} />
-            {transaction.status !== 'account_deleted' && <RentalProgress status={transaction.status} isBorrower={transaction.isBorrower} isGiveaway={isGiveaway} isSale={isSaleListing(transaction)} />}
+            {!['account_deleted','closed_not_returned'].includes(transaction.status) && <RentalProgress status={transaction.status} isBorrower={transaction.isBorrower} isGiveaway={isGiveaway} isSale={isSaleListing(transaction)} />}
           </View>
         </LayeredCard>
 
@@ -346,7 +354,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
           {primaryAction && <ActionButton testID={primaryAction.testID} label={primaryAction.label} variant="primary"
             icon={needsPickup || needsReturn ? 'checkmark-circle-outline' : primaryIsMessage ? 'chatbubble-outline' : 'people-outline'}
             loading={actionLoading} disabled={!!fetchError && (needsPickup || needsReturn)} onPress={primaryAction.onPress} />}
-          {(needsReturn || (activeReturn && transaction.isBorrower)) && <ActionButton label="Report an issue" variant="primary" destructive icon="flag-outline"
+          {canReportDamage && <ActionButton label="Report an issue" variant="secondary" icon="flag-outline"
             testID="Transaction.button.reportReturnIssue" disabled={actionLoading || !!fetchError}
             onPress={() => navigation.navigate('ExchangeIssue', { transactionId: id })} />}
           {needsPickupReview && <ActionButton label="Give more time" testID="Transaction.button.giveMoreTime"
