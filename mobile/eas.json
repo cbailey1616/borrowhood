@@ -77,6 +77,17 @@
     "android-store": {
       "extends": "production",
       "environment": "production"
+    },
+    "android-development": {
+      "extends": "development-device",
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://borrowhood-production.up.railway.app"
+      },
+      "android": {
+        "buildType": "apk",
+        "autoIncrement": "versionCode"
+      }
     }
   },
   "submit": {

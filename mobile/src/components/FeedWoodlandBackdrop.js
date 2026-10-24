@@ -1,3 +1,4 @@
+import { svgDataUri } from '../utils/svgSource';
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -19,7 +20,7 @@ export default function FeedWoodlandBackdrop({ width = 402, sceneIndex = 0, heig
   const artWidth = frame.width || width;
   const artHeight = height ?? (frame.height || 176);
   const source = useMemo(() => ({
-    uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(feedWoodlandSvg(sceneIndex, artWidth, artHeight))}`,
+    uri: svgDataUri(feedWoodlandSvg(sceneIndex, artWidth, artHeight)),
   }), [artWidth, sceneIndex, artHeight]);
 
   return <View testID="Woodland.frame" onLayout={onLayout} pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants"

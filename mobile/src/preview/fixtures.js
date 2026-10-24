@@ -1,7 +1,8 @@
+import { svgDataUri } from '../utils/svgSource';
 import { iconSvg } from '../assets/borrowhood-icons';
 
 export const emptyPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('empty');
-const artwork = name => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg(name, { illustrated: true }))}`;
+const artwork = name => svgDataUri(iconSvg(name, { illustrated: true }));
 export const previewUser = {
   id: 'preview-you', firstName: 'Alex', lastName: 'Green', displayName: 'Alex Green',
   email: 'alex@example.com', isVerified: true, totalTransactions: 38,
