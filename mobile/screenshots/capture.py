@@ -18,7 +18,7 @@ devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'device
 screens = [('01-home','home'),('02-ideas','ideas'),('03-plan','plan'),('04-exchange','owner-pickup'),
            ('05-my-items','posts'),('06-inbox','inbox-messages'),('07-thread','thread'),('08-request','request-detail'),
            ('09-neighborhood','neighborhood'),('10-friends','friends'),('11-profile','profile'),('12-ranks','ranks'),
-           ('13-giveaway','giveaway'),('14-sale','sell'),('15-comments','comments')]
+           ('13-giveaway','giveaway'),('14-sale','sell'),('15-comments','comments'),('16-neighborhood-chat','neighborhood-chat')]
 
 review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/profile', 'profile'), ('ui-review/ranks', 'ranks'), ('ui-review/member-profile', 'member-profile'), ('ui-review/feedback', 'feedback'), ('ui-review/requests-text', 'requests-text'), ('ui-review/requests-photo', 'requests-photo'), ('ui-review/pending-exchange', 'pending-exchange')]
 review_screens += [('ui-review/keyboard', 'keyboard'), ('ui-review/reserved-item', 'reserved-item'), ('ui-review/feed-end', 'feed-end')]
@@ -134,3 +134,4 @@ for folder, name, size in [('iphone-pro-max', 'iPhone 13 Pro Max', (1284, 2778))
         if created_device:
             run('delete', udid, check=False)
 (output / 'capture-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+

@@ -84,6 +84,7 @@ function openCapture() {
     comments: { name: 'ListingDiscussion', params: { listingId: 'demo-drill' } },
     friends: { name: 'Friends' },
     neighborhood: { name: 'MyCommunity', params: { communityId: 'demo-town' } },
+    'neighborhood-chat': { name: 'CommunityChat', params: { communityId: 'demo-town', communityName: 'Maplewood Estates', memberCount: 4 } },
     'neighborhood-members': { name: 'CommunityMembers', params: { id: 'demo-town', role: 'member' } },
     notifications: { name: 'NotificationSettings' },
     'member-profile': { name: 'UserProfile', params: { id: 'demo-jamie' } },
@@ -119,3 +120,4 @@ export default function CaptureApp() {
     </GestureHandlerRootView>
   );
 }
+
