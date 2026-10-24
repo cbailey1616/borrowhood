@@ -130,3 +130,15 @@ it.each([false, true])('keeps the name, verification, and tappable rank together
   expect(stopPropagation).toHaveBeenCalledTimes(1);
   expect(screen.getByText('Neighbor rating')).toBeTruthy();
 });
+
+it('dims the entire page behind the rank sheet and allows tapping outside to dismiss', () => {
+  const screen = render(<MemberSummary profileHeader user={{ endorsement: { completedCount: 6, score: 85 } }}><Text>Neighbor</Text></MemberSummary>);
+  fireEvent.press(screen.getByLabelText('Neighbor rank: Archer'));
+  const backdrop = screen.getByTestId('RankInfo.backdrop', { includeHiddenElements: true });
+  expect(StyleSheet.flatten(backdrop.props.style)).toMatchObject({
+    position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
+    backgroundColor: require('../../../src/utils/config').COLORS.overlay,
+  });
+  fireEvent.press(backdrop);
+  expect(screen.queryByText('Rating levels')).toBeNull();
+});

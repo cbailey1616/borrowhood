@@ -1,3 +1,4 @@
+const switchValue = node => node.props.value ?? node.props.on;
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import api from '../../src/services/api';
@@ -29,16 +30,16 @@ it('changes one audience without enabling the other audiences or categories', as
     new_service_requests: true, new_service_requests_source_friends: true,
     new_service_requests_source_neighborhood: false, new_service_requests_source_town: false,
   }));
-  expect(view.getByLabelText('Help wanted: Friends').props.value).toBe(true);
-  expect(view.getByLabelText('Help wanted: Town').props.value).toBe(false);
-  expect(view.getByLabelText('Messages').props.value).toBe(true);
+  expect(switchValue(view.getByLabelText('Help wanted: Friends'))).toBe(true);
+  expect(switchValue(view.getByLabelText('Help wanted: Town'))).toBe(false);
+  expect(switchValue(view.getByLabelText('Messages'))).toBe(true);
 });
 it('restores the whole row if saving fails', async () => {
   api.updateNotificationPreferences.mockRejectedValueOnce(new Error('offline'));
   const view = render(<Screen />);
   fireEvent(await view.findByLabelText('Help wanted: Town'), 'valueChange', false);
   await view.findByText('Couldn’t save that change. Please try again.');
-  expect(view.getByLabelText('Help wanted: Town').props.value).toBe(true);
+  expect(switchValue(view.getByLabelText('Help wanted: Town'))).toBe(true);
 });
 it('disables child controls while push is off and saves the master switch', async () => {
   api.getNotificationPreferences.mockResolvedValueOnce({ push_enabled: false });
@@ -76,8 +77,8 @@ it('restores each request audience after leaving and reopening settings', async 
   first.unmount();
   const reopened = render(<Screen />);
   await reopened.findByLabelText('Items wanted: Town');
-  expect(reopened.getByLabelText('Items wanted: Town').props.value).toBe(false);
-  expect(reopened.getByLabelText('Help wanted: Neighbors').props.value).toBe(false);
-  expect(reopened.getByLabelText('Items wanted: Neighbors').props.value).toBe(true);
-  expect(reopened.getByLabelText('Messages').props.value).toBe(true);
+  expect(switchValue(reopened.getByLabelText('Items wanted: Town'))).toBe(false);
+  expect(switchValue(reopened.getByLabelText('Help wanted: Neighbors'))).toBe(false);
+  expect(switchValue(reopened.getByLabelText('Items wanted: Neighbors'))).toBe(true);
+  expect(switchValue(reopened.getByLabelText('Messages'))).toBe(true);
 });

@@ -17,7 +17,7 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
   const { height } = useWindowDimensions();
   return <PopupLayer visible={isVisible} onRequestClose={onClose}>
     <View style={styles.container} onAccessibilityEscape={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessible={false} />
+      <Pressable testID="RankInfo.backdrop" style={styles.backdrop} onPress={onClose} accessible={false} />
       <Animated.View entering={reduceMotion ? undefined : SlideInDown.duration(200)} accessibilityViewIsModal
         style={[styles.sheet, { maxHeight: height - Math.max(insets.top, reservedBottom) - SPACING.md, paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
         <SheetDismissArea onDismiss={onClose}>
@@ -74,7 +74,7 @@ export default function RankInfoSheet({ isVisible, onClose, currentRank, isNew =
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: COLORS.overlay },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: COLORS.overlay },
   sheet: { width: '100%', maxWidth: 572, flexShrink: 1, alignSelf: 'center', backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, overflow: 'hidden' },
   handle: { width: 36, height: 4, marginTop: SPACING.sm, alignSelf: 'center', borderRadius: RADIUS.full, backgroundColor: COLORS.border },
   header: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm },

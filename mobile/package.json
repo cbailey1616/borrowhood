@@ -1,7 +1,7 @@
 {
   "name": "borrowhood",
   "version": "1.0.0",
-  "main": "expo/AppEntry.js",
+  "main": "index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -35,7 +35,8 @@
     "test:all": "npm run test:smoke && jest --runInBand --timeout=30000",
     "dev": "expo start --dev-client --lan --scheme com.borrowhood.app",
     "ui": "node scripts/start-ui.js",
-    "ui:mac": "node scripts/start-mac-ui.js"
+    "ui:mac": "node scripts/start-mac-ui.js",
+    "test:android": "jest --preset jest-expo/android --runInBand --watch=false"
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.2",
@@ -47,6 +48,7 @@
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/native": "^6.1.17",
     "@react-navigation/native-stack": "^6.9.26",
+    "base64-js": "^1.5.1",
     "expo": "^58.0.0",
     "expo-apple-authentication": "~58.0.2",
     "expo-application": "~58.1.2",

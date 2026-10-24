@@ -1,3 +1,4 @@
+import { svgText } from '../../setup/svgText';
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { COLORS } from '../../../src/utils/config';
@@ -41,7 +42,7 @@ describe('Icon', () => {
     const { Image } = require('expo-image');
     const plain = render(<Icon name="home" illustrated={false} />);
     const illustrated = render(<Icon name="home" />);
-    const svg = view => decodeURIComponent(view.UNSAFE_getByType(Image).props.source.uri.split(',')[1]);
+    const svg = view => svgText(view.UNSAFE_getByType(Image).props.source.uri);
     expect(svg(plain)).toContain('fill-opacity="0"');
     expect(svg(illustrated)).toContain('fill-opacity="1"');
     expect(svg(illustrated)).toContain(COLORS.artwork.clay04);
@@ -53,7 +54,7 @@ describe('Icon', () => {
     const { Image } = require('expo-image');
     const saved = render(<Icon name="heart" color={COLORS.saved} illustrated={false} />);
     const unsaved = render(<Icon name="heart-outline" color={COLORS.saved} illustrated={false} />);
-    const svg = view => decodeURIComponent(view.UNSAFE_getByType(Image).props.source.uri.split(',')[1]);
+    const svg = view => svgText(view.UNSAFE_getByType(Image).props.source.uri);
     expect(svg(saved)).toContain('fill-opacity="1"');
     expect(svg(saved)).toContain(COLORS.saved);
     expect(svg(unsaved)).toContain('fill-opacity="0"');

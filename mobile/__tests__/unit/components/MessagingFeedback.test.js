@@ -1,3 +1,4 @@
+import { svgText } from '../../setup/svgText';
 import React from 'react';
 import { Modal, StyleSheet } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
@@ -58,7 +59,7 @@ it('uses the same line smiley for composer and reaction picker controls with eac
   const expectedDrawing = iconSvg('happy-outline', { color: colors.primary, illustrated: false, selected: false });
   smileys.forEach(image => {
     expect(StyleSheet.flatten(image.props.style)).toMatchObject({ width: 22, height: 22 });
-    expect(decodeURIComponent(image.props.source.uri.split(',')[1])).toBe(expectedDrawing);
+    expect(svgText(image.props.source.uri)).toBe(expectedDrawing);
   });
 });
 

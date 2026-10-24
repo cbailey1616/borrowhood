@@ -1,3 +1,4 @@
+import { svgDataUri } from '../utils/svgSource';
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -12,11 +13,11 @@ function createFadeSvg(width) {
 
 export default function FeedHeaderTextFade({ width = 402, topOffset = 0 }) {
   const source = useMemo(() => ({
-    uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(createFadeSvg(width))}`,
+    uri: svgDataUri(createFadeSvg(width)),
   }), [width]);
 
   return <View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants"
-    style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }]}>
+    style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
     <Image source={source} contentFit="fill" transition={0} accessible={false} style={[styles.overlay, { top: topOffset }]} />
   </View>;
 }

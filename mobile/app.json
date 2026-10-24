@@ -47,7 +47,7 @@
         "backgroundColor": "#F3EBDD"
       },
       "package": "com.borrowhood.app",
-      "versionCode": 3,
+      "versionCode": 8,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_FINE_LOCATION",
@@ -104,7 +104,10 @@
           "backgroundColor": "#F3EBDD",
           "image": "./src/assets/splash.png",
           "imageWidth": 200,
-          "resizeMode": "contain"
+          "resizeMode": "contain",
+          "android": {
+            "imageWidth": 140
+          }
         }
       ],
       "@react-native-community/datetimepicker",

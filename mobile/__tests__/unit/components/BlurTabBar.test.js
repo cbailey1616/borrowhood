@@ -1,3 +1,4 @@
+import { svgText } from '../../setup/svgText';
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
@@ -90,7 +91,7 @@ describe('BlurTabBar', () => {
     const screen=render(<Bar {...createTabBarProps(activeIndex)}/>);
     expect(screen.getByLabelText('Ideas')).toBeTruthy();
     const source=screen.getByTestId('TabBar.Ideas.icon').props.source;
-    const svg=decodeURIComponent((Array.isArray(source)?source[0]:source).uri);
+    const svg=svgText((Array.isArray(source)?source[0]:source).uri);
     expect(svg).toContain(COLORS.artwork.wood38);
     expect(svg).toContain('fill-opacity="1"');
     expect(StyleSheet.flatten(screen.getByTestId('TabBar.Ideas.icon').props.style).opacity).toBe(activeIndex === 1 ? 1 : 0.78);

@@ -1,3 +1,4 @@
+beforeEach(() => { jest.replaceProperty(require('react-native').Platform, 'OS', 'ios'); });
 import React from 'react';
 import { AccessibilityInfo, DeviceEventEmitter, Keyboard, Platform, StyleSheet, Text, View } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';

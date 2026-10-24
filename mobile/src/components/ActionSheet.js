@@ -80,6 +80,7 @@ export default function ActionSheet({
         <AnimatedPressable
           entering={reduceMotion ? undefined : FadeIn.duration(150)}
           exiting={reduceMotion ? undefined : FadeOut.duration(120)}
+          testID="ActionSheet.backdrop"
           style={styles.backdrop}
           onPress={handleCancel}
           accessible={false}
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: COLORS.overlay,
   },
   sheetContainer: {

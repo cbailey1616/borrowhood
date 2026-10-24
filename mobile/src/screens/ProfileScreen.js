@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray[700],
   },
   avatarOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: COLORS.photoOverlayMedium,
     borderRadius: 32,
     justifyContent: 'center',

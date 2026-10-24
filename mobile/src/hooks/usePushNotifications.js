@@ -153,6 +153,8 @@ export default function usePushNotifications(isAuthenticated, user, isRestoringS
 async function registerForPushNotifications({ skipRequest = false } = {}) {
   let token;
 
+  if (Platform.OS === 'android' && Constants.expoConfig?.extra?.androidPushConfigured === false) return null;
+
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'default',

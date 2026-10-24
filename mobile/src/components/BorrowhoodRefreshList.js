@@ -61,6 +61,9 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
     rotation: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }),
   }), [bounce, spin, scrollY]);
 
+  // Android's SwipeRefreshLayout never reports negative scroll offsets. Reserve
+  // a real gap while it refreshes rather than relying on iOS overscroll.
+  const android = Platform.OS === 'android';
   return (
     <Animated.View
       testID="BorrowhoodRefresh.indicator"
@@ -72,9 +75,10 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
       accessibilityElementsHidden={!refreshing}
       importantForAccessibility={refreshing ? 'yes' : 'no-hide-descendants'}
       style={[styles.indicator, {
-        top: top - LOGO_SIZE / 2,
-        opacity: motion.opacity,
-        transform: [{ translateY: motion.position }],
+        top: android ? top + 12 : top - LOGO_SIZE / 2,
+        zIndex: android ? 2 : 0,
+        opacity: android ? (refreshing ? 1 : 0) : motion.opacity,
+        transform: [{ translateY: android ? 0 : motion.position }],
       }]}
     >
       <Animated.Image
@@ -97,7 +101,7 @@ export function BorrowhoodRefreshIndicator({ scrollY, refreshing, top = 0 }) {
 export function useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY, nativeScroll = true }) {
   const localScrollY = useRef(new Animated.Value(0)).current;
   const scrollY = suppliedScrollY ?? localScrollY;
-  const branded = Platform.OS === 'ios';
+  const branded = Platform.OS === 'ios' || Platform.OS === 'android';
   const [holding, setHolding] = useState(refreshing);
   const [cycle, setCycle] = useState(0);
   const started = useRef(refreshing ? Date.now() : null);
@@ -164,7 +168,7 @@ const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
 }, ref) {
   const { scrollY, branded, visibleRefreshing, handleRefresh, scrollHandler } = useBorrowhoodRefresh({ refreshing, onRefresh, suppliedScrollY });
   return (
-    <View style={styles.viewport}>
+    <View style={[styles.viewport, Platform.OS === 'android' && visibleRefreshing && styles.androidRefreshing]}>
       {branded && <BorrowhoodRefreshIndicator scrollY={scrollY} refreshing={visibleRefreshing} top={indicatorTop} />}
       <Animated.FlatList
         {...props}
@@ -175,9 +179,10 @@ const BorrowhoodRefreshList = forwardRef(function BorrowhoodRefreshList({
           <RefreshControl
             refreshing={visibleRefreshing}
             onRefresh={handleRefresh}
-            progressViewOffset={progressViewOffset}
+            progressViewOffset={Platform.OS === 'android' && branded ? -1000 : progressViewOffset}
             tintColor={branded ? 'transparent' : COLORS.spinner}
-            colors={[COLORS.spinner]}
+            colors={[branded ? 'transparent' : COLORS.spinner]}
+            progressBackgroundColor={branded ? 'transparent' : undefined}
           />
         }
       />
@@ -189,6 +194,7 @@ export default BorrowhoodRefreshList;
 
 const styles = StyleSheet.create({
   viewport: { flex: 1, overflow: 'hidden' },
+  androidRefreshing: { paddingTop: 80 },
   indicator: { position: 'absolute', left: 0, right: 0, height: LOGO_SIZE, alignItems: 'center' },
   logo: { width: LOGO_SIZE, height: LOGO_SIZE },
 });

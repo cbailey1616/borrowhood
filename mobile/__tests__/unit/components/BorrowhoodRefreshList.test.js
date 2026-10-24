@@ -185,15 +185,39 @@ it('does not overwrite a changed motion preference with an older pending read', 
   expect(startAnimation).not.toHaveBeenCalled();
 });
 
-it('preserves the native Android indicator and refresh gesture', () => {
+it('shows the spinning Android hat below the ribbon without relying on negative offsets', async () => {
   jest.replaceProperty(Platform, 'OS', 'android');
   const onRefresh = jest.fn();
-  const screen = render(<BorrowhoodRefreshList {...listProps} refreshing={false} onRefresh={onRefresh} />);
+  const screen = render(<BorrowhoodRefreshList {...listProps} refreshing={false} onRefresh={onRefresh} indicatorTop={210} />);
+  await ready();
+  expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
   const nativeControl = screen.UNSAFE_getByType(RefreshControl);
-  expect(nativeControl.props.colors).toEqual([COLORS.spinner]);
-  expect(screen.queryByTestId('BorrowhoodRefresh.indicator')).toBeNull();
+  expect(nativeControl.props.colors).toEqual(['transparent']);
+  expect(nativeControl.props.progressBackgroundColor).toBe('transparent');
+  expect(nativeControl.props.progressViewOffset).toBe(-1000);
+  fireEvent(nativeControl, 'refresh');
   fireEvent(nativeControl, 'refresh');
   expect(onRefresh).toHaveBeenCalledTimes(1);
+  expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(1);
+  expect(style(screen, 'BorrowhoodRefresh.indicator').top).toBe(222);
+  expect(style(screen, 'BorrowhoodRefresh.indicator').zIndex).toBe(2);
+  expect(startAnimation).toHaveBeenCalledTimes(1);
+  expect(screen.toJSON().props.style).toEqual(expect.arrayContaining([expect.objectContaining({ paddingTop: 80 })]));
+  act(() => jest.advanceTimersByTime(MIN_REFRESH_MS));
+  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
+  expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
+});
+
+it('shows the same Android refresh hat on keyboard-aware Ideas pages', async () => {
+  jest.replaceProperty(Platform, 'OS', 'android');
+  const screen = render(<BorrowhoodRefreshScrollView refreshing onRefresh={jest.fn()}><Text>Plan</Text></BorrowhoodRefreshScrollView>);
+  await ready();
+  expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(1);
+  expect(startAnimation).toHaveBeenCalledTimes(1);
+  expect(screen.UNSAFE_getByType(RefreshControl).props.colors).toEqual(['transparent']);
+  screen.rerender(<BorrowhoodRefreshScrollView refreshing={false} onRefresh={jest.fn()}><Text>Plan</Text></BorrowhoodRefreshScrollView>);
+  act(() => jest.advanceTimersByTime(MIN_REFRESH_MS));
+  expect(value(style(screen, 'BorrowhoodRefresh.indicator').opacity)).toBe(0);
 });
 
 it('reveals the Feed hat below its pinned ribbon and above its first tile', async () => {

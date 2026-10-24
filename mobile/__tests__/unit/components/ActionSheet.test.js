@@ -1,3 +1,5 @@
+afterEach(() => jest.restoreAllMocks());
+import { svgText } from '../../setup/svgText';
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { Modal } from 'react-native';
@@ -21,7 +23,7 @@ describe('ActionSheet', () => {
         { label: 'Tools & Hardware', icon: <CategoryIcon icon="hammer-outline" />, onPress: jest.fn() },
         { label: 'Close', icon: <Icon name="close" illustrated={false} />, onPress: jest.fn() },
       ]} />);
-    const drawings = screen.UNSAFE_getAllByType(Image).map(image => decodeURIComponent(image.props.source.uri.split(',')[1]));
+    const drawings = screen.UNSAFE_getAllByType(Image).map(image => svgText(image.props.source.uri));
     expect(drawings).toContain(iconSvg('hammer-outline', { illustrated: true, selected: false }));
     expect(drawings).toContain(iconSvg('close', { illustrated: false, selected: false }));
   });
@@ -53,6 +55,7 @@ describe('ActionSheet', () => {
   });
 
   it('removes the iOS touch layer before navigating and closes once', () => {
+    jest.replaceProperty(require('react-native').Platform, 'OS', 'ios');
     const ActionSheet = require('../../../src/components/ActionSheet').default;
     const close = jest.fn();
     const navigate = jest.fn(() => expect(screen.queryByText('Create listing')).toBeNull());
@@ -148,4 +151,17 @@ describe('ActionSheet', () => {
     );
     expect(getByText('Cancel')).toBeTruthy();
   });
+});
+
+it('separates the sheet from the whole underlying screen and dismisses from its scrim', () => {
+  const Sheet = require('../../../src/components/ActionSheet').default;
+  const close = jest.fn();
+  const screen = render(<Sheet isVisible onClose={close} title="Post options" actions={[]} />);
+  const backdrop = screen.getByTestId('ActionSheet.backdrop');
+  expect(require('react-native').StyleSheet.flatten(backdrop.props.style)).toMatchObject({
+    position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
+    backgroundColor: require('../../../src/utils/config').COLORS.overlay,
+  });
+  fireEvent.press(backdrop);
+  expect(close).toHaveBeenCalledTimes(1);
 });
