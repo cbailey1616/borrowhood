@@ -228,7 +228,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
                 } catch { if (isCurrent()) navigation.navigate('Chat', params); }
   };
   const needsReturn = !isGiveaway && ((transaction.isBorrower && transaction.status === 'picked_up')
-    || (transaction.isLender && ['picked_up', 'return_pending'].includes(transaction.status))
+    || (transaction.isLender && ['picked_up', 'return_pending', 'closed_not_returned'].includes(transaction.status))
     || (transaction.isLender && transaction.status === 'returned' && transaction.paymentStatus === 'authorized' && !transaction.hasDispute));
   const needsPickup = (transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt
     && !transaction.hasDispute && ['approved', 'paid'].includes(transaction.status);
@@ -272,7 +272,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const waitingForReturn = activeReturn && transaction.isLender && transaction.status === 'picked_up';
   const returnDue = formatCalendarDate(transaction.endDate, { weekday: 'short', month: 'short', day: 'numeric' });
   const showMessageRow = !primaryIsMessage && !finished && !needsPickupReview;
-  const showReturnHelp = activeReturn && transaction.isLender && !!transaction.actualPickupAt;
+  const showReturnHelp = transaction.status === 'closed_not_returned' || activeReturn && transaction.isLender && !!transaction.actualPickupAt;
 
   return (
     <KeyboardAvoidingView
@@ -363,7 +363,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
         {!showEndorsement && (showMessageRow || showReturnHelp) && <LayeredCard radius={RADIUS.xl} style={styles.groupedActions}>
           {showMessageRow && <ActionRow label={`Message ${otherPerson.firstName}`} icon="chatbubble-outline"
             accessibilityLabel={`Message ${otherPerson.firstName} privately`} onPress={messageNeighbor} isLast={!showReturnHelp} />}
-          {showReturnHelp && <ActionRow label="Return options" icon="return-down-back-outline"
+          {showReturnHelp && <ActionRow label={transaction.status === 'closed_not_returned' ? 'View return report' : 'Return options'} icon="return-down-back-outline"
             testID="Transaction.button.returnHelp" onPress={() => navigation.navigate('ReturnHelp', { transaction })} isLast />}
         </LayeredCard>}
 
