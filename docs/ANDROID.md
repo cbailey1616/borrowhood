@@ -10,6 +10,19 @@ The release-mode APK includes its JavaScript and uses the production API.
 Android checks export the bundle and generate the native project for every PR
 changing mobile code. Native compilation is verified separately by EAS Build.
 
+## Live Android development
+
+Build `android-development` once for the installed native dependencies. It uses
+the existing EAS signing key so installing it over the preview preserves app data.
+Save its APK as work/android-tools/borrowhood-development.apk in the local task
+workspace. The mobile/scripts/start-android-emulator.command launcher then prefers
+this build and connects it to Metro on port 8097 over adb reverse. JavaScript and
+artwork changes can subsequently reload without a native rebuild. Rebuild when
+native dependencies or configuration change.
+
+This profile and launcher explicitly use the production API. Use an isolated
+backend/account for automated tests that create exchanges or send messages.
+
 ## Google services still required
 
 1. Register Android package `com.borrowhood.app` in the Borrowhood Firebase project.
