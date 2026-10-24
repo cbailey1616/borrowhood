@@ -15,7 +15,7 @@ it('keeps quiet loans visible with a neighbor, deadline and one destination', ()
   });
 });
 
-it.each(['completed', 'returned', 'declined', 'cancelled', 'expired'])('excludes closed %s exchanges', status => {
+it.each(['completed', 'returned', 'declined', 'cancelled', 'expired', 'closed_not_returned'])('excludes closed %s exchanges', status => {
   expect(track({ status })).toBeUndefined();
 });
 

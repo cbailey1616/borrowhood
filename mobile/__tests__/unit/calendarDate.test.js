@@ -21,3 +21,9 @@ describe('agreed calendar dates', () => {
     expect(borrowGuidance({ status: 'picked_up', isBorrower: true, endDate }).title).toBe(`Return by ${due}`);
   });
 });
+
+it.each(['returned','completed'])('keeps a %s exchange separate from a closed missing return',status=>{
+ expect(borrowGuidance({status}).title).toBe('Exchange complete');
+ expect(borrowGuidance({status}).detail).toContain('has been returned');
+ expect(borrowGuidance({status:'closed_not_returned'}).title).toBe('Closed — not returned');
+});

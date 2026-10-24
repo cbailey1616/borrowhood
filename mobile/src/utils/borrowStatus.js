@@ -26,6 +26,7 @@ export function borrowGuidance({ status, isBorrower, isGiveaway, hasDispute, len
     case 'return_pending': return isBorrower
       ? { title: `Waiting for ${neighbor} to confirm`, detail: `Your return was reported. ${neighbor} needs to confirm they have the item back. Nothing else to do right now.` }
       : { title: 'Your turn: confirm the return', detail: `${neighbor} reported the return. Confirm once you have it back in the same condition.` };
+    case 'closed_not_returned': return { title: 'Closed — not returned', detail: 'This exchange left your active list after 48 hours. The missing-item report remains available for review. The owner can confirm if the item comes back later.' };
     case 'returned':
       if (paymentStatus === 'authorized') return isBorrower
         ? { title: `Waiting for ${neighbor} to confirm`, detail: 'The return is recorded. The owner still needs to confirm receipt and release the deposit.' }

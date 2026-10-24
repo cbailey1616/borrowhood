@@ -81,9 +81,9 @@ it('does not send a partial report after a failed photo upload',async()=>{
   expect(api.reportExchangeIssue).not.toHaveBeenCalled();
   expect(screen.getByLabelText('Remove photo 1')).toBeTruthy();
 });
-it.each(['completed','pending'])('does not submit reports for a %s exchange',async status=>{
+it.each(['pending','cancelled'])('does not submit reports for a %s exchange',async status=>{
   api.getTransaction.mockResolvedValue({...exchange,status});const screen=render(<ExchangeIssueScreen navigation={navigation} route={route}/>);
-  await screen.findByText(/no longer awaiting a return/);
+  await screen.findByText('Nothing to report here');
   expect(screen.queryByLabelText('Submit report')).toBeNull();
 });
 it('does not submit after leaving while photos upload',async()=>{
@@ -94,4 +94,40 @@ it('does not submit after leaving while photos upload',async()=>{
   await waitFor(()=>expect(api.uploadImages).toHaveBeenCalled());screen.unmount();
   await act(async()=>resolveUpload(['uploaded-photo']));
   expect(api.reportExchangeIssue).not.toHaveBeenCalled();
+});
+
+it('explains that a repeated issue did not create another report', async () => {
+  api.reportExchangeIssue.mockResolvedValue({ id: 'report', alreadyReported: true });
+  const screen = await open();
+  fireEvent.press(screen.getByLabelText('Item was damaged'));
+  fireEvent.press(screen.getByLabelText('Submit report'));
+  await screen.findByText('Already reported');
+  expect(screen.queryByText('Report submitted')).toBeNull();
+  expect(screen.getByText('You already reported this issue for this exchange. No additional report was created.')).toBeTruthy();
+});
+
+it('shows the saved damage report without another submission form',async()=>{
+ api.getExchangeIssueStatus.mockResolvedValueOnce({damageSubmitted:true,damageReport:{id:'report',status:'reviewed',detail:'The hose was split.',photos:[]}});
+ const s=await open();fireEvent.press(s.getByLabelText('Item was damaged'));
+ expect(s.getByText('Already reported')).toBeTruthy();expect(s.getByText('Review complete')).toBeTruthy();
+ expect(s.getByText('The hose was split.')).toBeTruthy();expect(s.queryByLabelText('Submit report')).toBeNull();
+});
+it('links a saved missing report instead of offering a second submission',async()=>{
+ api.getExchangeIssueStatus.mockResolvedValueOnce({missingSubmitted:true});
+ const s=await open();fireEvent.press(s.getByLabelText('Item wasn’t returned'));
+ fireEvent.press(s.getByLabelText('View report'));
+ expect(navigation.navigate).toHaveBeenCalledWith('ReturnHelp',{transaction:{id:'exchange-1'},reports:true});
+ expect(api.reportExchangeIssue).not.toHaveBeenCalled();
+});
+it('permits a damage report after a confirmed return without a missing-return option',async()=>{
+ api.getTransaction.mockResolvedValue({...exchange,status:'completed',actualReturnAt:'2026-01-05T12:00:00Z'});
+ const s=await open();expect(s.queryByLabelText('Item wasn’t returned')).toBeNull();
+ fireEvent.press(s.getByLabelText('Item was damaged'));fireEvent.press(s.getByLabelText('Submit report'));
+ await s.findByText('Report submitted');
+});
+
+it('replaces an expired report link with a themed unavailable state',async()=>{
+ api.getTransaction.mockRejectedValueOnce(Object.assign(new Error('Not found'),{status:404}));
+ const s=render(<ExchangeIssueScreen navigation={navigation} route={route}/>);
+ await s.findByText('Exchange unavailable');expect(s.queryByLabelText('Submit report')).toBeNull();expect(s.queryByText('Try again')).toBeNull();
 });

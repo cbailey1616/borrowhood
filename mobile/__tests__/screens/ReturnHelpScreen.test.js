@@ -261,3 +261,19 @@ it('keeps details visible but disables actions while refreshing',async()=>{
  await act(async()=>{resolveRefresh(noReports);});
  expect(s.getByRole('button',{name:'Message Taylor'})).not.toBeDisabled();
 });
+
+it('adds a missed-extension update to the existing case with confirmation',async()=>{
+ mockUser.id='owner';api.getReturnHelp.mockResolvedValue({reports:[{...report,owner_id:'owner',status:'dismissed',can_follow_up:true}],restriction:null});
+ const s=render(<Screen route={{params:{}}} navigation={navigation}/>);
+ fireEvent.press(await s.findByText('Still not returned?'));
+ expect(s.getByText('Add an update to your existing report. Your neighbor will have 48 hours to respond.')).toBeTruthy();
+ fireEvent.changeText(s.getByLabelText('Return details'),'The new agreed date passed yesterday.');
+ fireEvent.press(s.getByText('Save update'));fireEvent.press(s.getByText('Confirm'));
+ await waitFor(()=>expect(api.followUpReturnReport).toHaveBeenCalledWith('report','The new agreed date passed yesterday.',3));
+});
+it('keeps a report visible when an old notification points to an unavailable exchange',async()=>{
+ api.getTransaction.mockRejectedValue(Object.assign(new Error('Not found'),{status:404}));
+ const s=render(<Screen route={{params:{transaction:{id:'exchange'},reports:true}}} navigation={navigation}/>);
+ expect(await s.findByText('The ladder is missing.')).toBeTruthy();
+ expect(s.queryByText('Could not load return reports.')).toBeNull();
+});

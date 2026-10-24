@@ -16,7 +16,7 @@ export async function deleteAccount(userId) {
       bt.actual_pickup_at, bt.listing_id, bt.borrower_id, bt.lender_id, l.title AS item_title
       FROM borrow_transactions bt JOIN listings l ON l.id = bt.listing_id
       WHERE (bt.borrower_id = $1 OR bt.lender_id = $1)
-        AND bt.status IN ('pending', 'approved', 'paid', 'picked_up', 'return_pending', 'disputed')
+        AND bt.status IN ('pending', 'approved', 'paid', 'picked_up', 'return_pending', 'disputed', 'closed_not_returned')
       ORDER BY bt.id FOR UPDATE OF bt`, [userId]);
     for (const txn of activeTxns.rows) {
       const otherPartyId = txn.borrower_id === userId ? txn.lender_id : txn.borrower_id;
@@ -32,7 +32,7 @@ export async function deleteAccount(userId) {
           await query('SELECT id FROM listings WHERE id = $1 FOR UPDATE', [txn.listing_id]);
           await query(`UPDATE listings l SET is_available = true WHERE l.id = $1 AND l.status = 'active'
             AND NOT EXISTS (SELECT 1 FROM borrow_transactions bt WHERE bt.listing_id = l.id
-              AND (bt.status IN ('approved','paid','picked_up','return_pending','disputed','account_deleted')
+              AND (bt.status IN ('approved','paid','picked_up','return_pending','closed_not_returned','disputed','account_deleted')
                 OR (bt.status = 'pending' AND bt.stripe_payment_intent_id IS NOT NULL)))`, [txn.listing_id]);
         }
         notifications.push([otherPartyId, 'borrow_cancelled', { itemTitle: txn.item_title, accountDeleted: true }]);

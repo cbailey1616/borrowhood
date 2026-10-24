@@ -1,4 +1,4 @@
-import { withTransaction } from '../utils/db.js';
+import { query, withTransaction } from '../utils/db.js';
 import { ownedPhotoReferences } from './privatePhotos.js';
 import { reportNonReturn } from './returnRecovery.js';
 
@@ -20,12 +20,12 @@ export async function reportExchangeIssue(id, reporterId, { reason, detail = '',
       JOIN listings l ON l.id=t.listing_id WHERE t.id=$1 AND (t.lender_id=$2 OR t.borrower_id=$2)
       FOR UPDATE OF t`, [id, reporterId])).rows[0];
     if (!t) throw fail(404, 'Exchange not found.');
-    if (['sell', 'giveaway'].includes(t.listing_type) || !t.actual_pickup_at || t.actual_return_at
-      || !['picked_up', 'return_pending'].includes(t.status)) {
-      throw fail(409, 'This exchange is no longer awaiting a return. Refresh the exchange.');
+    if (['sell', 'giveaway'].includes(t.listing_type) || !t.actual_pickup_at
+      || !['picked_up', 'return_pending', 'returned', 'completed', 'closed_not_returned', 'account_deleted'].includes(t.status)) {
+      throw fail(409, 'Damage can only be reported for an item that was picked up. Refresh the exchange.');
     }
     const existing = (await db.query(`SELECT id FROM safety_reports WHERE content_type='exchange'
-      AND content_id=$1 AND reporter_id=$2 AND reason='Item was damaged' AND status!='dismissed'
+      AND content_id=$1 AND reporter_id=$2 AND reason='Item was damaged'
       ORDER BY created_at DESC LIMIT 1`, [id, reporterId])).rows[0];
     if (existing) return { id: existing.id, alreadyReported: true };
     // A borrower can disclose damage to their own borrowed item. Record that
@@ -36,4 +36,17 @@ export async function reportExchangeIssue(id, reporterId, { reason, detail = '',
       VALUES($1,$2,'Item was damaged','exchange',$3,$4::jsonb) RETURNING id`,
     [reporterId, t.borrower_id, id, JSON.stringify(snapshot)])).rows[0];
   });
+}
+
+// Read the saved receipt before presenting a report form; the write path still
+// locks the exchange and deduplicates concurrent submissions.
+export async function exchangeIssueStatus(id, reporterId) {
+  const t = (await query(`SELECT t.id FROM borrow_transactions t WHERE t.id=$1
+    AND (t.lender_id=$2 OR t.borrower_id=$2)`, [id,reporterId])).rows[0];
+  if (!t) throw fail(404,'Exchange not found.');
+  const damage = (await query(`SELECT id,status,created_at,content_snapshot FROM safety_reports WHERE content_type='exchange'
+    AND content_id=$1 AND reporter_id=$2 AND reason='Item was damaged' LIMIT 1`, [id,reporterId])).rows[0];
+  const missing = (await query('SELECT id FROM return_reports WHERE transaction_id=$1', [id])).rows[0];
+  return {damageSubmitted:!!damage,missingSubmitted:!!missing,
+    damageReport:damage?{id:damage.id,status:damage.status,createdAt:damage.created_at,detail:damage.content_snapshot?.content||'',photos:damage.content_snapshot?.photos||[]}:null};
 }

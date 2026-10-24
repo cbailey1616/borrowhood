@@ -56,6 +56,7 @@ export const TRANSACTION_STATUS_LABELS = {
   return_pending: 'Return Pending',
   returned: 'Returned',
   completed: 'Completed',
+  closed_not_returned: 'Closed — not returned',
   cancelled: 'Cancelled',
   disputed: 'Disputed',
 };
