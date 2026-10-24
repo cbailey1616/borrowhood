@@ -78,6 +78,7 @@ export function exchangeStatus(transaction, userId, now = new Date()) {
     case 'picked_up': return isTransferListing(transaction) ? 'Pickup complete' : borrower ? returnTiming(transaction, now)?.label || 'Currently borrowing' : 'Currently lent out';
     case 'return_pending': return borrower ? 'Waiting for return confirmation' : 'Confirm the return';
     case 'returned': return transaction.paymentStatus === 'authorized' ? borrower ? 'Waiting for return confirmation' : 'Confirm the return' : 'Returned';
+    case 'closed_not_returned': return 'Closed — not returned';
     case 'completed': return 'Exchange complete';
     case 'declined': return 'Request declined';
     case 'cancelled': return 'Request cancelled';

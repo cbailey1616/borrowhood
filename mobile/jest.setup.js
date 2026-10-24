@@ -597,6 +597,8 @@ jest.mock('./src/services/api', () => ({
     getEarnings: jest.fn().mockResolvedValue({ balance: { available: 0 }, stats: { totalEarned: 0, totalRentals: 0, averagePerRental: 0, activeRentals: 0 }, recentTransactions: [], payouts: [], hasConnectAccount: true }),
     // Cancel rental
     cancelRental: jest.fn(),
+    getExchangeIssueStatus: jest.fn().mockResolvedValue({damageSubmitted:false,missingSubmitted:false}),
+    followUpReturnReport: jest.fn().mockResolvedValue({}),
     getReturnHelp: jest.fn().mockResolvedValue({reports:[],restriction:null}),
     getAdminReports: jest.fn().mockResolvedValue({reports:[],counts:{total:0,ready:0,waiting:0,appeals:0,reviewed:0},page:1,hasMore:false}),
   reportNonReturn: jest.fn(), extendReturn: jest.fn(), respondReturnReport: jest.fn(), reviewReturnReport: jest.fn(),

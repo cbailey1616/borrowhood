@@ -39,7 +39,7 @@ export default function ReturnHelpScreen({route,navigation}) {
   const load=useCallback(async(page=1)=>{
     const token=++generation.current;setLoading(true);setError('');
     try {
-      const [result,t]=await Promise.all([api.getReturnHelp(admin,page,transactionId,reportId),transactionId?api.getTransaction(transactionId):null]);
+      const [result,t]=await Promise.all([api.getReturnHelp(admin,page,transactionId,reportId),transactionId?api.getTransaction(transactionId).catch(e=>{if([403,404].includes(e.status))return null;throw e;}):null]);
       if(token!==generation.current)return;
       setData(previous=>({...result,reports:page===1?result.reports:[...previous.reports,...result.reports]}));setTransaction(t);
     }catch(e){if(token===generation.current)setError(e.message||'Could not load return reports.');}
@@ -71,6 +71,7 @@ export default function ReturnHelpScreen({route,navigation}) {
     const token=generation.current;flight.current=true;setBusy(true);setError('');
     try {
       if(form.kind==='extend')await api.extendReturn(transactionId,localDate(date));
+      else if(form.kind==='followup')await api.followUpReturnReport(form.report.id,note.trim(),form.report.version);
       else if(form.kind==='review')await api.reviewReturnReport(form.report.id,{action,note:note.trim(),version:form.report.version});
       else await api.respondReturnReport(form.report.id,note.trim(),form.report.version,form.kind==='appeal');
       if(token!==generation.current)return;
@@ -101,7 +102,7 @@ export default function ReturnHelpScreen({route,navigation}) {
   const showSecondary=guidance?.canMessage||!exchangeFirst;
   const renderForm=()=>form&&<LayeredCard style={styles.card}>
     <View style={styles.statusHeading}>
-      <Text style={styles.statusTitle}>{editingDate?'Give more time':form.kind==='appeal'?'Appeal this decision':form.kind==='review'?'Review this report':'Your response'}</Text>
+      <Text style={styles.statusTitle}>{editingDate?'Give more time':form.kind==='appeal'?'Appeal this decision':form.kind==='review'?'Review this report':form.kind==='followup'?'Still not returned?':'Your response'}</Text>
     </View>
     {editingDate?<>
       <Text style={styles.body}>Choose a new date you’ve agreed with {guidance.neighbor?.firstName||'your neighbor'}.</Text>
@@ -129,6 +130,7 @@ export default function ReturnHelpScreen({route,navigation}) {
       </>:<Text style={styles.body}>This return is already at the latest date available. You can still message your neighbor to arrange the handoff.</Text>}
       {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     </>:<>
+      {form.kind==='followup'&&<Text style={styles.body}>Add an update to your existing report. Your neighbor will have 48 hours to respond.</Text>}
       <Text style={styles.body}>{form.kind==='review'?'Check the pickup, agreed date, both accounts and the response before deciding. Silence alone is not proof. Your reason is shared with both people.':'Explain what happened, including any agreed return arrangements. Your message is shared with the other person and the review team.'}</Text>
       <TextInput accessibilityLabel="Return details" value={note} onChangeText={setNote} maxLength={2000} multiline editable={!busy}
         placeholder="What happened?" placeholderTextColor={COLORS.textSecondary} style={styles.input}/>
@@ -138,7 +140,7 @@ export default function ReturnHelpScreen({route,navigation}) {
       {form.report.confirmed_owners>=3 && form.report.restriction?.state==='review' && action(labels.ban,()=>setDecision('ban'),true)}
       {form.report.restriction?.state==='hold' && action(labels.restore,()=>setDecision('restore'))}
     </>:editingDate?<ActionButton label="Save return date" variant="primary" icon="checkmark" loading={busy} disabled={loading||!extensionDates.available} onPress={()=>submit()}/>
-      :action(form.kind==='appeal'?'Send appeal':'Send response',()=>setDecision(form.kind),false,true)}
+      :action(form.kind==='appeal'?'Send appeal':form.kind==='followup'?'Save update':'Send response',()=>setDecision(form.kind),false,true)}
     {action('Cancel',()=>{setForm(null);setPicker(false);setError('');})}
   </LayeredCard>;
   if(routineReturn)return null;
@@ -202,7 +204,7 @@ export default function ReturnHelpScreen({route,navigation}) {
     </View>}
     {data.reports.map(r=><LayeredCard key={r.id} style={styles.card}>
       <Text style={styles.title}>{r.title}</Text><Text style={styles.body}>{r.owner_name} → {r.borrower_name}</Text>
-      <Text style={styles.label}>{r.status==='open'?'Awaiting review':r.status==='confirmed'?'Confirmed non-return':'Report dismissed'}{r.resolved_at?' · Return resolved':''}</Text>
+      <Text style={styles.label}>{r.can_follow_up?'Later return date missed':r.status==='open'?'Awaiting review':r.status==='confirmed'?'Confirmed non-return':r.extension_due_date?'Return date extended':'Report dismissed'}{r.actual_return_at?' · Item returned':''}</Text>
       <Text style={styles.body}>Return due: {formatCalendarDate(r.due_date)} · Pickup: {dateText(r.actual_pickup_at)}</Text>
       <Text style={styles.body}>{r.detail}</Text>
       {r.photos?.map((uri,index)=><ShimmerImage key={index} source={{uri}} accessibilityLabel="Report photo" style={{width:'100%',height:240,borderRadius:RADIUS.md}} resizeMode="contain"/>)}
@@ -211,6 +213,7 @@ export default function ReturnHelpScreen({route,navigation}) {
       {!!r.appeal&&<><Text style={styles.label}>Appeal · {r.appeal_status}</Text><Text style={styles.body}>{r.appeal}</Text></>}
       {r.history?.map((h,i)=><View key={i} style={styles.notice}><Text style={styles.label}>{labels[h.action]||h.action}</Text><Text style={styles.body}>{h.note}</Text></View>)}
       {admin&&<Text style={styles.body}>{r.confirmed_owners} different owners with confirmed incidents in the past 12 months. {r.restriction?restrictionText[r.restriction.state]:''}</Text>}
+      {!form&&r.can_follow_up&&action('Still not returned?',()=>begin('followup',r),false,true)}
       {!form&&admin&&action('Review',()=>begin('review',r))}
       {!form&&r.borrower_id===user?.id&&r.status==='open'&&action(r.response?'Update response':'Respond',()=>begin('respond',r),false,true)}
       {!form&&r.borrower_id===user?.id&&r.status==='confirmed'&&r.appeal_status!=='pending'&&action('Appeal decision',()=>begin('appeal',r),false,true)}

@@ -11,7 +11,7 @@ vi.mock('../../src/utils/db.js', () => ({ query: (...args) => state.db.query(...
 vi.mock('../../src/services/notifications.js', () => ({ sendNotification: vi.fn(async (user, type, data, { runQuery }) => {
   await runQuery('INSERT INTO notices(user_id,transaction_id,type) VALUES($1,$2,$3)', [user, data.transactionId, type]); return 'saved';
 }) }));
-import { reportExchangeIssue } from '../../src/services/exchangeIssues.js';
+import { reportExchangeIssue, exchangeIssueStatus } from '../../src/services/exchangeIssues.js';
 import { ensureReturnRecoverySchema, returnHelp } from '../../src/services/returnRecovery.js';
 import { privatePhotoUrl } from '../../src/services/privatePhotos.js';
 import returnRoutes from '../../src/routes/returnRecovery.js';
@@ -97,7 +97,7 @@ it('rejects non-return before the agreed deadline but permits reporting damage',
   await expect(reportExchangeIssue(id, owner, { reason: 'non_return' })).rejects.toMatchObject({ status: 409 });
   expect(await reportExchangeIssue(id, owner, { reason: 'damage' })).toHaveProperty('id');
 });
-it.each(['pending','approved','completed','cancelled'])('rejects damage reports for %s exchanges', async status => {
+it.each(['pending','approved','cancelled'])('rejects damage reports for %s exchanges', async status => {
   await expect(reportExchangeIssue(await seed(status), owner, { reason: 'damage' })).rejects.toMatchObject({ status: 409 });
 });
 it.each(['sell','giveaway'])('rejects return reports on a %s', async type => {
@@ -130,4 +130,19 @@ it('keeps dismissed damage reports deduplicated without changing the original ev
   expect(saved[0]).toMatchObject({ status: 'dismissed', content_snapshot: { content: 'Original evidence' } });
   expect(await reportExchangeIssue(await seed(), owner, { reason: 'damage' })).toHaveProperty('id');
   expect(await rows('SELECT * FROM safety_reports')).toHaveLength(2);
+});
+
+it.each(['completed','returned','closed_not_returned','account_deleted'])('keeps damage reporting available for a picked-up %s exchange', async status => {
+ const id=await seed(status);
+ if(['completed','returned'].includes(status))await state.db.query('UPDATE borrow_transactions SET actual_return_at=NOW() WHERE id=$1',[id]);
+ const first=await reportExchangeIssue(id,owner,{reason:'damage',detail:'Damage found after checking the hose.'});
+ expect(await reportExchangeIssue(id,owner,{reason:'damage'})).toEqual({id:first.id,alreadyReported:true});
+ expect(await exchangeIssueStatus(id,owner)).toMatchObject({damageSubmitted:true,damageReport:{id:first.id,detail:'Damage found after checking the hose.'}});
+ expect(await exchangeIssueStatus(id,borrower)).toMatchObject({damageSubmitted:false});
+ await expect(exchangeIssueStatus(id,outsider)).rejects.toMatchObject({status:404});
+});
+it('rejects a new missing report after actual return while permitting damage',async()=>{
+ const id=await seed('completed');await state.db.query('UPDATE borrow_transactions SET actual_return_at=NOW() WHERE id=$1',[id]);
+ await expect(reportExchangeIssue(id,owner,{reason:'non_return'})).rejects.toMatchObject({status:409});
+ expect(await reportExchangeIssue(id,owner,{reason:'damage'})).toHaveProperty('id');
 });
