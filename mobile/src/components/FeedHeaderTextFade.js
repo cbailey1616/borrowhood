@@ -17,7 +17,7 @@ export default function FeedHeaderTextFade({ width = 402, topOffset = 0 }) {
   }), [width]);
 
   return <View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants"
-    style={[StyleSheet.absoluteFillObject, { overflow: 'hidden' }]}>
+    style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
     <Image source={source} contentFit="fill" transition={0} accessible={false} style={[styles.overlay, { top: topOffset }]} />
   </View>;
 }

@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   digit: { ...TYPOGRAPHY.h1, lineHeight: 36, color: COLORS.primaryDark, fontVariant: ['tabular-nums'] },
   emptyDigit: { width: 5, height: 5, borderRadius: RADIUS.full, backgroundColor: COLORS.borderGreenStrong },
   caret: { width: 2, height: 22, borderRadius: 1, backgroundColor: COLORS.primary },
-  codeInput: { ...StyleSheet.absoluteFillObject, color: 'transparent', backgroundColor: 'transparent', ...TYPOGRAPHY.h1, padding: 0 },
+  codeInput: { ...StyleSheet.absoluteFill, color: 'transparent', backgroundColor: 'transparent', ...TYPOGRAPHY.h1, padding: 0 },
   expiry: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, textAlign: 'center', marginTop: 10 },
   error: { ...TYPOGRAPHY.bodySmall, color: COLORS.danger, marginTop: 12, textAlign: 'center' },
   notice: { ...TYPOGRAPHY.bodySmall, color: COLORS.primary, marginTop: 12, textAlign: 'center' },

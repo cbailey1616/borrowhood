@@ -152,3 +152,16 @@ describe('ActionSheet', () => {
     expect(getByText('Cancel')).toBeTruthy();
   });
 });
+
+it('separates the sheet from the whole underlying screen and dismisses from its scrim', () => {
+  const Sheet = require('../../../src/components/ActionSheet').default;
+  const close = jest.fn();
+  const screen = render(<Sheet isVisible onClose={close} title="Post options" actions={[]} />);
+  const backdrop = screen.getByTestId('ActionSheet.backdrop');
+  expect(require('react-native').StyleSheet.flatten(backdrop.props.style)).toMatchObject({
+    position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
+    backgroundColor: require('../../../src/utils/config').COLORS.overlay,
+  });
+  fireEvent.press(backdrop);
+  expect(close).toHaveBeenCalledTimes(1);
+});

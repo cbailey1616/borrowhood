@@ -991,7 +991,7 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: COLORS.overlay,
     justifyContent: 'flex-start',
     alignItems: 'center',
@@ -1120,7 +1120,7 @@ const styles = StyleSheet.create({
     width: '100%', aspectRatio: 1.45, alignItems: 'center', justifyContent: 'center', position: 'relative', borderRadius: RADIUS.lg, overflow: 'hidden', backgroundColor: COLORS.surfaceElevated,
   },
   tileThumbImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     width: '100%',
     height: '100%',
   },
@@ -1128,7 +1128,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: SPACING.sm, right: SPACING.sm, width: 44, height: 44, borderRadius: RADIUS.full, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, ...SHADOWS.sm,
   },
   tileLockOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: COLORS.photoOverlay,
     alignItems: 'center',
     justifyContent: 'center',

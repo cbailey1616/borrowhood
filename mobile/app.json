@@ -47,7 +47,7 @@
         "backgroundColor": "#F3EBDD"
       },
       "package": "com.borrowhood.app",
-      "versionCode": 7,
+      "versionCode": 8,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_FINE_LOCATION",

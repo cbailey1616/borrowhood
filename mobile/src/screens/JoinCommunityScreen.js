@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
   },
   // Overlay styles
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: COLORS.photoCaptionSurface,
     justifyContent: 'flex-start',
     alignItems: 'center',

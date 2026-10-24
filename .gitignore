@@ -59,3 +59,7 @@ google-services.json
 google-play-service-account.json
 *-firebase-adminsdk-*.json
 mobile/android/
+
+# Android emulator QA and shared local dependency link
+mobile/.maestro/screenshots/
+mobile/node_modules

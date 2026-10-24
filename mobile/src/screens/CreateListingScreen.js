@@ -1020,7 +1020,7 @@ const styles = StyleSheet.create({
   },
   // Overlay styles for community join prompt
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: COLORS.photoCaptionSurface,
     justifyContent: 'flex-start',
     alignItems: 'center',
