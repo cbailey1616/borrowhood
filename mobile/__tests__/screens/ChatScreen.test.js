@@ -1,3 +1,4 @@
+afterEach(() => jest.restoreAllMocks());
 import React from 'react';
 import { DeviceEventEmitter, StyleSheet, View } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
@@ -138,6 +139,7 @@ describe('ChatScreen', () => {
     { screenHeight: 667, headerHeight: 88, nativeOrigin: 88, keyboardTop: 407 },
   ])('keeps the composer above the native keyboard on a $screenHeight-point screen', async ({ screenHeight, headerHeight, nativeOrigin, keyboardTop }) => {
     mockHeaderHeight = headerHeight;
+    jest.replaceProperty(require('react-native').Platform, 'OS', 'ios');
     mockWindowHeight = screenHeight;
     View.prototype.measureInWindow.mockImplementation(callback => callback(0, nativeOrigin, 390, screenHeight - nativeOrigin));
     const Screen = require('../../src/screens/ChatScreen').default;

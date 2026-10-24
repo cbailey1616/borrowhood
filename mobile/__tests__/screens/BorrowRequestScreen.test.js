@@ -1,5 +1,5 @@
 import React from 'react';
-import { Keyboard, ScrollView } from 'react-native';
+import { Keyboard, ScrollView, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
@@ -58,7 +58,8 @@ describe('BorrowRequestScreen', () => {
     const invalid = new Date(picker.props.value);
     invalid.setFullYear(invalid.getFullYear() + 1);
     fireEvent(picker, 'change', { type: 'set' }, invalid);
-    expect(screen.UNSAFE_getByType('DateTimePicker').props.value.getTime()).toBe(picker.props.maximumDate.getTime());
+    if (Platform.OS === 'ios') expect(screen.UNSAFE_getByType('DateTimePicker').props.value.getTime()).toBe(picker.props.maximumDate.getTime());
+    else expect(screen.UNSAFE_queryByType('DateTimePicker')).toBeNull();
     await act(async () => fireEvent.press(screen.getByText('Send Request')));
     const request = api.createTransaction.mock.calls[0][0];
     expect(Math.round((new Date(request.endDate) - new Date(request.startDate)) / 86400000)).toBe(1);
@@ -130,7 +131,7 @@ describe('BorrowRequestScreen', () => {
     expect(input.props.keyboardAppearance).toBe('light');
     expect(input.props.inputAccessoryViewID).toBeUndefined();
     const scroll = screen.UNSAFE_getByType(ScrollView);
-    expect(scroll.props.keyboardDismissMode).toBe('interactive');
+    expect(scroll.props.keyboardDismissMode).toBe(Platform.OS === 'ios' ? 'interactive' : 'on-drag');
     expect(scroll.props.keyboardShouldPersistTaps).toBe('handled');
     expect(input.props.value).toBe('Tomorrow afternoon?');
     await act(async () => fireEvent.press(screen.getByText('Send Request')));
@@ -147,7 +148,8 @@ describe('BorrowRequestScreen', () => {
     fireEvent.press(endDate);
     expect(dismiss).toHaveBeenCalled();
     expect(screen.UNSAFE_getByType(DateTimePicker)).toBeTruthy();
-    expect(screen.getByText('Done')).toBeTruthy();
+    if (Platform.OS === 'ios') expect(screen.getByText('Done')).toBeTruthy();
+    else expect(screen.queryByText('Done')).toBeNull();
     const input = screen.getByLabelText('Private message to owner');
     fireEvent(input, 'focus');
     expect(screen.UNSAFE_queryByType(DateTimePicker)).toBeNull();

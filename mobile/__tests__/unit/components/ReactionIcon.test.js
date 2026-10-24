@@ -1,3 +1,4 @@
+import { svgText } from '../../setup/svgText';
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { Image } from 'expo-image';
@@ -54,6 +55,6 @@ it('omits the message actions button in comment composer emoji pickers', () => {
 // Ordinary app icons are still Borrowhood drawings.
 it.each([['Face ID', 'faceid'], ['Touch ID', 'finger-print-outline']])('uses a Borrowhood drawing for %s', (type, name) => {
   const screen = render(<BiometricIcon type={type} />);
-  expect(decodeURIComponent(screen.UNSAFE_getByType(Image).props.source.uri.split(',')[1])).toBe(
+  expect(svgText(screen.UNSAFE_getByType(Image).props.source.uri)).toBe(
     iconSvg(name, { color: COLORS.primary, illustrated: true, selected: !name.endsWith('-outline') }));
 });

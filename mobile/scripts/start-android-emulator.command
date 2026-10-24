@@ -38,7 +38,7 @@ if [[ -f "$TOOLS/borrowhood-development.apk" ]]; then
   "$ADB" -s "$SERIAL" install -r "$TOOLS/borrowhood-development.apk"
   "$ADB" -s "$SERIAL" reverse tcp:8097 tcp:8097
   if ! curl --silent --fail http://127.0.0.1:8097/status | grep -q 'packager-status:running'; then
-    (cd "$MOBILE" && EXPO_PUBLIC_API_URL=https://borrowhood-production.up.railway.app npx expo start --dev-client --localhost --port 8097 > "$TOOLS/metro.log" 2>&1) &
+    (cd "$MOBILE" && EXPO_PUBLIC_API_URL=https://borrowhood-production.up.railway.app npx expo start --dev-client --host lan --port 8097 > "$TOOLS/metro.log" 2>&1) &
     for attempt in $(seq 1 60); do
       if curl --silent --fail http://127.0.0.1:8097/status | grep -q 'packager-status:running'; then break; fi
       sleep 1

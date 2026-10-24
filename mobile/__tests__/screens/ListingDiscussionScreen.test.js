@@ -1,3 +1,4 @@
+afterEach(() => jest.restoreAllMocks());
 import React from 'react';
 import { DeviceEventEmitter, FlatList, StyleSheet, View } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
@@ -132,6 +133,7 @@ describe('ListingDiscussionScreen', () => {
     { screenHeight: 667, headerHeight: 88, nativeOrigin: 88, keyboardTop: 407 },
   ])('keeps the composer above the keyboard when its native origin is $nativeOrigin', async ({ screenHeight, headerHeight, nativeOrigin, keyboardTop }) => {
     mockHeaderHeight = headerHeight;
+    jest.replaceProperty(require('react-native').Platform, 'OS', 'ios');
     mockWindowHeight = screenHeight;
     View.prototype.measureInWindow.mockImplementation(callback => callback(0, nativeOrigin, 390, screenHeight - nativeOrigin));
     const Screen = require('../../src/screens/ListingDiscussionScreen').default;
@@ -681,6 +683,7 @@ it('preserves the actual reply editor and draft when delayed replies arrive',asy
 });
 
 it('scrolls the full reply card into the resized iPhone viewport when the keyboard opens',async()=>{
+    jest.replaceProperty(require('react-native').Platform, 'OS', 'ios');
  let keyboardOpen=false;
  View.prototype.measureInWindow.mockImplementation(function(callback){
   const id=this.props?.testID;

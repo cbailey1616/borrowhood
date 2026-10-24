@@ -1,3 +1,5 @@
+afterEach(() => jest.restoreAllMocks());
+beforeEach(() => { jest.replaceProperty(require('react-native').Platform, 'OS', 'ios'); });
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { openAuthSessionAsync } from 'expo-web-browser';

@@ -53,7 +53,7 @@ describe('CommunitySettingsScreen', () => {
     fireEvent.press(await screen.findByText('Choose photo'));
     await waitFor(() => expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalled());
     expect(api.updateCommunity).not.toHaveBeenCalled();
-    fireEvent.press(await screen.findByText('Use cropped cover'));
+    fireEvent.press(await screen.findByText(/Use cropped cover/i));
     fireEvent.press(screen.getByText('Save'));
     await waitFor(() => expect(api.updateCommunity).toHaveBeenCalledWith('comm-1', {
       name: 'Test Hood', description: 'A neighborhood', bannerUrl: 'https://example.com/new.jpg',
@@ -81,7 +81,7 @@ describe('CommunitySettingsScreen', () => {
     fireEvent.press(await screen.findByText('Change cover photo'));
     fireEvent.press(await screen.findByText('Choose photo'));
     await waitFor(() => expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalled());
-    fireEvent.press(await screen.findByText('Use cropped cover'));
+    fireEvent.press(await screen.findByText(/Use cropped cover/i));
     fireEvent.press(screen.getByText('Save'));
     await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(expect.objectContaining({ message: 'Upload failed' })));
     expect(api.updateCommunity).not.toHaveBeenCalled();
@@ -99,7 +99,7 @@ describe('CommunitySettingsScreen', () => {
     fireEvent.press(await screen.findByText('Edit Details'));
     fireEvent.press(screen.getByText('Add cover photo'));
     fireEvent.press(await screen.findByText('Take photo'));
-    fireEvent.press(await screen.findByText('Use cropped cover'));
+    fireEvent.press(await screen.findByText(/Use cropped cover/i));
     expect(ImagePicker.requestCameraPermissionsAsync).toHaveBeenCalledTimes(1);
     expect(ImagePicker.launchCameraAsync).toHaveBeenCalledWith(expect.objectContaining({ mediaTypes: ['images'], allowsEditing: false }));
     expect(ImagePicker.launchImageLibraryAsync).not.toHaveBeenCalled();
@@ -117,7 +117,7 @@ describe('CommunitySettingsScreen', () => {
     fireEvent.press(await screen.findByText('Change cover photo'));
     fireEvent.press(await screen.findByText('Take photo'));
     await waitFor(() => expect(ImagePicker.launchCameraAsync).toHaveBeenCalled());
-    if (stage === 'crop') fireEvent.press(await screen.findByText('Cancel cover crop'));
+    if (stage === 'crop') fireEvent.press(await screen.findByText(/Cancel cover crop/i));
     expect(screen.getByLabelText('Cover photo preview').props.source.uri).toBe(editableCommunity.bannerUrl);
     fireEvent.press(screen.getByText('Save'));
     await waitFor(() => expect(api.updateCommunity).toHaveBeenCalledWith('comm-1', { name: 'Test Hood', description: 'A neighborhood' }));

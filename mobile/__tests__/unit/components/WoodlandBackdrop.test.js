@@ -1,3 +1,4 @@
+import { svgText } from '../../setup/svgText';
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
@@ -15,7 +16,7 @@ it.each(FEED_WOODLAND_SCENES.map((scene, index) => [scene.id, index]))('extends 
     const screen = render(<FeedWoodlandBackdrop width={width} sceneIndex={index} height={254} />);
     const image = screen.getByTestId('Woodland.artwork', { includeHiddenElements: true });
     const source = Array.isArray(image.props.source) ? image.props.source[0] : image.props.source;
-    expect(decodeURIComponent(source.uri.split(',')[1])).toBe(svg);
+    expect(svgText(source.uri)).toBe(svg);
     expect(StyleSheet.flatten(image.props.style)).toMatchObject({ top: 0, height: 254 });
     screen.unmount();
   }
@@ -50,7 +51,7 @@ it('uses the measured header bounds without squeezing the artwork', () => {
   });
   const image = screen.getByTestId('Woodland.artwork', { includeHiddenElements: true });
   const source = Array.isArray(image.props.source) ? image.props.source[0] : image.props.source;
-  expect(decodeURIComponent(source.uri.split(',')[1])).toContain('width="760" height="128" viewBox="0 48 760 128"');
+  expect(svgText(source.uri)).toContain('width="760" height="128" viewBox="0 48 760 128"');
   expect(image.props.contentFit).toBe('cover');
 });
 

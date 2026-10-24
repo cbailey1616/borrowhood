@@ -1,3 +1,5 @@
+afterEach(() => jest.restoreAllMocks());
+beforeEach(() => { jest.replaceProperty(require('react-native').Platform, 'OS', 'ios'); });
 import { openAuthSessionAsync } from 'expo-web-browser';
 import api from '../../src/services/api';
 import { verifyIdentityInBrowser } from '../../src/services/identityVerification';

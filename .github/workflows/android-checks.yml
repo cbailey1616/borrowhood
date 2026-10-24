@@ -22,6 +22,8 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci
+      - name: Test Android screens and actions
+        run: npm run test:android
       - name: Export Android JavaScript
         env:
           CI: '1'

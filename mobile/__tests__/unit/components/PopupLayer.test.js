@@ -1,9 +1,11 @@
+afterEach(() => jest.restoreAllMocks());
 import React from 'react';
 import { Text, Modal, Platform, Keyboard } from 'react-native';
 import { FullWindowOverlay } from 'react-native-screens';
 import { render } from '@testing-library/react-native';
 import PopupLayer from '../../../src/components/PopupLayer';
 it('uses the iOS window layer and removes it before the close callback', () => {
+  jest.replaceProperty(Platform, 'OS', 'ios');
   const screen = render(<PopupLayer visible><Text>Popup</Text></PopupLayer>);
   expect(screen.UNSAFE_queryByType(Modal)).toBeNull();
   expect(screen.getByText('Popup')).toBeTruthy();

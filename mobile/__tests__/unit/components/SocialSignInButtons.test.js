@@ -1,3 +1,5 @@
+afterEach(() => jest.restoreAllMocks());
+beforeEach(() => { jest.replaceProperty(require('react-native').Platform, 'OS', 'ios'); });
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
@@ -66,4 +68,14 @@ it('does not establish a new Apple session without the authorization code needed
   fireEvent.press(await screen.findByTestId('Auth.apple'));
   await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
   expect(mockApple).not.toHaveBeenCalled();
+});
+
+
+it('offers Google on Android without starting Apple authentication', async () => {
+  jest.replaceProperty(require('react-native').Platform, 'OS', 'android');
+  const screen = render(<SocialSignInButtons />);
+  await act(async () => {});
+  expect(screen.queryByTestId('Auth.apple')).toBeNull();
+  expect(screen.getByTestId('Auth.google')).toBeTruthy();
+  expect(AppleAuthentication.isAvailableAsync).not.toHaveBeenCalled();
 });
