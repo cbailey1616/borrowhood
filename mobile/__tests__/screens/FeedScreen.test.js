@@ -47,6 +47,19 @@ beforeEach(() => {
 });
 
 describe('FeedScreen', () => {
+  it('opens one post menu with a full-screen dismiss target and both posting routes', async () => {
+    const Screen = require('../../src/screens/FeedScreen').default;
+    const screen = render(<Screen navigation={mockNavigation} />);
+    fireEvent.press(await screen.findByTestId('Feed.button.create'));
+    expect(screen.getByRole('button', { name: 'Close Create a post' })).toBeTruthy();
+    expect(screen.getByTestId('Feed.create.listing')).toBeTruthy();
+    expect(screen.queryByText('Cancel')).toBeNull();
+    expect(StyleSheet.flatten(screen.getByTestId('ActionSheet.backdrop').props.style)).toMatchObject({
+      position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
+    });
+    fireEvent.press(screen.getByTestId('Feed.create.request'));
+    await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('CreateRequest'));
+  });
   it.each([['listing', 8, '8 comments'], ['request', 1, '1 comment'], ['ribbon', 0, '0 comments']])(
     'shows the discussion count on a %s tile', async (surface, commentCount, label) => {
       const item = { id: 'counted-post', type: surface === 'listing' ? 'listing' : 'request',

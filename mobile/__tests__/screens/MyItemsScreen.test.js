@@ -65,11 +65,16 @@ beforeEach(() => {
 
 describe('MyItemsScreen', () => {
   it('keeps the exchange shortcut available on every posts tab', async () => {
+    api.getTransactions.mockResolvedValue([
+      { id: 'own', status: 'approved', isBorrower: false },
+      { id: 'neighbor', status: 'approved', isBorrower: true, listing: { title: 'Folding chairs' } },
+      { id: 'finished', status: 'completed', isBorrower: true },
+    ]);
     const Screen = require('../../src/screens/MyItemsScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
     for (const tab of [0, 1, 2]) {
       await act(async () => fireEvent.press(screen.getByTestId(`MyItems.segment.${tab}`)));
-      fireEvent.press(screen.getByTestId('MyItems.exchanges'));
+      fireEvent.press(await screen.findByRole('button', { name: 'Your exchanges. 2 active' }));
       expect(mockNavigation.navigate).toHaveBeenLastCalledWith('Exchanges');
     }
   });
@@ -123,7 +128,7 @@ describe('MyItemsScreen', () => {
     const Screen = require('../../src/screens/MyItemsScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
     await screen.findByText('With Alex');
-    expect(api.getTransactions).toHaveBeenCalledWith({ role: 'lender' });
+    expect(api.getTransactions).toHaveBeenCalledWith();
     for (const text of ['Borrowed', 'Free to borrow', 'Due Sep 28', 'Friends · Neighborhood · Town', 'Review requests · 2']) expect(screen.getByText(text)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: /^View exchange for Extension ladder/ }));
     expect(mockNavigation.navigate).toHaveBeenLastCalledWith('TransactionDetail', { id: 'loan' });
@@ -137,6 +142,7 @@ describe('MyItemsScreen', () => {
     const Screen = require('../../src/screens/MyItemsScreen').default;
     const screen = render(<Screen navigation={mockNavigation} />);
     await screen.findByText('Extension ladder');
+    expect(screen.getByRole('button', { name: 'Your exchanges' })).toBeTruthy();
     expect(screen.getByText('Borrowed')).toBeTruthy();
     expect(screen.getByText('Exchange details couldn’t load. Pull to refresh.')).toBeTruthy();
     expect(screen.queryByText('Your listings start here')).toBeNull();
@@ -249,9 +255,9 @@ describe('MyItemsScreen', () => {
     await waitFor(() => {
       expect(api.getMyRequests).toHaveBeenCalled();
     });
-    expect(api.getTransactions).not.toHaveBeenCalled();
+    expect(api.getTransactions).toHaveBeenCalledTimes(1);
     await selectTab(utils, 2);
-    await waitFor(() => expect(api.getTransactions).toHaveBeenCalledWith({ role: 'borrower' }));
+    expect(api.getTransactions).toHaveBeenCalledTimes(1);
   });
 
   it('displays request cards', async () => {

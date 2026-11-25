@@ -9,6 +9,7 @@ import { randomUUID } from 'expo-crypto';
 import { listingAvailability } from '../utils/listingAvailability';
 import { isTransferListing } from '../utils/directFee';
 import { exchangeIsActive, exchangeStatus, isBorrower } from '../utils/homeAction';
+import { trackedExchanges } from '../utils/exchangeTracking';
 import ExchangeOverviewLink from '../components/ExchangeOverviewLink';
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
@@ -82,12 +83,29 @@ export default function MyItemsScreen({ navigation }) {
   const [pendingDelete, setPendingDelete] = useState(null);
   const swipeableRefs = useRef({});
   const fetchId = useRef(0);
+  const exchangeRequest = useRef(null);
+  const [exchangeSummary, setExchangeSummary] = useState(null);
 
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (refreshExchanges = true) => {
     const currentFetch = ++fetchId.current;
     setLoadError(false);
     if(activeTab===3){setIsLoading(false);setIsRefreshing(false);return;}
+    // All three tabs use the same account-wide exchanges. Reuse the request
+    // across tab switches, and renew it on focus, pull-to-refresh, or retry.
+    if (refreshExchanges || !exchangeRequest.current || exchangeRequest.current.userId !== user?.id) {
+      exchangeRequest.current = {
+        userId: user?.id,
+        promise: api.getTransactions().then(data => data?.transactions ?? data).catch(() => null),
+      };
+    }
+    const exchangeData = exchangeRequest.current.promise.then(rows => {
+      if (currentFetch === fetchId.current) {
+        const count = Array.isArray(rows) ? trackedExchanges(rows, user?.id).length : undefined;
+        setExchangeSummary({ userId: user?.id, count });
+      }
+      return rows;
+    });
     try {
       if (activeTab === 0) {
         const data = await api.getMyListings();
@@ -95,24 +113,23 @@ export default function MyItemsScreen({ navigation }) {
         // Keep active and paused inventory visible while exchanges are in progress.
         // Completed transfers remain in History.
         const inventory = data.filter((listing) => ['active', 'paused'].includes(listing.status));
-        let exchanges = [];
-        let detailsUnavailable = false;
-        if (inventory.some(item => !listingAvailability(item).available)) {
-          try { exchanges = await api.getTransactions({ role: 'lender' }); }
-          catch { detailsUnavailable = true; }
-        }
+        const exchanges = inventory.some(item => !listingAvailability(item).available) ? await exchangeData : [];
         if (currentFetch !== fetchId.current) return;
         setListings(inventory.map(item => ({ ...item,
-          activeExchange: activeLendingExchange(item, exchanges, user?.id),
-          detailsUnavailable: detailsUnavailable && ['borrowed', 'reserved'].includes(listingAvailability(item).state),
+          activeExchange: activeLendingExchange(item, exchanges || [], user?.id),
+          detailsUnavailable: !exchanges && ['borrowed', 'reserved'].includes(listingAvailability(item).state),
         })));
       } else if (activeTab === 1) {
         const data = await api.getMyRequests();
         if (currentFetch !== fetchId.current) return;
         setRequests(data);
       } else {
-        const data = await api.getTransactions({ role: 'borrower' });
+        const data = await exchangeData;
         if (currentFetch !== fetchId.current) return;
+        if (!data) {
+          setLoadError('Couldn’t load your requests.');
+          return;
+        }
         setSentRequests(data.filter(item => isBorrower(item, user?.id) && exchangeIsActive(item)));
       }
     } catch (error) {
@@ -129,7 +146,7 @@ export default function MyItemsScreen({ navigation }) {
 
   useEffect(() => {
     setIsLoading(true);
-    fetchData();
+    fetchData(false);
     return () => { fetchId.current += 1; };
   }, [fetchData]);
 
@@ -450,7 +467,8 @@ export default function MyItemsScreen({ navigation }) {
         refreshing={isRefreshing}
         onRefresh={onRefresh}
         ListEmptyComponent={emptyContent}
-        ListHeaderComponent={<ExchangeOverviewLink testID="MyItems.exchanges" onPress={() => navigation.navigate('Exchanges')} />}
+        ListHeaderComponent={<ExchangeOverviewLink testID="MyItems.exchanges"
+          count={exchangeSummary?.userId === user?.id ? exchangeSummary?.count : undefined} onPress={() => navigation.navigate('Exchanges')} />}
       />
       </>}
       <ActionSheet

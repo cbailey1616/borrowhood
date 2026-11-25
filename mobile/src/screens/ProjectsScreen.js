@@ -21,7 +21,7 @@ import ShimmerImage from '../components/ShimmerImage';
 import { formatCalendarDate } from '../utils/calendarDate';
 import { projectProgress, projectItemState } from '../utils/projectProgress';
 import { resolveProjectSlot } from '../utils/projectRequest';
-import { CARD_SURFACE, COLORS, TYPOGRAPHY } from '../utils/config';
+import { CARD_SURFACE, COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
 
 export default function ProjectsScreen({route,navigation,embedded=false}) {
   const [promotedId,setPromotedId]=useState(null);
@@ -147,11 +147,23 @@ export default function ProjectsScreen({route,navigation,embedded=false}) {
           <Text style={styles.subtitle}>Make a plan. Borrow from neighbors.</Text>
           <ActionButton label='Create your own plan' icon="history-ledger" onPress={()=>navigation.push('Projects',{custom:true})}/>
           {data[1].length>0&&<>
-            <Text style={styles.heading}>Your plans</Text>
-            {data[1].map(project=><PlanSwipeRow key={project.id} label={project.name} disabled={busy} onRemove={()=>setSheet({type:'removeSaved',project})}><HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.saved} accessibilityRole="button"
-              onPress={()=>navigation.push('Projects',{id:project.id})}>
-              <Icon name="history-ledger" size={26}/><Text maxFontSizeMultiplier={1.4} style={[styles.label,{flex:1}]}>{project.name}</Text><Icon name="chevron-forward" size={18}/>
-            </HapticPressable></PlanSwipeRow>)}
+            <Text accessibilityRole="header" style={styles.heading}>Your plans</Text>
+            <View style={styles.savedGroup}>
+              {data[1].map((project, index) => (
+                <View key={project.id}>
+                  {index > 0 && <View style={styles.savedDivider} />}
+                  <PlanSwipeRow label={project.name} disabled={busy} backgroundColor={COLORS.surface}
+                    onRemove={() => setSheet({ type: 'removeSaved', project })}>
+                    <HapticPressable pressedBackgroundColor={COLORS.cardHover} style={styles.savedRow}
+                      accessibilityLabel={project.name} onPress={() => navigation.push('Projects', { id: project.id })}>
+                      <Icon name="history-ledger" size={20} />
+                      <Text style={styles.savedName}>{project.name}</Text>
+                      <Icon name="chevron-forward" size={15} color={COLORS.textSecondary} />
+                    </HapticPressable>
+                  </PlanSwipeRow>
+                </View>
+              ))}
+            </View>
           </>}
           {data[1].length>0&&<Text style={styles.heading}>Ideas</Text>}
           <View style={styles.ideas}>
@@ -266,7 +278,10 @@ const styles=StyleSheet.create({
   ideaText:{flex:1,gap:7},
   editControl:{flexDirection:'row',alignItems:'center',gap:5,minHeight:44,justifyContent:'center',paddingHorizontal:6},
   editText:{ ...TYPOGRAPHY.buttonCaption,color:COLORS.primary, },
-  saved:{ ...CARD_SURFACE,padding:16,borderRadius:18,backgroundColor:COLORS.surface,flexDirection:'row',alignItems:'center',gap:12},
+  savedGroup: { backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden' },
+  savedRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm, minHeight: 48 },
+  savedName: { ...TYPOGRAPHY.subheadline, fontFamily: 'DMSans_500Medium', fontWeight: '500', color: COLORS.text, flex: 1 },
+  savedDivider: { marginLeft: SPACING.lg + 20 + SPACING.md, marginRight: SPACING.lg, height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
   summary:{ ...CARD_SURFACE,padding:18,gap:10,borderRadius:20,backgroundColor:COLORS.surface,borderWidth:1,borderColor:COLORS.border},
   builder:{ ...CARD_SURFACE,padding:18,borderRadius:20,backgroundColor:COLORS.surface,borderWidth:1,borderColor:COLORS.border},
   nameField:{gap:10,paddingBottom:20,borderBottomWidth:1,borderBottomColor:COLORS.borderLight},

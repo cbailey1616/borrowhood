@@ -5,6 +5,7 @@ import { runWhenIdle } from '../utils/runWhenIdle';
 import NotificationIcon from '../components/NotificationIcon';
 import { listingIcon } from '../utils/listingPresentation';
 import ShimmerImage from '../components/ShimmerImage';
+import { trackedExchanges } from '../utils/exchangeTracking';
 import { inboxActivity } from '../utils/inboxActivity';
 import { publicReplyRoute, messagePresentation } from '../utils/conversationContext';
 import { notificationDestination } from '../utils/notificationDestination';
@@ -18,6 +19,7 @@ import {
   Image,
   Linking,
   Platform,
+  AppState,
   ActivityIndicator, } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect } from '@react-navigation/native';
@@ -64,6 +66,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [reading, setReading] = useState(false);
   const [optionsVisible, setOptionsVisible] = useState(false);
+  const [exchangeCount, setExchangeCount] = useState(undefined);
   const [notifsDenied, setNotifsDenied] = useState(false);
   const [unseenActivityUnread, setUnseenActivityUnread] = useState(0);
   const requestVersion = useRef(0);
@@ -81,6 +84,7 @@ export default function InboxScreen({ navigation, route, onRead }) {
     tabChosen.current = !!route?.params?.tab;
     setActiveTab(route?.params?.tab === 'messages' ? 0 : 1);
     knownTransactions.current = [];
+    setExchangeCount(undefined);
     activityRecords.current = [];
     pageCount.current = 1;
     unreadFilter.current = false;
@@ -125,6 +129,9 @@ export default function InboxScreen({ navigation, route, onRead }) {
 
     if (exchangeResult.status === 'fulfilled') {
       knownTransactions.current = exchangeResult.value?.transactions || exchangeResult.value || [];
+      setExchangeCount(trackedExchanges(knownTransactions.current, user?.id).length);
+    } else {
+      setExchangeCount(undefined);
     }
     if (activityResult.status === 'fulfilled') {
       const responses = activityResult.value;
@@ -166,8 +173,11 @@ export default function InboxScreen({ navigation, route, onRead }) {
         checkNotifPermission();
         onRead?.();
       });
+      const appState = AppState.addEventListener('change', state => {
+        if (state === 'active') checkNotifPermission();
+      });
       const timer = setInterval(fetchData, 10000);
-      return () => { task.cancel(); clearInterval(timer); requestVersion.current += 1; };
+      return () => { task.cancel(); appState.remove(); clearInterval(timer); requestVersion.current += 1; };
     }, [fetchData, checkNotifPermission, onRead])
   );
 
@@ -410,19 +420,18 @@ export default function InboxScreen({ navigation, route, onRead }) {
           onRefresh={onRefresh}
           ListHeaderComponent={
             <>
-              <ExchangeOverviewLink testID="Inbox.exchanges" onPress={() => navigation.navigate('Exchanges')} />
+              <ExchangeOverviewLink testID="Inbox.exchanges" count={exchangeCount} onPress={() => navigation.navigate('Exchanges')} />
               {(loadError.activity || loadError.exchanges) && renderRetry(loadError.activity && loadError.exchanges ? 'Couldn’t refresh activity and exchanges.' : loadError.activity ? 'Couldn’t refresh activity.' : 'Couldn’t refresh exchanges.')}
               {notifsDenied && (
                 <HapticPressable pressedBackgroundColor={COLORS.cardHover}
                   style={styles.notifBannerInline}
+                  accessibilityLabel="Notifications are off. Open settings"
                   onPress={() => Linking.openSettings()}
                   haptic={null}
                 >
-                  <Ionicons name="notifications-off-outline" size={18} color={COLORS.warning} />
-                  <Text style={styles.notifBannerInlineText}>
-                    Notifications are off — tap to enable
-                  </Text>
-                  <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+                  <Ionicons name="notifications-off-outline" size={17} color={COLORS.textSecondary} />
+                  <Text style={styles.notifBannerInlineText}>Notifications are off</Text>
+                  <Text style={styles.notifSettings}>Settings</Text>
                 </HapticPressable>
               )}
             </>
@@ -637,18 +646,18 @@ const styles = StyleSheet.create({
   notifBannerInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.warningMuted,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.tints.warning30,
-    paddingVertical: SPACING.md,
+    minHeight: 44,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+    paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     marginBottom: SPACING.md,
     gap: SPACING.sm,
   },
+  notifSettings: { ...TYPOGRAPHY.buttonCaption, color: COLORS.primary, flexShrink: 1 },
   notifBannerInlineText: {
     ...TYPOGRAPHY.footnote,
-    color: COLORS.text,
+    color: COLORS.textSecondary,
     flex: 1,
   },
 });

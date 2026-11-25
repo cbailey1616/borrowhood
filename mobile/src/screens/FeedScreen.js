@@ -762,7 +762,8 @@ export default function FeedScreen({ navigation, route }) {
       <ActionSheet
         isVisible={showActionSheet}
         onClose={() => setShowActionSheet(false)}
-        title="Create"
+        title="Create a post"
+        variant="item"
         actions={createActions}
       />
 

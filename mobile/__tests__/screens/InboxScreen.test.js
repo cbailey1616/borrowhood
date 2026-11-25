@@ -2,7 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
 import * as Notifications from 'expo-notifications';
-import { FlatList, RefreshControl } from 'react-native';
+import { FlatList, Linking, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 const mockUser = {
@@ -63,9 +63,21 @@ describe('InboxScreen', () => {
   it('opens the full exchange tracker from activity without changing message navigation', async () => {
     const Screen = require('../../src/screens/InboxScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={{ params: { tab: 'activity' } }} />);
-    const overview = await screen.findByTestId('Inbox.exchanges');
+    const overview = await screen.findByRole('button', { name: 'Your exchanges. 0 active' });
     fireEvent.press(overview);
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Exchanges');
+  });
+  it('opens device settings from the notifications-off row', async () => {
+    Notifications.getPermissionsAsync.mockResolvedValueOnce({ status: 'denied' });
+    const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
+    try {
+      const Screen = require('../../src/screens/InboxScreen').default;
+      const screen = render(<Screen navigation={mockNavigation} />);
+      fireEvent.press(await screen.findByRole('button', { name: 'Notifications are off. Open settings' }));
+      expect(openSettings).toHaveBeenCalledTimes(1);
+    } finally {
+      openSettings.mockRestore();
+    }
   });
   it('keeps the private message list focused on people and the latest message', async () => {
     api.getConversations.mockResolvedValue([{ id: 'conv-1', otherUser: { id: 'user-2', firstName: 'Alice' }, listing: { title: 'Old ladder' },
