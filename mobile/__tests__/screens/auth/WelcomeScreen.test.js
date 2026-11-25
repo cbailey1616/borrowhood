@@ -92,20 +92,23 @@ describe('WelcomeScreen', () => {
     expect(screen.getByText('Use password instead')).toBeTruthy();
   });
 
-  it('shows email sign-in immediately and offers a separate account creation link', async () => {
+  it('offers account creation, returning sign-in and social sign-in on first launch', async () => {
     const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
-    const screen = nativeRender(<WelcomeScreen navigation={mockNavigation} />);
-    await screen.findByText('Sign in to your account');
-    expect(screen.getByText('Create an account')).toBeTruthy();
-    expect(screen.getByTestId('Welcome.input.email')).toBeTruthy();
-    expect(screen.getByTestId('Welcome.input.password')).toBeTruthy();
+    const screen = render(<WelcomeScreen navigation={mockNavigation} />);
+    expect(screen.getByRole('header', { name: 'Borrow from people nearby.' })).toBeTruthy();
+    expect(screen.queryByTestId('Welcome.input.email')).toBeNull();
+    expect(await screen.findByTestId('Auth.apple')).toBeTruthy();
     expect(screen.getByTestId('Auth.google')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Create an account' }));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Register');
+    fireEvent.press(screen.getByRole('button', { name: 'Sign in' }));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Login');
   });
 
   it('renders sign-in form', () => {
-    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
     const { getByPlaceholderText, getByText } = render(
-      <WelcomeScreen navigation={mockNavigation} />
+      <LoginScreen navigation={mockNavigation} />
     );
     expect(getByPlaceholderText('you@example.com')).toBeTruthy();
     expect(getByPlaceholderText('Enter your password')).toBeTruthy();
@@ -113,18 +116,18 @@ describe('WelcomeScreen', () => {
   });
 
   it('email and password inputs accept text', () => {
-    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
     const { getByPlaceholderText } = render(
-      <WelcomeScreen navigation={mockNavigation} />
+      <LoginScreen navigation={mockNavigation} />
     );
     fireEvent.changeText(getByPlaceholderText('you@example.com'), 'test@test.com');
     fireEvent.changeText(getByPlaceholderText('Enter your password'), 'MyPass123');
   });
 
   it('Sign In button calls login()', async () => {
-    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
     const { getByPlaceholderText, getByText } = render(
-      <WelcomeScreen navigation={mockNavigation} />
+      <LoginScreen navigation={mockNavigation} />
     );
     fireEvent.changeText(getByPlaceholderText('you@example.com'), 'test@test.com');
     fireEvent.changeText(getByPlaceholderText('Enter your password'), 'MyPass123');
@@ -136,9 +139,9 @@ describe('WelcomeScreen', () => {
 
   it('login error shows inline error', async () => {
     mockLogin.mockRejectedValueOnce(new Error('Invalid credentials'));
-    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
     const { getByPlaceholderText, getByText, findByText } = render(
-      <WelcomeScreen navigation={mockNavigation} />
+      <LoginScreen navigation={mockNavigation} />
     );
     fireEvent.changeText(getByPlaceholderText('you@example.com'), 'test@test.com');
     fireEvent.changeText(getByPlaceholderText('Enter your password'), 'wrong');
@@ -149,26 +152,26 @@ describe('WelcomeScreen', () => {
   });
 
   it('renders forgot password link', () => {
-    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
     const { getByText } = render(
-      <WelcomeScreen navigation={mockNavigation} />
+      <LoginScreen navigation={mockNavigation} />
     );
     expect(getByText('Forgot password?')).toBeTruthy();
   });
 
   it('forgot password navigates to ForgotPassword', () => {
-    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+    const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
     const { getByText } = render(
-      <WelcomeScreen navigation={mockNavigation} />
+      <LoginScreen navigation={mockNavigation} />
     );
     fireEvent.press(getByText('Forgot password?'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword', { email: '' });
   });
 
-  it('"Create one" link navigates to Register', () => {
-    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
+  it('also offers registration from the password form', () => {
+    const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
     const { getByText } = render(
-      <WelcomeScreen navigation={mockNavigation} />
+      <LoginScreen navigation={mockNavigation} />
     );
     fireEvent.press(getByText('Create an account'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Register');
@@ -184,7 +187,8 @@ describe('WelcomeScreen', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Back to sign-in' }));
     await act(async () => fireEvent.press(screen.getByTestId('Auth.google')));
     expect(screen.queryByText('Connect Apple')).toBeNull();
-    expect(screen.getByTestId('Welcome.input.password').props.value).toBe('');
+    expect(screen.queryByTestId('Welcome.input.password')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
     expect(mockLogin).not.toHaveBeenCalled();
   });
 
@@ -227,8 +231,8 @@ describe('WelcomeScreen', () => {
   it('submits from the password keyboard once even if Sign in is also tapped', async () => {
     let complete;
     mockLogin.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
-    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
-    const screen = render(<WelcomeScreen navigation={mockNavigation} />);
+    const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
+    const screen = render(<LoginScreen navigation={mockNavigation} />);
     fireEvent.changeText(screen.getByTestId('Welcome.input.email'), ' neighbor@example.com ');
     fireEvent.changeText(screen.getByTestId('Welcome.input.password'), 'MyPassword1');
     fireEvent(screen.getByTestId('Welcome.input.password'), 'submitEditing');
@@ -242,8 +246,8 @@ describe('WelcomeScreen', () => {
   it('blocks the visible password form while Google sign-in is pending', async () => {
     let complete;
     GoogleSignin.signIn.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
-    const WelcomeScreen = require('../../../src/screens/auth/WelcomeScreen').default;
-    const screen = render(<WelcomeScreen navigation={mockNavigation} />);
+    const LoginScreen = require('../../../src/screens/auth/LoginScreen').default;
+    const screen = render(<LoginScreen navigation={mockNavigation} />);
     fireEvent.changeText(screen.getByTestId('Welcome.input.email'), 'neighbor@example.com');
     fireEvent.changeText(screen.getByTestId('Welcome.input.password'), 'MyPassword1');
     fireEvent.press(screen.getByTestId('Auth.google'));

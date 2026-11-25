@@ -8,6 +8,8 @@ appId: com.borrowhood.app
     clearKeychain: true
 
 - tapOn:
+    id: "Welcome.button.openSignIn"
+- tapOn:
     id: "Welcome.input.email"
 - inputText: "maestro-plus@borrowhood.test"
 

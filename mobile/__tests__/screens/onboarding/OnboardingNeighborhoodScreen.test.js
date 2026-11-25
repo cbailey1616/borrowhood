@@ -49,17 +49,37 @@ it('joins only the selected neighborhood before advancing', async () => {
   api.getCommunities.mockResolvedValue([neighborhood]);
   const screen = render(<Screen navigation={navigation} />);
   fireEvent.press(await screen.findByRole('radio', { name: 'Oak Street, 12 neighbors' }));
-  await press(screen, 'Join neighborhood');
+  await press(screen, 'Join Oak Street');
   expect(api.joinCommunity).toHaveBeenCalledTimes(1);
   expect(api.joinCommunity).toHaveBeenCalledWith('n-1');
   expect(navigation.navigate).toHaveBeenCalledWith('OnboardingVerify');
+});
+it('clears the selection when filtered out and only joins a visible, explicitly selected result', async () => {
+  api.getCommunities.mockResolvedValue([neighborhood, { id: 'n-2', name: 'Elm Street', memberCount: 1 }]);
+  const screen = render(<Screen navigation={navigation} />);
+  fireEvent.press(await screen.findByRole('radio', { name: /Oak Street/ }));
+  const search = screen.getByLabelText('Search neighborhoods');
+  fireEvent.changeText(search, ' OAK ');
+  expect(screen.getByRole('button', { name: 'Join Oak Street' })).toBeEnabled();
+  fireEvent.changeText(search, 'elm');
+  expect(screen.queryByRole('radio', { name: /Oak Street/ })).toBeNull();
+  const choose = screen.getByRole('button', { name: 'Choose a neighborhood' });
+  expect(choose).toBeDisabled();
+  fireEvent.press(choose);
+  expect(api.joinCommunity).not.toHaveBeenCalled();
+  fireEvent.changeText(search, '');
+  expect(screen.getByRole('radio', { name: /Oak Street/ })).not.toBeChecked();
+  fireEvent.press(screen.getByRole('radio', { name: /Elm Street/ }));
+  await press(screen, 'Join Elm Street');
+  expect(api.joinCommunity).toHaveBeenCalledTimes(1);
+  expect(api.joinCommunity).toHaveBeenCalledWith('n-2');
 });
 it('keeps a successful join when saving progress fails so retry does not join twice', async () => {
   api.getCommunities.mockResolvedValue([neighborhood]);
   api.updateOnboardingStep.mockRejectedValueOnce(new Error('Could not save progress'));
   const screen = render(<Screen navigation={navigation} />);
   fireEvent.press(await screen.findByRole('radio', { name: 'Oak Street, 12 neighbors' }));
-  await press(screen, 'Join neighborhood');
+  await press(screen, 'Join Oak Street');
   expect(navigation.navigate).not.toHaveBeenCalled();
   await press(screen, 'Continue');
   expect(api.joinCommunity).toHaveBeenCalledTimes(1);
@@ -70,7 +90,7 @@ it('does not advance when joining fails', async () => {
   api.joinCommunity.mockRejectedValueOnce(new Error('Could not join'));
   const screen = render(<Screen navigation={navigation} />);
   fireEvent.press(await screen.findByRole('radio', { name: 'Oak Street, 12 neighbors' }));
-  await press(screen, 'Join neighborhood');
+  await press(screen, 'Join Oak Street');
   expect(screen.getByText('Could not join')).toBeTruthy();
   expect(api.updateOnboardingStep).not.toHaveBeenCalled();
 });
@@ -109,7 +129,7 @@ it.each(['join', 'continue', 'skip', 'create'])('can return from verification an
     await press(screen, 'Not now');
   } else {
     fireEvent.press(await screen.findByRole('radio', { name: /Oak Street/ }));
-    await press(screen, mode === 'continue' ? 'Continue' : 'Join neighborhood');
+    await press(screen, mode === 'continue' ? 'Continue' : 'Join Oak Street');
   }
   expect(navigation.navigate).toHaveBeenCalledWith('OnboardingVerify');
   expect(navigation.isFocused()).toBe(false);
@@ -130,7 +150,7 @@ it('ignores a join from a previous visit and releases its controls when it settl
   api.joinCommunity.mockReturnValueOnce(new Promise(done => { resolve = done; }));
   const screen = render(<Screen navigation={navigation} />);
   fireEvent.press(await screen.findByRole('radio', { name: 'Oak Street, 12 neighbors' }));
-  fireEvent.press(screen.getByRole('button', { name: 'Join neighborhood' }));
+  fireEvent.press(screen.getByRole('button', { name: 'Join Oak Street' }));
   await waitFor(() => expect(api.joinCommunity).toHaveBeenCalledTimes(1));
   act(() => visit.blur());
   await act(async () => visit.focus());
@@ -147,7 +167,7 @@ it('lets a removed neighbor request approval and continue onboarding without joi
   api.joinCommunity.mockRejectedValueOnce(Object.assign(new Error('Approval required'), { code: 'REJOIN_APPROVAL_REQUIRED' }));
   const screen = render(<Screen navigation={navigation} />);
   fireEvent.press(await screen.findByRole('radio', { name: /Oak Street/ }));
-  await press(screen, 'Request to rejoin');
+  await press(screen, 'Request to rejoin Oak Street');
   expect(screen.getByText(/Waiting for a neighborhood steward/)).toBeTruthy();
   expect(screen.queryByText(/· Joined/)).toBeNull();
   expect(api.updateOnboardingStep).not.toHaveBeenCalled();
