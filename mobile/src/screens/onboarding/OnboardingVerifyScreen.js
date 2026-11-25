@@ -3,12 +3,13 @@ import { Text, ActivityIndicator, StyleSheet } from 'react-native';
 import useNavigationTask from '../../hooks/useNavigationTask';
 import useVerificationOffer from '../../hooks/useVerificationOffer';
 import VerificationPurchaseActions from '../../components/VerificationPurchaseActions';
+import ActionButton from '../../components/ActionButton';
 import VerificationBenefits from '../../components/VerificationBenefits';
 import OnboardingLayout from '../../components/OnboardingLayout';
 import HapticPressable from '../../components/HapticPressable';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { COLORS, TYPOGRAPHY } from '../../utils/config';
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../../utils/config';
 import { isUserVerified } from '../../utils/auth';
 
 export default function OnboardingVerifyScreen({ navigation }) {
@@ -77,16 +78,16 @@ export default function OnboardingVerifyScreen({ navigation }) {
   const readyToFinish = verified || processing;
   const busy = finishing || purchase.busy;
   return <OnboardingLayout step={3} compact scene="onboardingVerify"
-    title={verified ? 'You’re verified' : processing ? 'We’re checking your ID' : 'Get verified.'}
+    title={verified ? 'You’re verified' : processing ? 'We’re checking your ID' : 'Verify your identity'}
     description={verified ? 'You’re ready to borrow across Town.' : processing
-      ? 'Your badge will appear once verification is complete.' : 'Let neighbors know it’s really you.'}
+      ? 'Your badge will appear once verification is complete.' : 'You can verify now or later from your profile.'}
     onBack={() => navigation.navigate('OnboardingNeighborhood')} backDisabled={busy} busy={finishing}
     error={error || statusError}
     buttonLabel={readyToFinish ? 'Continue to Borrowhood' : undefined} onContinue={finish}
     primaryAction={!readyToFinish ? <VerificationPurchaseActions purchase={purchase} onVerify={verify}
       disabled={finishing || checking} branded hideFreeNote testID="OnboardingVerification.button.verify" /> : undefined}
-    secondaryActions={!readyToFinish && <HapticPressable accessibilityRole="button" disabled={busy}
-      accessibilityState={{ disabled: busy }} onPress={finish} style={styles.linkButton}><Text style={styles.link}>Not now</Text></HapticPressable>}>
+    secondaryActions={!readyToFinish && <ActionButton label="Continue to Borrowhood" onPress={finish}
+      disabled={purchase.busy} loading={finishing} style={styles.continueButton} />}>
     {checking && <ActivityIndicator color={COLORS.spinner} accessibilityLabel="Checking verification" style={styles.loading} />}
     {!readyToFinish && <VerificationBenefits />}
     {status === 'requires_input' && <Text style={styles.notice}>Your ID check needs another try.</Text>}
@@ -95,6 +96,7 @@ export default function OnboardingVerifyScreen({ navigation }) {
   </OnboardingLayout>;
 }
 const styles = StyleSheet.create({
+  continueButton: { borderRadius: RADIUS.full, marginTop: SPACING.sm, borderColor: COLORS.borderGreenStrong },
   linkButton: { minHeight: 48, padding: 12, alignItems: 'center', justifyContent: 'center' },
   link: { ...TYPOGRAPHY.button, color: COLORS.primary, textDecorationLine: 'underline', textAlign: 'center' , },
   loading: { marginBottom: 16 },

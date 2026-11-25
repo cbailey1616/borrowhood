@@ -22,7 +22,8 @@ const ready = async screen => { await waitFor(() => expect(screen.getByRole('but
 it('shows the approved screen and comparison popup without a footer paragraph', async () => {
   const screen = render(<Screen navigation={navigation} />);
   await ready(screen);
-  expect(screen.getByText('Get verified.')).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'Verify your identity' })).toBeTruthy();
+  expect(screen.getByText('You can verify now or later from your profile.')).toBeTruthy();
   expect(screen.queryByText(/Borrowhood receives/)).toBeNull();
   expect(screen.queryByText('No payment required.')).toBeNull();
   expect(screen.queryByLabelText('Browse Town borrowing. Not verified: Preview. Verified: Yes.')).toBeNull();
@@ -34,7 +35,7 @@ it('shows the approved screen and comparison popup without a footer paragraph', 
 it('completes setup when verification is skipped, without opening Stripe', async () => {
   const screen = render(<Screen navigation={navigation} />);
   await ready(screen);
-  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Not now' })));
+  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Continue to Borrowhood' })));
   expect(api.completeOnboarding).toHaveBeenCalledTimes(1);
   expect(mockRefreshUser).toHaveBeenCalledTimes(1);
   expect(api.startIdentityVerification).not.toHaveBeenCalled();
@@ -43,17 +44,17 @@ it('keeps skip available if verification options cannot load', async () => {
   api.getVerificationEligibility.mockRejectedValueOnce(new Error('Verification unavailable'));
   const screen = render(<Screen navigation={navigation} />);
   await screen.findByText('Verification unavailable');
-  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Not now' })));
+  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Continue to Borrowhood' })));
   expect(api.completeOnboarding).toHaveBeenCalledTimes(1);
 });
 it('shows a retryable completion error without claiming setup succeeded', async () => {
   api.completeOnboarding.mockRejectedValueOnce(new Error('offline'));
   const screen = render(<Screen navigation={navigation} />);
   await ready(screen);
-  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Not now' })));
+  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Continue to Borrowhood' })));
   expect(screen.getByText('Could not finish setup. Please try again.')).toBeTruthy();
   expect(mockRefreshUser).not.toHaveBeenCalled();
-  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Not now' })));
+  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Continue to Borrowhood' })));
   expect(mockRefreshUser).toHaveBeenCalledTimes(1);
 });
 it('allows already verified members to finish without opening another ID check', async () => {
@@ -86,7 +87,7 @@ it('submits only one completion request after repeated taps', async () => {
   api.completeOnboarding.mockReturnValueOnce(new Promise(done => { resolve = done; }));
   const screen = render(<Screen navigation={navigation} />);
   await ready(screen);
-  const button = screen.getByRole('button', { name: 'Not now' });
+  const button = screen.getByRole('button', { name: 'Continue to Borrowhood' });
   act(() => { fireEvent.press(button); fireEvent.press(button); });
   expect(api.completeOnboarding).toHaveBeenCalledTimes(1);
   await act(async () => resolve({}));
@@ -96,7 +97,7 @@ it('releases a completion from an earlier visit without refreshing or advancing'
   api.completeOnboarding.mockReturnValueOnce(new Promise(done => { resolve = done; }));
   const screen = render(<Screen navigation={navigation} />);
   await ready(screen);
-  fireEvent.press(screen.getByRole('button', { name: 'Not now' }));
+  fireEvent.press(screen.getByRole('button', { name: 'Continue to Borrowhood' }));
   act(() => visit.blur());
   await act(async () => visit.focus());
   expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
@@ -104,7 +105,7 @@ it('releases a completion from an earlier visit without refreshing or advancing'
   expect(mockRefreshUser).not.toHaveBeenCalled();
   expect(navigation.navigate).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: 'Back' })).toBeEnabled();
-  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Not now' })));
+  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Continue to Borrowhood' })));
   expect(api.completeOnboarding).toHaveBeenCalledTimes(2);
   expect(mockRefreshUser).toHaveBeenCalledTimes(1);
 });

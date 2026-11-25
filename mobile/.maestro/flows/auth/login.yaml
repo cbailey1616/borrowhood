@@ -10,6 +10,9 @@ appId: com.borrowhood.app
 - takeScreenshot: "login-01-welcome-screen"
 
 - tapOn:
+    id: "Welcome.button.openSignIn"
+
+- tapOn:
     id: "Welcome.button.signIn"
 
 - assertVisible: "Please enter your email and password."
@@ -20,6 +23,8 @@ appId: com.borrowhood.app
 - launchApp:
     clearState: true
 
+- tapOn:
+    id: "Welcome.button.openSignIn"
 - tapOn:
     id: "Welcome.input.email"
 - inputText: "wrong-user@borrowhood.test"
@@ -40,6 +45,8 @@ appId: com.borrowhood.app
 - launchApp:
     clearState: true
 
+- tapOn:
+    id: "Welcome.button.openSignIn"
 - tapOn:
     id: "Welcome.input.email"
 - inputText: "maestro-free@borrowhood.test"

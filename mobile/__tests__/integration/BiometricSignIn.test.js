@@ -8,7 +8,7 @@ import useBiometrics from '../../src/hooks/useBiometrics';
 jest.mock('../../src/context/ErrorContext', () => ({ useError: () => ({ showError: jest.fn() }) }));
 jest.unmock('../../src/context/AuthContext');
 const { AuthProvider, useAuth } = jest.requireActual('../../src/context/AuthContext');
-const WelcomeScreen = require('../../src/screens/auth/WelcomeScreen').default;
+const LoginScreen = require('../../src/screens/auth/LoginScreen').default;
 
 const authenticate = jest.fn();
 const enableBiometrics = jest.fn();
@@ -19,7 +19,7 @@ let auth;
 function AppFlow() {
   auth = useAuth();
   if (auth.isLoading) return null;
-  return auth.isAuthenticated ? <Text>Signed in</Text> : <WelcomeScreen navigation={navigation} />;
+  return auth.isAuthenticated ? <Text>Signed in</Text> : <LoginScreen navigation={navigation} />;
 }
 beforeEach(() => {
   jest.clearAllMocks();

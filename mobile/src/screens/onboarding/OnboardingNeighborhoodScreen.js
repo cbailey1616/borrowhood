@@ -13,6 +13,15 @@ import useNavigationTask from '../../hooks/useNavigationTask';
 import api from '../../services/api';
 import { CARD_SURFACE, COLORS, RADIUS, TYPOGRAPHY } from '../../utils/config';
 
+function actionLabel(selected, empty, loadError) {
+  if (loadError) return 'Retry';
+  if (empty) return 'Create a neighborhood';
+  if (!selected) return 'Choose a neighborhood';
+  if (selected.isMember || selected.rejoinStatus === 'pending') return 'Continue';
+  if (selected.rejoinStatus === 'removed') return `Request to rejoin ${selected.name}`;
+  return `Join ${selected.name}`;
+}
+
 export default function OnboardingNeighborhoodScreen({ navigation }) {
   const { user, refreshUser } = useAuth();
   const startTask = useNavigationTask(navigation, `${user?.id}:${user?.city}:${user?.state}`);
@@ -57,6 +66,14 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
     return () => unsubscribe?.();
   }, [load, navigation]);
 
+  const empty = !loading && !loadError && neighborhoods.length === 0;
+  const query = search.trim().toLocaleLowerCase();
+  const matches = neighborhoods.filter(item => item.name?.toLocaleLowerCase().includes(query));
+  const selected = matches.find(item => item.id === selectedId);
+  useEffect(() => {
+    if (selectedId != null && !selected) setSelectedId(null);
+  }, [selectedId, selected]);
+
   const advance = async isCurrent => {
     if (!isCurrent()) return;
     await api.updateOnboardingStep(3);
@@ -66,7 +83,6 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
   };
   const proceed = async (skip = false) => {
     if (action.current) return;
-    const selected = neighborhoods.find(item => item.id === selectedId);
     if (!skip && !selected) return;
     const isCurrent = startTask();
     action.current = true; setBusy(true); setError('');
@@ -79,7 +95,7 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
       }
       await advance(isCurrent);
     } catch (err) {
-      if (isCurrent() && err.code === 'REJOIN_APPROVAL_REQUIRED') {
+      if (isCurrent() && !skip && err.code === 'REJOIN_APPROVAL_REQUIRED') {
         setNeighborhoods(items => items.map(item => item.id === selected.id ? { ...item, isMember: false, rejoinStatus: 'pending' } : item));
       } else if (isCurrent()) setError(err.message || 'Could not continue. Please try again.');
     } finally {
@@ -115,15 +131,11 @@ export default function OnboardingNeighborhoodScreen({ navigation }) {
     }
   };
 
-  const empty = !loading && !loadError && neighborhoods.length === 0;
-  const selected = neighborhoods.find(item => item.id === selectedId);
-  const matches = neighborhoods.filter(item => item.name?.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
-  const label = loadError ? 'Retry' : empty ? 'Create a neighborhood' : selected?.isMember || selected?.rejoinStatus === 'pending' ? 'Continue' : selected?.rejoinStatus === 'removed' ? 'Request to rejoin' : 'Join neighborhood';
   return <>
     <OnboardingLayout step={2} compact keyboardAvoiding scene="onboardingAudience" tone={COLORS.infoMuted}
       title={'Find your\nneighborhood.'} description="Share items and chat with neighbors."
       onBack={() => navigation.navigate('OnboardingTown')} busy={busy}
-      buttonLabel={label} onContinue={loadError ? load : empty ? openCreate : () => proceed()}
+      buttonLabel={actionLabel(selected, empty, loadError)} onContinue={loadError ? load : empty ? openCreate : () => proceed()}
       disabled={loading || (!loadError && !empty && !selected)} error={error}
       secondaryActions={<HapticPressable accessibilityRole="button" disabled={busy} onPress={() => proceed(true)} style={styles.linkButton}>
         <Text style={styles.link}>Not now</Text>
