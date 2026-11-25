@@ -74,10 +74,10 @@ describe('Borrow Flow Integration', () => {
   it('submitting borrow request creates transaction', async () => {
     const BorrowRequestScreen = require('../../src/screens/BorrowRequestScreen').default;
     const route = { params: { listing: mockListing } };
-    const { findByPlaceholderText, getByText } = render(
+    const { findByLabelText, getByText } = render(
       <BorrowRequestScreen navigation={mockNavigation} route={route} />
     );
-    const input = await findByPlaceholderText(/Introduce yourself/);
+    const input = await findByLabelText('Private message to owner');
     fireEvent.changeText(input, 'Need for a trip!');
     await act(async () => {
       fireEvent.press(getByText('Send Request'));

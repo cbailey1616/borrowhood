@@ -1,3 +1,4 @@
+import { svgDataUri } from '../utils/svgSource';
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -31,7 +32,7 @@ export default function ItemPhotoPlaceholder({
     const drawing = projectItemSvg(title);
     const categoryDrawing = iconSvg(drawingIcon, { color: COLORS.primary, illustrated: true, selected: true });
     const svg = drawing || `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><ellipse cx="48" cy="80" rx="34" ry="5" fill="${COLORS.illustration.sage}" opacity="0.45"/><svg x="18" y="12" width="60" height="60" viewBox="0 0 32 32">${categoryDrawing.replace(/^<svg[^>]*>|<\/svg>$/g, '')}</svg></svg>`;
-    return { uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` };
+    return { uri: svgDataUri(svg) };
   }, [title, drawingIcon]);
   return <View testID={testID} accessibilityRole="image" accessibilityLabel={accessibilityLabel}
     style={[styles.frame, width != null && { width }, height != null && { height }, style, { backgroundColor: CATEGORY_TONES[slug] || COLORS.primaryMuted }]}>

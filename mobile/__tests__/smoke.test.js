@@ -385,7 +385,7 @@ describe('BorrowRequest', () => {
 
     const route = { params: { listing } };
 
-    const { getByText, getByPlaceholderText } = render(
+    const { getByText, getByLabelText } = render(
       <BorrowRequestScreen navigation={mockNavigation} route={route} />
     );
 
@@ -394,8 +394,8 @@ describe('BorrowRequest', () => {
       expect(getByText('Camera')).toBeTruthy();
     });
 
-    // Fill in message - placeholder: "Introduce yourself and explain what you need the item for..."
-    const messageInput = getByPlaceholderText(/Introduce yourself/);
+    // Add a private pickup note.
+    const messageInput = getByLabelText('Private message to owner');
     fireEvent.changeText(messageInput, 'Need it for a trip!');
 
     // Submit - button text: "Send Request"

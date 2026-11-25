@@ -57,11 +57,11 @@ import { ENABLE_PAID_TIERS } from '../utils/config';
 
 
 const FILTER_OPTIONS = [
-  { key: 'all', label: 'All', icon: 'grid' },
-  { key: 'listings', label: 'Borrow', icon: listingIcon() },
-  { key: 'giveaway', label: 'Giveaways', icon: listingIcon({ listingType: 'giveaway' }) },
-  { key: 'sell', label: 'For sale', icon: 'money-bag' },
-  { key: 'requests', label: 'Wanted', icon: requestPresentation().icon },
+  { key: 'all', label: 'All' },
+  { key: 'listings', label: 'Borrow' },
+  { key: 'giveaway', label: 'Giveaways' },
+  { key: 'sell', label: 'For sale' },
+  { key: 'requests', label: 'Wanted' },
 ];
 
 const VISIBILITY_OPTIONS = [
@@ -471,42 +471,36 @@ export default function FeedScreen({ navigation, route }) {
     </HapticPressable>
   );
 
-  const renderListingItem = item => {
-    return (
-      <LayeredCard style={styles.tileShadow} radius={RADIUS.xl}>
-        <View style={styles.tile}>
-          <HapticPressable onPress={() => openFeedItem(item)} haptic={null} scaleDown={item.photoUrl ? 0.97 : 1} style={styles.tile} testID="FeedCard">
-            <View style={styles.tilePhotoFrame}>
-              <View style={styles.tileThumb}>
-                <ShimmerImage category={item.category} title={item.title} source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
-                {!item.ownerMasked && (
-                  <HapticPressable
-                    testID={`Feed.save.${item.id}`}
-                    accessibilityRole="button"
-                    accessibilityLabel={saved.status === 'error' ? `Retry saved status for ${item.title}` : saved.status === 'loading' ? `Checking saved status for ${item.title}` : `${saved.savedIds.has(item.id) ? 'Unsave' : 'Save'} ${item.title}`}
-                    accessibilityState={{ selected: saved.status === 'ready' && saved.savedIds.has(item.id), disabled: saved.status === 'loading' || saved.pendingIds.has(item.id), busy: saved.status === 'loading' || saved.pendingIds.has(item.id) }}
-                    disabled={saved.status === 'loading' || saved.pendingIds.has(item.id)}
-                    onPress={event => { event?.stopPropagation?.(); saved.toggle(item.id); }}
-                    style={styles.tileSaveButton}
-                  >
-                    {saved.status === 'loading' || saved.pendingIds.has(item.id)
-                      ? <ActivityIndicator size="small" color={COLORS.spinner} />
-                      : <Ionicons name={saved.status === 'error' ? 'refresh' : saved.savedIds.has(item.id) ? 'heart' : 'heart-outline'} size={24} illustrated={false} color={saved.status === 'ready' && saved.savedIds.has(item.id) ? COLORS.saved : COLORS.primary} />}
-                  </HapticPressable>
-                )}
-              </View>
-            </View>
-            <View style={styles.tileContent}>
-              <ListingOffer listing={item} />
-              <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
-              {renderAuthor(item)}
-            </View>
-          </HapticPressable>
-          {renderPublicReplies(item)}
+  const renderListingItem = item => (
+    <View style={[styles.tile, styles.listingTile]}>
+      <HapticPressable onPress={() => openFeedItem(item)} haptic={null} scaleDown={item.photoUrl ? 0.97 : 1} style={styles.tile} testID="FeedCard">
+        <View style={styles.tileThumb}>
+          <ShimmerImage category={item.category} title={item.title} source={item.photoUrl ? { uri: item.photoUrl } : null} placeholderIcon={listingIcon(item)} style={styles.tileThumbImage} sharedTransitionTag={`listing-photo-${item.id}`} />
+          {!item.ownerMasked && (
+            <HapticPressable
+              testID={`Feed.save.${item.id}`}
+              accessibilityRole="button"
+              accessibilityLabel={saved.status === 'error' ? `Retry saved status for ${item.title}` : saved.status === 'loading' ? `Checking saved status for ${item.title}` : `${saved.savedIds.has(item.id) ? 'Unsave' : 'Save'} ${item.title}`}
+              accessibilityState={{ selected: saved.status === 'ready' && saved.savedIds.has(item.id), disabled: saved.status === 'loading' || saved.pendingIds.has(item.id), busy: saved.status === 'loading' || saved.pendingIds.has(item.id) }}
+              disabled={saved.status === 'loading' || saved.pendingIds.has(item.id)}
+              onPress={event => { event?.stopPropagation?.(); saved.toggle(item.id); }}
+              style={styles.tileSaveButton}
+            >
+              {saved.status === 'loading' || saved.pendingIds.has(item.id)
+                ? <ActivityIndicator size="small" color={COLORS.spinner} />
+                : <Ionicons name={saved.status === 'error' ? 'refresh' : saved.savedIds.has(item.id) ? 'heart' : 'heart-outline'} size={24} illustrated={false} color={saved.status === 'ready' && saved.savedIds.has(item.id) ? COLORS.saved : COLORS.primary} />}
+            </HapticPressable>
+          )}
         </View>
-      </LayeredCard>
-    );
-  };
+        <View style={styles.tileContent}>
+          <Text style={styles.listingTitle} numberOfLines={2}>{item.title}</Text>
+          <ListingOffer listing={item} plain />
+          {renderAuthor(item)}
+        </View>
+      </HapticPressable>
+      {renderPublicReplies(item)}
+    </View>
+  );
 
   const renderRibbonRequest = item => (
     <LayeredCard radius={RADIUS.xl} style={{ marginBottom: SPACING.sm }}>
@@ -652,9 +646,8 @@ export default function FeedScreen({ navigation, route }) {
                   {FILTER_OPTIONS.map(option => {
                     const selected = option.key === 'all' ? activeFilters.length === 0 : activeFilters.includes(option.key);
                     const label = option.key === 'all' && neighborhood ? 'All items' : option.label;
-                    return <HapticPressable haptic="selection" key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={[styles.typeTab, fontScale > 1.2 && { minWidth: 72 * fontScale }]}>
-                      <Ionicons name={option.icon} size={22}  color={COLORS.primary} accessible={false} />
-                      <Text maxFontSizeMultiplier={1.4} numberOfLines={1} style={[styles.typeTabText, width < 400 && styles.typeTabTextCompact, selected && styles.typeTabTextActive]}>{label}</Text>
+                    return <HapticPressable haptic="selection" key={option.key} testID={`Feed.type.${option.key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected }} onPress={() => setActiveFilters(option.key === 'all' ? [] : [option.key])} style={styles.typeTab}>
+                      <Text numberOfLines={1} style={[styles.typeTabText, selected && styles.typeTabTextActive]}>{label}</Text>
                       {selected && <View accessible={false} style={styles.typeTabIndicator} />}
                     </HapticPressable>;
                   })}
@@ -941,14 +934,18 @@ const styles = StyleSheet.create({
   typeRibbon: { flexGrow: 0, flexShrink: 0 },
   typeRibbonCompact: { marginHorizontal: -SPACING.lg },
   typeRibbonContent: { flexGrow: 1 },
-  typeTabs: { flex: 1, flexDirection: 'row', alignItems: 'stretch',
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.borderGreen },
-  typeTab: { flex: 1, minWidth: 44, minHeight: 64, paddingTop: 4, paddingBottom: SPACING.sm, gap: 4,
-    alignItems: 'center', justifyContent: 'center' },
-  typeTabIndicator: { position: 'absolute', bottom: 0, width: 28, height: 3, borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
-  typeTabText: { ...TYPOGRAPHY.footnote, fontSize: TYPOGRAPHY.footnote.fontSize, lineHeight: 20, fontWeight: '500', color: COLORS.textSecondary, fontFamily: 'DMSans_500Medium', },
-  typeTabTextCompact: { ...TYPOGRAPHY.caption1, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
-  typeTabTextActive: { fontFamily: 'DMSans_500Medium', color: COLORS.primaryDark, fontWeight: '500', },
+  typeTabs: {
+    flexGrow: 1, flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.separator,
+  },
+  typeTab: {
+    flexGrow: 1, flexShrink: 0, minWidth: 44, minHeight: 44,
+    paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  typeTabIndicator: { position: 'absolute', bottom: 0, width: 28, height: 2, borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
+  typeTabText: { ...TYPOGRAPHY.footnote, fontFamily: 'DMSans_500Medium', fontWeight: '500', color: COLORS.textSecondary },
+  typeTabTextActive: { fontFamily: 'DMSans_600SemiBold', fontWeight: '600', color: COLORS.primaryDark },
   sellerAvatar: { width: 28, height: 28, borderRadius: RADIUS.full },
   requestIcon: { width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' },
   requestTitle: { ...TYPOGRAPHY.title2, lineHeight: 29, fontWeight: '600', fontFamily: 'DMSans_600SemiBold', },
@@ -962,7 +959,7 @@ const styles = StyleSheet.create({
   },
   feedViewport: { flex: 1, overflow: 'hidden' },
   feedHeader: { position: 'absolute', top: 0, zIndex: 1, backgroundColor: FEED.bg },
-  feedHeaderSurface: { backgroundColor: 'transparent', paddingTop: SPACING.sm, paddingBottom: SPACING.lg },
+  feedHeaderSurface: { backgroundColor: 'transparent', paddingTop: SPACING.sm, paddingBottom: SPACING.md },
   feedHeaderSurfaceCompact: { paddingHorizontal: SPACING.lg },
   skeletonContainer: {
     padding: SPACING.lg,
@@ -970,21 +967,26 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface, borderRadius: RADIUS.full,
-    paddingRight: SPACING.xs, paddingVertical: 2, marginBottom: SPACING.md, ...SHADOWS.md,
+    backgroundColor: COLORS.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingRight: SPACING.xs,
+    marginBottom: SPACING.sm,
   },
   headerSearchBar: {
     flex: 1, minWidth: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: RADIUS.full,
   },
-  filtersButton: { width: 44, height: 44, flexShrink: 0, borderRadius: RADIUS.full, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: COLORS.primaryMuted },
+  filtersButton: {
+    width: 44, height: 44, flexShrink: 0, borderRadius: RADIUS.md,
+    alignItems: 'center', justifyContent: 'center',
+  },
   neighborhoodFilter: { minHeight: 44, marginTop: SPACING.sm, paddingHorizontal: SPACING.md, borderRadius: RADIUS.full,
     alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, backgroundColor: COLORS.primaryMuted },
   neighborhoodFilterText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flexShrink: 1, fontWeight: '500', fontFamily: 'DMSans_500Medium', },
   filtersButtonActive: { backgroundColor: COLORS.primary },
   addButton: {
-    flexDirection: 'row', gap: SPACING.xs, paddingHorizontal: SPACING.md, minHeight: 44, borderRadius: RADIUS.full, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
-    ...SHADOWS.md,
+    flexDirection: 'row', gap: SPACING.xs, paddingHorizontal: SPACING.md, minHeight: 44, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
   },
   filtersSection: {
     paddingBottom: SPACING.md,
@@ -1113,11 +1115,14 @@ const styles = StyleSheet.create({
   tileRow: {
     flexDirection: 'column',
   },
-  tilePhotoFrame: {
-    paddingHorizontal: SPACING.sm, paddingTop: SPACING.sm,
+  listingTile: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: FEED.cardBorder,
+    marginBottom: SPACING.xl,
   },
+  listingTitle: { ...TYPOGRAPHY.title3, color: COLORS.text, marginBottom: SPACING.xs },
   tileThumb: {
-    width: '100%', aspectRatio: 1.45, alignItems: 'center', justifyContent: 'center', position: 'relative', borderRadius: RADIUS.lg, overflow: 'hidden', backgroundColor: COLORS.surfaceElevated,
+    width: '100%', aspectRatio: 1.45, alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', backgroundColor: COLORS.surfaceElevated,
   },
   tileThumbImage: {
     ...StyleSheet.absoluteFillObject,
@@ -1125,7 +1130,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   tileSaveButton: {
-    position: 'absolute', top: SPACING.sm, right: SPACING.sm, width: 44, height: 44, borderRadius: RADIUS.full, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, ...SHADOWS.sm,
+    position: 'absolute', top: SPACING.sm, right: SPACING.sm, width: 44, height: 44, borderRadius: RADIUS.full, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface,
   },
   tileLockOverlay: {
     ...StyleSheet.absoluteFillObject,

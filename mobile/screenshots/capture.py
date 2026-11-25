@@ -24,6 +24,7 @@ review_screens = [('ui-review/notifications', 'notifications'), ('ui-review/prof
 review_screens += [('ui-review/keyboard', 'keyboard'), ('ui-review/reserved-item', 'reserved-item'), ('ui-review/feed-end', 'feed-end')]
 review_screens += [('ui-review/request-queue', 'request-queue'), ('ui-review/reserved-queue', 'reserved-queue'), ('ui-review/owner-pending-request', 'owner-pending-request'), ('ui-review/inbox', 'inbox')]
 review_screens += [('ui-review/home-exchanges', 'home-exchanges'), ('ui-review/inbox-messages', 'inbox-messages'), ('ui-review/owner-pickup', 'owner-pickup'), ('ui-review/owner-active-item', 'owner-active-item')]
+review_screens += [('ui-review/borrowable-item', 'borrowable-item'), ('ui-review/borrow-request', 'borrow-request')]
 review_screens += [('ui-review/neighborhood-members', 'neighborhood-members')]
 # Capture both immediate text focus and a later number-field focus. The latter
 # has no return key, so the keyboard accessory is its explicit dismissal control.

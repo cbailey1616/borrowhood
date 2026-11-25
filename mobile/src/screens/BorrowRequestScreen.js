@@ -9,6 +9,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  useWindowDimensions,
   KeyboardAvoidingView,
   Keyboard,
   Image,
@@ -33,6 +34,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
   const startNavigationTask = useNavigationTask(navigation, route.params.listing.id);
   const { listing } = route.params;
   const headerHeight = useHeaderHeight();
+  const { width, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   useEffect(() => {
@@ -331,7 +333,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       {/* Item Summary */}
-      <View style={[styles.cardBox, styles.itemCard]}>
+      <View style={styles.itemCard}>
         <ShimmerImage category={listing.category} title={listing.title}
           source={{ uri: listing.photos?.[0] || null }} placeholderIcon={listingIcon(listing)}
           style={styles.itemImage}
@@ -341,7 +343,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
           <Text maxFontSizeMultiplier={1.4} style={styles.itemOwner}>
             {listing.ownerMasked ? 'from a verified lender' : `from ${listing.owner?.firstName || 'the owner'}${listing.owner?.lastName ? ` ${listing.owner.lastName}` : ''}`}
           </Text>
-          <ListingOffer listing={listing} showPrice={false} />
+          <ListingOffer listing={listing} showPrice={false} plain />
         </View>
       </View>
 
@@ -350,24 +352,28 @@ export default function BorrowRequestScreen({ route, navigation }) {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Borrow dates</Text>
         <Text style={styles.hint}>
-          {listing.minDuration}-{listing.maxDuration} days allowed
+          {minDays === maxDays ? `${minDays} ${minDays === 1 ? 'day' : 'days'}` : `${minDays}–${maxDays} days`}
         </Text>
 
-        <View style={styles.dateRow}>
+        <View style={[styles.dateRow, width / fontScale < 320 && styles.dateRowStacked]}>
           <HapticPressable
             haptic={null}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showStartPicker }}
             style={[styles.dateButton, showStartPicker && styles.dateButtonActive]}
             onPress={() => { Keyboard.dismiss(); setShowStartPicker(!showStartPicker); setShowEndPicker(false); }}
           >
-            <Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>Start Date</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>Pickup</Text>
             <Text maxFontSizeMultiplier={1.4} style={styles.dateValue}>{formatDate(startDate)}</Text>
           </HapticPressable>
           <HapticPressable
             haptic={null}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showEndPicker }}
             style={[styles.dateButton, showEndPicker && styles.dateButtonActive]}
             onPress={() => { Keyboard.dismiss(); setShowEndPicker(!showEndPicker); setShowStartPicker(false); }}
           >
-            <Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>End Date</Text>
+            <Text maxFontSizeMultiplier={1.4} style={styles.dateLabel}>Return by</Text>
             <Text maxFontSizeMultiplier={1.4} style={styles.dateValue}>{formatDate(endDate)}</Text>
           </HapticPressable>
         </View>
@@ -429,15 +435,14 @@ export default function BorrowRequestScreen({ route, navigation }) {
 
       {/* Message */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Private message (optional)</Text>
-        <Text style={styles.hint}>Sent privately to the owner with this request.</Text>
+        <Text style={styles.sectionTitle}>Note to owner (optional)</Text>
         <TextInput
           style={[styles.input, styles.messageInput]}
           accessibilityLabel="Private message to owner"
           value={message}
           onChangeText={setMessage}
           onFocus={() => { setShowStartPicker(false); setShowEndPicker(false); }}
-          placeholder="Introduce yourself and explain what you need the item for..."
+          placeholder="Add a private note for pickup."
           placeholderTextColor={COLORS.textMuted}
           multiline
           numberOfLines={4}
@@ -496,6 +501,8 @@ export default function BorrowRequestScreen({ route, navigation }) {
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}
+        accessibilityRole="button"
+        accessibilityState={{ busy: isSubmitting, disabled: isSubmitting }}
       >
         {isSubmitting ? (
           <ActivityIndicator color={COLORS.white} />
@@ -513,7 +520,7 @@ export default function BorrowRequestScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surface,
   },
   loadingContainer: {
     flex: 1,
@@ -609,7 +616,9 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     flexDirection: 'row',
-    padding: SPACING.md,
+    paddingBottom: SPACING.xl,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.separator,
     gap: SPACING.md,
     marginBottom: SPACING.xl,
   },
@@ -662,7 +671,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: SPACING.md,
   },
+  dateRowStacked: { flexDirection: 'column' },
   dateButton: {
+    minHeight: 60,
     flex: 1,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
@@ -723,7 +734,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
   },
   messageInput: {
-    height: 100,
+    minHeight: 88,
     textAlignVertical: 'top',
   },
   pricingCard: {
@@ -776,7 +787,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
   },
   submitFooter: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.separator,
     paddingHorizontal: SPACING.xl,

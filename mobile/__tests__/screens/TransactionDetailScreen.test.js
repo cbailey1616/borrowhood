@@ -126,10 +126,19 @@ describe('TransactionDetailScreen', () => {
 
   it.each([true, false])('requires a handoff confirmation for pickup (borrower=%s)', async isBorrower => {
     api.getTransaction.mockResolvedValue({ ...mockTransaction, status: 'approved', isBorrower, isLender: !isBorrower });
+    api.getConversations.mockResolvedValue([]);
     api.confirmRentalPickup.mockResolvedValue({ success: true });
     const Screen = require('../../src/screens/TransactionDetailScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    fireEvent.press(await screen.findByTestId('Transaction.button.confirmPickup'));
+    const neighbor = isBorrower ? mockTransaction.lender : mockTransaction.borrower;
+    expect(await screen.findByText(`Arrange pickup with ${neighbor.firstName}`)).toBeTruthy();
+    const message = screen.getByLabelText(`Message ${neighbor.firstName} privately`);
+    expect(message).toHaveStyle({ backgroundColor: COLORS.primary });
+    fireEvent.press(message);
+    await waitFor(() => expect(mockNavigation.navigate).toHaveBeenCalledWith('Chat', expect.objectContaining({ recipientId: neighbor.id })));
+    const pickup = screen.getByTestId('Transaction.button.confirmPickup');
+    expect(pickup).toHaveStyle({ backgroundColor: COLORS.surface });
+    fireEvent.press(pickup);
     expect(api.confirmRentalPickup).not.toHaveBeenCalled();
     expect(screen.getByText(isBorrower ? 'Confirm only after you have received the item.' : 'Confirm only after you have handed the item to Test.')).toBeTruthy();
     fireEvent.press(screen.getByTestId('Transaction.confirmPickup'));

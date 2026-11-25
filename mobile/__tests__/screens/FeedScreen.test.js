@@ -1,6 +1,6 @@
 import * as idleTasks from '../../src/utils/runWhenIdle';
 import React from 'react';
-import { AppState, FlatList, RefreshControl, StyleSheet } from 'react-native';
+import { AppState, FlatList, Platform, RefreshControl, StyleSheet } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Crypto from 'expo-crypto';
 import { COLORS } from '../../src/utils/config';
@@ -610,13 +610,14 @@ it.each(['success', 'failure'])('keeps native refresh in control through a delay
   scroll.mockClear();
   fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh');
   expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
-  expect(screen.getByLabelText('Refreshing').props.accessibilityState.busy).toBe(true);
+  if (Platform.OS === 'ios') expect(screen.getByLabelText('Refreshing').props.accessibilityState.busy).toBe(true);
+  else expect(screen.queryByLabelText('Refreshing')).toBeNull();
   expect(screen.getByText('One item')).toBeTruthy();
   expect(scroll).not.toHaveBeenCalled();
   await act(async () => outcome === 'success'
     ? finish({ items: [{ id: 'two', type: 'listing', title: 'New item', user: { firstName: 'Sam' } }], hasMore: false })
     : fail(new Error('offline')));
-  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
+  expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(Platform.OS === 'ios');
   await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false), { timeout: 2500 });
   expect(screen.queryByLabelText('Refreshing')).toBeNull();
   expect(screen.getByText(outcome === 'success' ? 'New item' : 'One item')).toBeTruthy();

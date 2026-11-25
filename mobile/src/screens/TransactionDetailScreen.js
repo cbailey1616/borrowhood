@@ -217,7 +217,6 @@ export default function TransactionDetailScreen({ route, navigation }) {
     );
   }
 
-  const nextStep = borrowGuidance({ ...transaction, isGiveaway });
   const otherPerson = transaction.isBorrower ? transaction.lender : transaction.borrower;
   const roleLabel = isSaleListing(transaction) ? (transaction.isBorrower ? 'Seller' : 'Buyer') : isGiveaway
     ? (transaction.isBorrower ? 'Giver' : 'Recipient')
@@ -240,7 +239,13 @@ export default function TransactionDetailScreen({ route, navigation }) {
   const needsPickup = (transaction.isBorrower || transaction.isLender) && !transaction.actualPickupAt
     && !transaction.hasDispute && ['approved', 'paid'].includes(transaction.status);
   const needsPickupReview = transaction.isLender && needsPickup && transaction.pickupReview?.needed;
-  const primaryIsMessage = !needsPickup && !needsReturn && !(transaction.isLender && transaction.status === 'pending');
+  const arrangePickup = needsPickup && !needsPickupReview && !transaction.contactUnavailable && !!otherPerson?.id;
+  const neighborName = otherPerson?.firstName || 'your neighbor';
+  const nextStep = arrangePickup ? {
+    title: `Arrange pickup with ${neighborName}`,
+    detail: 'Agree on a time and place in chat. Confirm pickup after the handoff.',
+  } : borrowGuidance({ ...transaction, isGiveaway });
+  const primaryIsMessage = arrangePickup || (!needsPickup && !needsReturn && !(transaction.isLender && transaction.status === 'pending'));
   const finished = ['completed', 'cancelled', 'declined'].includes(transaction.status)
     || (transaction.status === 'returned' && transaction.paymentStatus !== 'authorized')
     || (isGiveaway && transaction.status === 'picked_up');
@@ -264,6 +269,7 @@ export default function TransactionDetailScreen({ route, navigation }) {
       navigation.replace('RequestQueue', params);
     }
   };
+  const openPickupSheet = () => setPickupSheetVisible(true);
   const primaryAction = ((transaction.status === 'account_deleted' || transaction.contactUnavailable) && !needsPickup && !needsReturn)
     ? { label: 'Contact support', testID: 'Transaction.button.support', onPress: async () => {
       try { await Linking.openURL(`mailto:chris@borrowhood.net?subject=${encodeURIComponent(`Help with exchange ${id}`)}`); }
@@ -271,7 +277,8 @@ export default function TransactionDetailScreen({ route, navigation }) {
     } }
     : transaction.isLender && transaction.status === 'pending'
     ? { label: 'View queue', testID: 'Transaction.button.queue', onPress: viewQueue }
-    : needsPickup ? { label: 'Confirm pickup', testID: 'Transaction.button.confirmPickup', onPress: () => setPickupSheetVisible(true) }
+    : arrangePickup ? { label: `Message ${neighborName}`, accessibilityLabel: `Message ${neighborName} privately`, testID: 'Transaction.button.message', onPress: messageNeighbor }
+    : needsPickup ? { label: 'Confirm pickup', testID: 'Transaction.button.confirmPickup', onPress: openPickupSheet }
     : needsReturn ? { label: transaction.isBorrower ? 'I returned it' : 'Confirm return', testID: 'Transaction.button.confirmReturn', onPress: () => handleConfirmReturn(transaction.conditionAtPickup || transaction.listing.condition || 'good') }
     : !finished ? { label: `Message ${otherPerson.firstName} privately`, testID: 'Transaction.button.message', onPress: messageNeighbor }
     : null;
@@ -321,12 +328,13 @@ export default function TransactionDetailScreen({ route, navigation }) {
           </View>
         </LayeredCard>
 
-        <LayeredCard radius={RADIUS.xl} style={allDone ? styles.completedEndorsement : styles.nextStepCard} accessibilityLiveRegion="polite" testID="Transaction.nextStep">
+        <LayeredCard radius={RADIUS.xl} style={[allDone ? styles.completedEndorsement : styles.nextStepCard, arrangePickup && styles.pickupPlanning]}
+          accessibilityLiveRegion="polite" testID="Transaction.nextStep">
           {!!fetchError && <View style={{ gap: 8 }}>
             <Text style={styles.detailText}>Could not refresh this exchange.</Text>
             <ActionButton label="Try again" onPress={fetchTransaction} />
           </View>}
-          {!allDone && <Text maxFontSizeMultiplier={1.4} style={styles.cardEyebrow}>What happens next</Text>}
+          {!allDone && !arrangePickup && <Text maxFontSizeMultiplier={1.4} style={styles.cardEyebrow}>What happens next</Text>}
           {activeReturn && !!returnDue && <View style={styles.dueBadge}>
             <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
             <Text maxFontSizeMultiplier={1.4} style={styles.dueText}>Due {returnDue}</Text>
@@ -351,17 +359,21 @@ export default function TransactionDetailScreen({ route, navigation }) {
             onPress={() => navigation.navigate('UserProfile', { id: otherPerson.id })}>
             <Text style={styles.neighborMessageTitle}>View {otherPerson.firstName}'s profile</Text>
           </HapticPressable>}
-          {primaryAction && <ActionButton testID={primaryAction.testID} label={primaryAction.label} variant="primary"
-            icon={needsPickup || needsReturn ? 'checkmark-circle-outline' : primaryIsMessage ? 'chatbubble-outline' : 'people-outline'}
-            loading={actionLoading} disabled={!!fetchError && (needsPickup || needsReturn)} onPress={primaryAction.onPress} />}
+          {primaryAction && <ActionButton testID={primaryAction.testID} label={primaryAction.label}
+            accessibilityLabel={primaryAction.accessibilityLabel} variant="primary"
+            icon={primaryIsMessage ? 'chatbubble-outline' : needsPickup || needsReturn ? 'checkmark-circle-outline' : 'people-outline'}
+            loading={actionLoading && !arrangePickup} disabled={actionLoading || (!!fetchError && !arrangePickup && (needsPickup || needsReturn))}
+            onPress={primaryAction.onPress} />}
+          {arrangePickup && <ActionButton label="Confirm pickup" testID="Transaction.button.confirmPickup" variant="secondary"
+            icon="checkmark-circle-outline" loading={actionLoading} disabled={!!fetchError} onPress={openPickupSheet} />}
           {canReportDamage && <ActionButton label="Report an issue" variant="secondary" icon="flag-outline"
             testID="Transaction.button.reportReturnIssue" disabled={actionLoading || !!fetchError}
             onPress={() => navigation.navigate('ExchangeIssue', { transactionId: id })} />}
           {needsPickupReview && <ActionButton label="Give more time" testID="Transaction.button.giveMoreTime"
             disabled={actionLoading || !!fetchError} style={styles.outlinedAction} onPress={() => setMoreTimeSheetVisible(true)} />}
           {canCancel && <HapticPressable accessibilityRole="button" accessibilityLabel={cancelLabel} testID="Transaction.button.cancel"
-            style={[styles.outlinedAction, styles.cancelAction]} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
-            <Text maxFontSizeMultiplier={1.4} style={styles.cancelActionText}>{cancelLabel}</Text>
+            style={[styles.outlinedAction, arrangePickup ? styles.pickupCancel : styles.cancelAction]} disabled={actionLoading} onPress={() => setCancelSheetVisible(true)}>
+            <Text maxFontSizeMultiplier={1.4} style={[styles.cancelActionText, arrangePickup && styles.pickupCancelText]}>{cancelLabel}</Text>
           </HapticPressable>}
           {needsPickupReview && <ActionButton label={`Message ${otherPerson.firstName}`} accessibilityLabel={`Message ${otherPerson.firstName} privately`}
             disabled={actionLoading} style={styles.outlinedAction} onPress={messageNeighbor} />}
@@ -492,7 +504,10 @@ const styles = StyleSheet.create({
   outlinedAction: { minHeight: 50, paddingVertical: 14, paddingHorizontal: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface },
   cancelAction: { borderColor: COLORS.danger, backgroundColor: COLORS.danger },
   cancelActionText: { ...TYPOGRAPHY.buttonSmall, color: COLORS.surface },
+  pickupCancel: { backgroundColor: 'transparent', borderWidth: 0 },
+  pickupCancelText: { color: COLORS.textSecondary },
   nextStepCard: { backgroundColor: COLORS.requestSurface, borderRadius: 24, padding: 20, gap: 14 },
+  pickupPlanning: { backgroundColor: COLORS.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.separator, shadowOpacity: 0, elevation: 0 },
   completedEndorsement: { paddingHorizontal: 8, gap: SPACING.sm, backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0, elevation: 0 },
   dueBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: SPACING.sm, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.full },
   dueText: { ...TYPOGRAPHY.footnote, color: COLORS.primary, flexShrink: 1 },

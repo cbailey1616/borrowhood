@@ -5,13 +5,13 @@ import { isSaleListing } from '../utils/directFee';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../utils/config';
 
 // Free listings need one badge. Paid listings also need the amount and unit.
-export default function ListingOffer({ listing, alignment = 'start', showPrice = true }) {
+export default function ListingOffer({ listing, alignment = 'start', showPrice = true, plain = false }) {
   const price = listingPrice(listing);
   const free = price.amount === 'Free';
   const label = free ? `Free ${price.unit}` : isSaleListing(listing) ? 'For sale' : 'To borrow';
   return <View style={[styles.offer, alignment === 'end' && styles.end]}>
-    <View accessible accessibilityLabel={label} style={styles.badge}>
-      <ListingTypeIcon listing={listing} />
+    <View accessible accessibilityLabel={label} style={plain ? styles.plain : styles.badge}>
+      {!plain && <ListingTypeIcon listing={listing} />}
       <Text maxFontSizeMultiplier={1.4} style={styles.label}>{label}</Text>
     </View>
     {showPrice && !free && <ListingPrice listing={listing} compact alignment={alignment} />}
@@ -21,6 +21,7 @@ export default function ListingOffer({ listing, alignment = 'start', showPrice =
 const styles = StyleSheet.create({
   offer: { gap: SPACING.sm, alignItems: 'flex-start' },
   end: { alignItems: 'flex-end' },
+  plain: { maxWidth: '100%' },
   badge: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, paddingVertical: SPACING.xs, paddingHorizontal: SPACING.sm, backgroundColor: COLORS.primaryMuted, borderRadius: RADIUS.full, maxWidth: '100%' },
   label: { ...TYPOGRAPHY.label, color: COLORS.primary, flexShrink: 1 },
 });

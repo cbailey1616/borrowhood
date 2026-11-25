@@ -1,3 +1,4 @@
+import { svgDataUri } from '../utils/svgSource';
 import { COLORS } from '../utils/config';
 import React, { memo, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
@@ -26,7 +27,7 @@ const FriendlyIcon = memo(function FriendlyIcon({
   const ink = color || StyleSheet.flatten(style)?.color || COLORS.primary;
   const warm = illustrated ?? usesWarmIllustration(name, ink);
   const source = useMemo(() => ({
-    uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg(name, { color: ink, fillColor, illustrated: warm, selected }))}`,
+    uri: svgDataUri(iconSvg(name, { color: ink, fillColor, illustrated: warm, selected })),
   }), [name, ink, fillColor, warm, selected]);
 
   return (

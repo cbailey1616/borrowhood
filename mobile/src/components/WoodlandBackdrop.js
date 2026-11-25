@@ -1,3 +1,4 @@
+import { svgDataUri } from '../utils/svgSource';
 import { useContentDimensions as useWindowDimensions } from '../context/MainViewportContext';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -19,7 +20,7 @@ export default function WoodlandBackdrop({ fullScreen = false }) {
   const scene = getFeedWoodlandScene(feedWoodlandScene);
   const source = useMemo(() => {
     const svg = feedWoodlandSvg(feedWoodlandScene, width, 264);
-    return { uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` };
+    return { uri: svgDataUri(svg) };
   }, [feedWoodlandScene, width]);
   if (!fullScreen) return <FeedWoodlandBackdrop width={width} sceneIndex={feedWoodlandScene} />;
   return <View onLayout={({ nativeEvent: { layout } }) => setMeasuredWidth(layout.width)} pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>

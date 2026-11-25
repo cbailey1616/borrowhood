@@ -15,7 +15,7 @@ import ThemedAlertHost from '../src/components/ThemedAlert';
 import ExchangeEndorsement from '../src/components/ExchangeEndorsement';
 import RankInfoSheet from '../src/components/RankInfoSheet';
 import AppTextInput from '../src/components/AppTextInput';
-import { user } from './fixtures';
+import { listings, user } from './fixtures';
 import api from '../src/services/api';
 import RootNavigator from '../src/navigation/RootNavigator';
 import { COLORS, TYPOGRAPHY } from '../src/utils/config';
@@ -75,6 +75,8 @@ function openCapture() {
   const selected = { ideas: 'Ideas', saved: 'MyItems', posts: 'MyItems', inbox: 'Activity', 'inbox-messages': 'Activity', profile: 'Profile', ranks: 'Profile' }[requested] || 'Feed';
   const main = { name: 'Main', state: { index: tabs.indexOf(selected), routes: tabs.map(name => ({ name })) } };
   const detail = {
+    'borrowable-item': { name: 'ListingDetail', params: { id: 'demo-drill' } },
+    'borrow-request': { name: 'BorrowRequest', params: { listing: listings.find(item => item.id === 'demo-drill') } },
     giveaway: { name: 'ListingDetail', params: { id: 'demo-books' } },
     sell: { name: 'ListingDetail', params: { id: 'demo-bike' } },
     'request-detail': { name: 'RequestDetail', params: { id: 'demo-request-detail' } },

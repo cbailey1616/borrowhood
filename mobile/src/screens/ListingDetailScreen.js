@@ -46,7 +46,6 @@ export default function ListingDetailScreen({ route, navigation }) {
   const pageWidth = Math.min(windowWidth, 1200);
   const galleryWidth = wide ? (pageWidth - 72) * 0.52 : windowWidth;
   const photoStyle = { width: galleryWidth, height: wide ? galleryWidth * 1.1 : 300 };
-  const stackSummary = (wide ? (pageWidth - 72) * 0.48 : windowWidth) / fontScale < (wide ? 420 : 360);
   const { id } = route.params;
   const { user } = useAuth();
   const { showToast, showError } = useError();
@@ -238,27 +237,21 @@ export default function ListingDetailScreen({ route, navigation }) {
         {/* Content */}
         <View style={[styles.content, wide && { flex: 1, padding: 0, minWidth: 0 }]}>
           <View style={styles.itemSummary}>
-            <View style={[styles.summaryHeading, stackSummary && styles.summaryHeadingStacked]}>
-              <View style={styles.titleBlock}>
-                <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
-                {((!listing.ownerMasked && condition) || location) && (
-                  <View style={styles.itemMetadata}>
-                    {!listing.ownerMasked && condition && (
-                      <View accessible accessibilityLabel={`Condition: ${condition}`} style={styles.conditionBadge}>
-                        <Text maxFontSizeMultiplier={1.4} style={styles.conditionText}>{condition === 'Like New' ? 'Like new' : `${condition} condition`}</Text>
-                      </View>
-                    )}
-                    {!!location && <View style={styles.locationRow}>
-                      <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
-                      <Text style={styles.metadataText}>{location}</Text>
-                    </View>}
+            <Text testID="ListingDetail.title" accessibilityLabel="Listing title" accessibilityRole="header" style={styles.title}>{listing.title}</Text>
+            {!listing.ownerMasked && <View style={styles.offerRow}><ListingOffer listing={listing} plain /></View>}
+            {((!listing.ownerMasked && condition) || location) && (
+              <View style={styles.itemMetadata}>
+                {!listing.ownerMasked && condition && (
+                  <View accessible accessibilityLabel={`Condition: ${condition}`}>
+                    <Text maxFontSizeMultiplier={1.4} style={styles.conditionText}>{condition === 'Like New' ? 'Like new' : `${condition} condition`}</Text>
                   </View>
                 )}
+                {!!location && <View style={styles.locationRow}>
+                  <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
+                  <Text style={styles.metadataText}>{location}</Text>
+                </View>}
               </View>
-              {!listing.ownerMasked && <View style={[styles.priceBlock, stackSummary && styles.priceBlockStacked]}>
-                <ListingOffer listing={listing} alignment={stackSummary ? 'start' : 'end'} />
-              </View>}
-            </View>
+            )}
 
             {!!listing.description && <View style={styles.descriptionSection}>
               <Text style={styles.description}>{listing.description}</Text>
@@ -300,50 +293,48 @@ export default function ListingDetailScreen({ route, navigation }) {
                 </LayeredCard>
               )}
 
-              <LayeredCard style={styles.detailsDepth}>
-                <View style={styles.detailsGroup}>
-                  <HapticPressable pressedBackgroundColor={COLORS.cardHover}
-                    accessibilityRole="button"
-                    accessibilityLabel="Comments"
-                    onPress={() => navigation.navigate('ListingDiscussion', { listingId: listing.id, listing })}
-                    style={styles.detailRow}
-                  >
-                    <Ionicons name="chatbubbles" size={22} color={COLORS.textSecondary} />
-                    <View style={styles.rowContent}>
-                      <Text style={styles.rowTitle}>Comments</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.textSecondary} />
-                  </HapticPressable>
+              <View style={styles.detailsGroup}>
+                <HapticPressable pressedBackgroundColor={COLORS.cardHover}
+                  accessibilityRole="button"
+                  accessibilityLabel="Comments"
+                  onPress={() => navigation.navigate('ListingDiscussion', { listingId: listing.id, listing })}
+                  style={styles.detailRow}
+                >
+                  <Ionicons name="chatbubbles" size={22} color={COLORS.textSecondary} />
+                  <View style={styles.rowContent}>
+                    <Text style={styles.rowTitle}>Comments</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={COLORS.textSecondary} />
+                </HapticPressable>
 
-                  <View style={styles.rowSeparator} />
+                <View style={styles.rowSeparator} />
 
-                  <HapticPressable pressedBackgroundColor={COLORS.cardHover}
-                    accessibilityRole="button"
-                    accessibilityLabel={`View ${listing.owner.firstName} ${listing.owner.lastName}'s profile`}
-                    onPress={() => navigation.navigate('UserProfile', { id: listing.owner.id })}
-                    style={styles.detailRow}
-                    haptic={null}
-                  >
-                    {listing.owner.profilePhotoUrl ? (
-                      <Image source={{ uri: listing.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
-                    ) : (
-                      <View style={[styles.ownerAvatar, styles.avatarPlaceholder]}>
-                        <Ionicons name="person" size={24} color={COLORS.primary} />
-                      </View>
-                    )}
-                    <View style={styles.rowContent}>
-                      <View style={styles.ownerNameRow}>
-                        <Text style={[styles.rowTitle, styles.ownerName]}>
-                          {listing.owner.firstName} {listing.owner.lastName}
-                        </Text>
-                        {listing.owner.isVerified === true && <VerifiedBadge size={18} />}
-                      </View>
-                      <Text style={styles.rowSubtitle}>Owner</Text>
+                <HapticPressable pressedBackgroundColor={COLORS.cardHover}
+                  accessibilityRole="button"
+                  accessibilityLabel={`View ${listing.owner.firstName} ${listing.owner.lastName}'s profile`}
+                  onPress={() => navigation.navigate('UserProfile', { id: listing.owner.id })}
+                  style={styles.detailRow}
+                  haptic={null}
+                >
+                  {listing.owner.profilePhotoUrl ? (
+                    <Image source={{ uri: listing.owner.profilePhotoUrl }} style={styles.ownerAvatar} />
+                  ) : (
+                    <View style={[styles.ownerAvatar, styles.avatarPlaceholder]}>
+                      <Ionicons name="person" size={24} color={COLORS.primary} />
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.textSecondary} />
-                  </HapticPressable>
-                </View>
-              </LayeredCard>
+                  )}
+                  <View style={styles.rowContent}>
+                    <View style={styles.ownerNameRow}>
+                      <Text style={[styles.rowTitle, styles.ownerName]}>
+                        {listing.owner.firstName} {listing.owner.lastName}
+                      </Text>
+                      {listing.owner.isVerified === true && <VerifiedBadge size={18} />}
+                    </View>
+                    <Text style={styles.rowSubtitle}>Owner</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={COLORS.textSecondary} />
+                </HapticPressable>
+              </View>
             </>
           )}
           {!listing.isOwner && <ContentSafetyActions type="listing" id={listing.id} variant="subtle" onBlocked={() => navigation.goBack()} />}
@@ -482,7 +473,7 @@ export default function ListingDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: COLORS.surface },
   loadingContainer: { flex: 1, backgroundColor: COLORS.background },
   skeletonPadding: { padding: SPACING.lg, paddingTop: 100 },
   errorContainer: {
@@ -525,12 +516,8 @@ const styles = StyleSheet.create({
   dotActive: { backgroundColor: COLORS.white, width: 10, height: 10, borderRadius: 5 },
   content: { padding: 20 },
   itemSummary: { paddingBottom: SPACING.xl },
-  summaryHeading: { flexDirection: 'row', alignItems: 'flex-start', columnGap: SPACING.lg, rowGap: SPACING.sm },
-  summaryHeadingStacked: { flexDirection: 'column' },
-  titleBlock: { flexGrow: 1, flexShrink: 1, minWidth: 0, maxWidth: '100%' },
   title: { ...TYPOGRAPHY.h1, color: COLORS.text, lineHeight: 34 },
-  priceBlock: { maxWidth: '48%', flexShrink: 0 },
-  priceBlockStacked: { maxWidth: '100%', alignSelf: 'flex-start' },
+  offerRow: { marginTop: SPACING.sm },
   itemMetadata: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -538,13 +525,6 @@ const styles = StyleSheet.create({
     columnGap: SPACING.sm,
     rowGap: SPACING.xs,
     marginTop: SPACING.sm,
-  },
-  conditionBadge: {
-    backgroundColor: COLORS.surfaceElevated,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    maxWidth: '100%',
   },
   conditionText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary },
   metadataText: { ...TYPOGRAPHY.footnote, color: COLORS.textSecondary, flexShrink: 1 },
@@ -578,8 +558,7 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.separator,
   },
   viewTransactionText: { ...TYPOGRAPHY.buttonSmall,  color: COLORS.primary , },
-  detailsDepth: { marginBottom: SPACING.sm },
-  detailsGroup: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, overflow: 'hidden' },
+  detailsGroup: { marginBottom: SPACING.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.separator },
   detailRow: {
     minHeight: 76,
     flexDirection: 'row',

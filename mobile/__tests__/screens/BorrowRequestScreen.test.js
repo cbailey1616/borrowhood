@@ -1,5 +1,5 @@
 import React from 'react';
-import { Keyboard, ScrollView } from 'react-native';
+import { Platform, Keyboard, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import api from '../../src/services/api';
@@ -52,13 +52,17 @@ describe('BorrowRequestScreen', () => {
   it('bounds a one-day loan and clamps an out-of-range end date', async () => {
     const Screen = require('../../src/screens/BorrowRequestScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={{ params: { listing: { ...listing, minDuration: 1, maxDuration: 1 } } }} />);
-    fireEvent.press(await screen.findByText('End Date'));
+    fireEvent.press(await screen.findByText('Return by'));
     const picker = screen.UNSAFE_getByType('DateTimePicker');
     expect(picker.props.minimumDate.getTime()).toBe(picker.props.maximumDate.getTime());
     const invalid = new Date(picker.props.value);
     invalid.setFullYear(invalid.getFullYear() + 1);
     fireEvent(picker, 'change', { type: 'set' }, invalid);
-    expect(screen.UNSAFE_getByType('DateTimePicker').props.value.getTime()).toBe(picker.props.maximumDate.getTime());
+    if (Platform.OS === 'android') {
+      expect(screen.UNSAFE_queryByType('DateTimePicker')).toBeNull();
+    } else {
+      expect(screen.UNSAFE_getByType('DateTimePicker').props.value.getTime()).toBe(picker.props.maximumDate.getTime());
+    }
     await act(async () => fireEvent.press(screen.getByText('Send Request')));
     const request = api.createTransaction.mock.calls[0][0];
     expect(Math.round((new Date(request.endDate) - new Date(request.startDate)) / 86400000)).toBe(1);
@@ -66,8 +70,8 @@ describe('BorrowRequestScreen', () => {
 
   it('message input accepts text', async () => {
     const BorrowRequestScreen = require('../../src/screens/BorrowRequestScreen').default;
-    const { findByPlaceholderText } = render(<BorrowRequestScreen navigation={mockNavigation} route={route} />);
-    const input = await findByPlaceholderText(/Introduce yourself/);
+    const { findByLabelText } = render(<BorrowRequestScreen navigation={mockNavigation} route={route} />);
+    const input = await findByLabelText('Private message to owner');
     fireEvent.changeText(input, 'Need it for a trip!');
   });
 
@@ -109,8 +113,8 @@ describe('BorrowRequestScreen', () => {
 
   it('send request calls api.createTransaction', async () => {
     const BorrowRequestScreen = require('../../src/screens/BorrowRequestScreen').default;
-    const { findByPlaceholderText, getByText } = render(<BorrowRequestScreen navigation={mockNavigation} route={route} />);
-    const input = await findByPlaceholderText(/Introduce yourself/);
+    const { findByLabelText, getByText } = render(<BorrowRequestScreen navigation={mockNavigation} route={route} />);
+    const input = await findByLabelText('Private message to owner');
     fireEvent.changeText(input, 'Need it for a trip!');
     await act(async () => { fireEvent.press(getByText('Send Request')); });
     expect(api.createTransaction).toHaveBeenCalledWith(expect.objectContaining({ listingId: 'listing-1' }));
@@ -130,7 +134,7 @@ describe('BorrowRequestScreen', () => {
     expect(input.props.keyboardAppearance).toBe('light');
     expect(input.props.inputAccessoryViewID).toBeUndefined();
     const scroll = screen.UNSAFE_getByType(ScrollView);
-    expect(scroll.props.keyboardDismissMode).toBe('interactive');
+    expect(scroll.props.keyboardDismissMode).toBe(Platform.OS === 'ios' ? 'interactive' : 'on-drag');
     expect(scroll.props.keyboardShouldPersistTaps).toBe('handled');
     expect(input.props.value).toBe('Tomorrow afternoon?');
     await act(async () => fireEvent.press(screen.getByText('Send Request')));
@@ -143,11 +147,12 @@ describe('BorrowRequestScreen', () => {
     const dismiss = jest.spyOn(Keyboard, 'dismiss');
     const Screen = require('../../src/screens/BorrowRequestScreen').default;
     const screen = render(<Screen navigation={mockNavigation} route={route} />);
-    const endDate = await screen.findByText('End Date');
+    const endDate = await screen.findByText('Return by');
     fireEvent.press(endDate);
     expect(dismiss).toHaveBeenCalled();
     expect(screen.UNSAFE_getByType(DateTimePicker)).toBeTruthy();
-    expect(screen.getByText('Done')).toBeTruthy();
+    if (Platform.OS === 'ios') expect(screen.getByText('Done')).toBeTruthy();
+    else expect(screen.queryByText('Done')).toBeNull();
     const input = screen.getByLabelText('Private message to owner');
     fireEvent(input, 'focus');
     expect(screen.UNSAFE_queryByType(DateTimePicker)).toBeNull();
