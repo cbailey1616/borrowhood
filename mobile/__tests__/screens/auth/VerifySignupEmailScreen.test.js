@@ -9,6 +9,13 @@ const route = { params: { email: 'new@example.test', challengeId: 'challenge-1',
 beforeEach(() => { jest.clearAllMocks(); jest.useFakeTimers(); mockVerify.mockResolvedValue({}); api.resendSignupCode.mockResolvedValue({ resendAfter: 60 }); });
 afterEach(() => { jest.clearAllTimers(); jest.useRealTimers(); });
 
+it('positions the native code field over the six visible slots', () => {
+  const { getByLabelText } = render(<Screen route={route} navigation={navigation} />);
+  expect(getByLabelText('Six-digit email verification code')).toHaveStyle({
+    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
+  });
+});
+
 it('accepts pasted/autofilled codes and confirms only a complete code', async () => {
   const { getByLabelText, getByText } = render(<Screen route={route} navigation={navigation} />);
   expect(getByText('new@example.test')).toBeTruthy();

@@ -430,6 +430,7 @@ export const CARD_SURFACE = {
 };
 
 export const TYPOGRAPHY = {
+  displayTitle: { fontSize: 40, lineHeight: 44, letterSpacing: -1.3, fontFamily: 'DMSans_600SemiBold', fontWeight: '600' },
   chatBody: { fontSize: 17, fontFamily: 'DMSans_400Regular', fontWeight: '400', lineHeight: 24 },
   // Match each weight to its loaded font face; never synthesize bold from Regular.
   largeTitle: { fontSize: 32, fontFamily: 'DMSans_600SemiBold', fontWeight: '600', lineHeight: 38, letterSpacing: -0.6 },

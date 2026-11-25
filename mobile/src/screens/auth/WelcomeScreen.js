@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '../../components/Icon';
-import ActionButton from '../../components/ActionButton';
+import WelcomeLanding from './WelcomeLanding';
 import HapticPressable from '../../components/HapticPressable';
 import SocialSignInButtons from '../../components/SocialSignInButtons';
 import SocialAccountLink from '../../components/SocialAccountLink';
@@ -128,7 +128,7 @@ export default function WelcomeScreen({ navigation, signIn = false }) {
 
   const biometricButton = canUseBiometrics && !biometricsLoading && (
     <HapticPressable
-      style={styles.biometricAction}
+      style={signIn ? styles.biometricAction : styles.biometricLink}
       onPress={handleBiometricLogin}
       disabled={isLoading || socialBusy}
       testID="Welcome.button.biometric"
@@ -138,8 +138,26 @@ export default function WelcomeScreen({ navigation, signIn = false }) {
       accessibilityState={{ disabled: isLoading || socialBusy, busy: isLoading }}
     >
       {isLoading ? <ActivityIndicator color={COLORS.primary} /> : <BiometricIcon type={biometricType} size={22} color={COLORS.primary} />}
+      {!signIn && <Text style={styles.biometricLinkText}>Sign in with {biometricType}</Text>}
     </HapticPressable>
   );
+
+  const socialButtons = (
+    <SocialSignInButtons disabled={isLoading} onBusyChange={busy => {
+      setSocialBusy(busy);
+      if (busy) resetLink();
+    }} onLinkRequired={link => { setSocialBusy(false); setPendingLink(link); if (link.email) setEmail(link.email); }} />
+  );
+  const terms = (
+    <Text style={styles.terms}>By continuing, you agree to our{' '}
+      <Text maxFontSizeMultiplier={1.4} accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/terms`)}>Terms</Text> and{' '}
+      <Text maxFontSizeMultiplier={1.4} accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}>Privacy Policy</Text>.
+    </Text>
+  );
+  if (!signIn) {
+    return <WelcomeLanding navigation={navigation} disabled={isLoading || socialBusy} reservedBottom={reservedBottom}
+      socialButtons={socialButtons} biometricButton={biometricButton} terms={terms} />;
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -154,21 +172,19 @@ export default function WelcomeScreen({ navigation, signIn = false }) {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
-            {signIn && <HapticPressable style={styles.backButton} onPress={() => navigation.goBack()}
+            <HapticPressable style={styles.backButton} onPress={() => navigation.goBack()}
               disabled={isLoading || socialBusy} accessibilityRole="button" accessibilityLabel="Go back">
               <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
-            </HapticPressable>}
+            </HapticPressable>
             <View style={[styles.logoContainer, { minHeight: reservedBottom }]}>
               <View style={styles.brandRow}>
-                <Image source={require('../../../assets/logo.png')} style={signIn ? styles.logo : styles.welcomeLogo} accessible={false} />
-                <Text maxFontSizeMultiplier={1.4} accessibilityRole={signIn ? 'header' : undefined} style={[styles.wordmark, !signIn && styles.welcomeWordmark]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>Borrowhood</Text>
+                <Image source={require('../../../assets/logo.png')} style={styles.logo} accessible={false} />
+                <Text maxFontSizeMultiplier={1.4} accessibilityRole="header" style={styles.wordmark} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>Borrowhood</Text>
               </View>
-              {signIn ? <Text style={styles.authTitle}>Sign in to your account</Text> : (
-                <Text accessibilityRole="header" style={styles.welcomeTitle}>Borrow from people nearby.</Text>
-              )}
+              <Text style={styles.authTitle}>Sign in to your account</Text>
             </View>
 
-            {signIn ? <View style={styles.form}>
+            <View style={styles.form}>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Email address</Text>
                 <View style={[styles.fieldContainer, focusedField === 'email' && styles.inputFocused]}>
@@ -264,17 +280,7 @@ export default function WelcomeScreen({ navigation, signIn = false }) {
                 )}
               </HapticPressable>
 
-            </View> : (
-              <View style={styles.welcomeActions}>
-                <ActionButton label="Create an account" variant="primary" style={styles.welcomeButton}
-                  disabled={isLoading || socialBusy} testID="Welcome.link.createAccount" onPress={() => navigation.navigate('Register')} />
-                <View style={styles.signInRow}>
-                  <ActionButton label="Sign in" style={[styles.welcomeButton, styles.signInChoice]}
-                    disabled={isLoading || socialBusy} testID="Welcome.button.openSignIn" onPress={() => navigation.navigate('Login')} />
-                  {biometricButton}
-                </View>
-              </View>
-            )}
+            </View>
 
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
@@ -282,27 +288,21 @@ export default function WelcomeScreen({ navigation, signIn = false }) {
               <View style={styles.dividerLine} />
             </View>
 
-            <SocialSignInButtons disabled={isLoading} onBusyChange={busy => {
-              setSocialBusy(busy);
-              if (busy) resetLink();
-            }} onLinkRequired={link => { setSocialBusy(false); setPendingLink(link); if (link.email) setEmail(link.email); }} />
+            {socialButtons}
 
-            {signIn && <View style={styles.footer}>
+            <View style={styles.footer}>
               <Text style={styles.footerText}>New here?</Text>
               <HapticPressable disabled={socialBusy || isLoading} onPress={() => navigation.navigate('Register')}  testID="Welcome.link.createAccount" accessibilityLabel="Create an account" accessibilityRole="link" style={styles.createAccountLink}>
                 <Text maxFontSizeMultiplier={1.4} style={styles.footerLink}>Create an account</Text>
               </HapticPressable>
-            </View>}
+            </View>
 
-            {signIn && <HapticPressable style={styles.findAccount} disabled={isLoading || socialBusy}
+            <HapticPressable style={styles.findAccount} disabled={isLoading || socialBusy}
               onPress={() => navigation.navigate('FindAccount')} accessibilityRole="link">
               <Text style={styles.forgotPasswordText}>Can't find your account?</Text>
-            </HapticPressable>}
+            </HapticPressable>
 
-            <Text style={styles.terms}>By continuing, you agree to our{' '}
-              <Text maxFontSizeMultiplier={1.4} accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/terms`)}>Terms</Text> and{' '}
-              <Text maxFontSizeMultiplier={1.4} accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(`${BASE_URL}/privacy`)}>Privacy Policy</Text>.
-            </Text>
+            {terms}
 
           </View>
         </ScrollView>
@@ -355,13 +355,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   authTitle: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'left' },
-  welcomeLogo: { width: 36, height: 36, resizeMode: 'contain' },
-  welcomeWordmark: { ...TYPOGRAPHY.title2, fontFamily: 'Fraunces_600SemiBold', marginBottom: 0 },
-  welcomeTitle: { ...TYPOGRAPHY.largeTitle, color: COLORS.primaryDark, marginTop: SPACING.lg, maxWidth: 280 },
-  welcomeActions: { gap: SPACING.sm },
-  welcomeButton: { minHeight: 52, borderRadius: RADIUS.md },
-  signInRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  signInChoice: { flex: 1, borderColor: COLORS.borderGreenStrong },
+  biometricLink: { minHeight: 48, marginTop: SPACING.xs, flexDirection: 'row', gap: SPACING.sm, justifyContent: 'center', alignItems: 'center' },
+  biometricLinkText: { ...TYPOGRAPHY.buttonSmall, color: COLORS.primary, flexShrink: 1 },
   biometricAction: {
     alignItems: 'center',
     justifyContent: 'center',

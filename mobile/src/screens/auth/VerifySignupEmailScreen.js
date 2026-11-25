@@ -1,7 +1,7 @@
 import TextInput from '../../components/AppTextInput';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Keyboard, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import HapticPressable from '../../components/HapticPressable';
 import Icon from '../../components/Icon';
 import { useAuth } from '../../context/AuthContext';
@@ -10,7 +10,6 @@ import { CARD_SURFACE, COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '../../utils/c
 
 export default function VerifySignupEmailScreen({ route, navigation }) {
   const { verifySignupCode } = useAuth();
-  const insets = useSafeAreaInsets();
   const challenge = route.params || {};
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState('');
@@ -70,63 +69,63 @@ export default function VerifySignupEmailScreen({ route, navigation }) {
           <Text maxFontSizeMultiplier={1.4} style={styles.link}>Help</Text>
         </HapticPressable>
       </View>
-      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={insets.top}>
-        <ScrollView contentContainerStyle={[styles.content, keyboardVisible && styles.contentCompact]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
-          <View style={[styles.intro, keyboardVisible && styles.introCompact]}>
-            <View style={styles.introCopy}>
-              <Text accessibilityRole="header" style={[styles.title, keyboardVisible && styles.titleCompact]}>Check your email</Text>
-              <Text style={[styles.body, keyboardVisible && styles.bodyCompact]}>Enter the 6-digit code sent to</Text>
-            </View>
+      <ScrollView style={styles.screen} automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="never"
+        contentContainerStyle={[styles.content, keyboardVisible && styles.contentCompact]} showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+        <View style={[styles.intro, keyboardVisible && styles.introCompact]}>
+          <View style={styles.introCopy}>
+            <Text accessibilityRole="header" style={[styles.title, keyboardVisible && styles.titleCompact]}>Check your email</Text>
+            <Text style={[styles.body, keyboardVisible && styles.bodyCompact]}>Enter the 6-digit code sent to</Text>
           </View>
-          <View style={styles.emailRow}>
-            <Text style={styles.email}>{challenge.email}</Text>
-            <HapticPressable onPress={() => navigation.goBack()} disabled={!!busy} accessibilityLabel="Change email address" accessibilityRole="button" style={styles.changeEmail}>
-              <Text maxFontSizeMultiplier={1.4} style={styles.link}>Change</Text>
-            </HapticPressable>
-          </View>
-          <View style={styles.codeEntry}>
-            <View style={styles.codeSlots} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-              {Array.from({ length: 6 }, (_, index) => {
-                const active = codeFocused && index === Math.min(code.length, 5);
-                return (
-                  <View key={index} style={[styles.codeSlot, !!code[index] && styles.codeSlotFilled, active && styles.codeSlotActive, !!error && styles.codeSlotError]}>
-                    {code[index] ? <Text maxFontSizeMultiplier={1.4} style={styles.digit}>{code[index]}</Text> : <View style={active ? styles.caret : styles.emptyDigit} />}
-                  </View>
-                );
-              })}
-            </View>
-            {/* One native input preserves paste, autofill and a single accessible field. */}
-            <TextInput maxFontSizeMultiplier={1.4}
-              ref={codeInput}
-              testID="VerifySignup.input.code" accessibilityLabel="Six-digit email verification code"
-              style={styles.codeInput} value={code} onChangeText={value => { setCode(value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
-              onFocus={() => setCodeFocused(true)} onBlur={() => setCodeFocused(false)}
-              keyboardType="number-pad" textContentType="oneTimeCode" autoComplete={Platform.OS === 'ios' ? 'one-time-code' : 'sms-otp'}
-              autoFocus maxLength={12} autoCorrect={false} editable={!busy} caretHidden selectionColor="transparent" underlineColorAndroid="transparent"
-            />
-          </View>
-          <Text maxFontSizeMultiplier={1.4} style={styles.expiry}>Valid for 10 minutes</Text>
-          {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-          {!!notice && <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
-          <HapticPressable scaleDown={0.97} onPress={confirm} disabled={!!busy || code.length !== 6} accessibilityRole="button" accessibilityLabel="Verify email and continue"
-            style={[styles.button, !busy && code.length !== 6 && styles.buttonDisabled]}>
-            {busy === 'verify' ? <ActivityIndicator color={COLORS.background} /> : <>
-              <Text style={[styles.buttonText, code.length !== 6 && styles.buttonTextDisabled]}>Continue</Text>
-              <Icon name="arrow-forward" size={20} color={code.length === 6 ? COLORS.background : COLORS.primary} />
-            </>}
+        </View>
+        <View style={styles.emailRow}>
+          <Text style={styles.email}>{challenge.email}</Text>
+          <HapticPressable onPress={() => navigation.goBack()} disabled={!!busy} accessibilityLabel="Change email address" accessibilityRole="button" style={styles.changeEmail}>
+            <Text maxFontSizeMultiplier={1.4} style={styles.link}>Change</Text>
           </HapticPressable>
-          <HapticPressable onPress={resend} disabled={!!busy || remaining > 0} accessibilityRole="button" accessibilityLabel="Resend code" style={styles.resendButton}>
-            <Text maxFontSizeMultiplier={1.4} style={[styles.link, (remaining > 0 || !!busy) && styles.muted]}>{busy === 'resend' ? 'Sending…' : remaining > 0 ? `Resend in ${remaining}s` : 'Resend code'}</Text>
-          </HapticPressable>
-          <View style={styles.deliveryHint}>
-            <Icon name="information-circle" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.hint}>Not there? Check Spam or Junk.</Text>
+        </View>
+        <View style={styles.codeEntry}>
+          <View style={styles.codeSlots} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            {Array.from({ length: 6 }, (_, index) => {
+              const active = codeFocused && index === Math.min(code.length, 5);
+              return (
+                <View key={index} style={[styles.codeSlot, !!code[index] && styles.codeSlotFilled, active && styles.codeSlotActive, !!error && styles.codeSlotError]}>
+                  {code[index] ? <Text maxFontSizeMultiplier={1.4} style={styles.digit}>{code[index]}</Text> : <View style={active ? styles.caret : styles.emptyDigit} />}
+                </View>
+              );
+            })}
           </View>
-          <View style={styles.footer}>
-            <HapticPressable onPress={() => navigation.navigate('Login')} disabled={!!busy} accessibilityRole="button" style={styles.linkButton}><Text maxFontSizeMultiplier={1.4} style={styles.link}>Sign in instead</Text></HapticPressable>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          {/* One native input preserves paste, autofill and a single accessible field. */}
+          <TextInput maxFontSizeMultiplier={1.4}
+            ref={codeInput}
+            testID="VerifySignup.input.code" accessibilityLabel="Six-digit email verification code"
+            style={styles.codeInput} value={code} onChangeText={value => { setCode(value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
+            onFocus={() => setCodeFocused(true)} onBlur={() => setCodeFocused(false)}
+            keyboardType="number-pad" textContentType="oneTimeCode" autoComplete={Platform.OS === 'ios' ? 'one-time-code' : 'sms-otp'}
+            autoFocus maxLength={12} autoCorrect={false} editable={!busy} caretHidden selectionColor="transparent" underlineColorAndroid="transparent"
+          />
+        </View>
+        <Text maxFontSizeMultiplier={1.4} style={styles.expiry}>Valid for 10 minutes</Text>
+        {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+        {!!notice && <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
+        <HapticPressable scaleDown={0.97} onPress={confirm} disabled={!!busy || code.length !== 6} accessibilityRole="button" accessibilityLabel="Verify email and continue"
+          style={[styles.button, !busy && code.length !== 6 && styles.buttonDisabled]}>
+          {busy === 'verify' ? <ActivityIndicator color={COLORS.background} /> : <>
+            <Text style={[styles.buttonText, code.length !== 6 && styles.buttonTextDisabled]}>Continue</Text>
+            <Icon name="arrow-forward" size={20} color={code.length === 6 ? COLORS.background : COLORS.primary} />
+          </>}
+        </HapticPressable>
+        <HapticPressable onPress={resend} disabled={!!busy || remaining > 0} accessibilityRole="button" accessibilityLabel="Resend code" style={styles.resendButton}>
+          <Text maxFontSizeMultiplier={1.4} style={[styles.link, (remaining > 0 || !!busy) && styles.muted]}>{busy === 'resend' ? 'Sending…' : remaining > 0 ? `Resend in ${remaining}s` : 'Resend code'}</Text>
+        </HapticPressable>
+        <View style={styles.deliveryHint}>
+          <Icon name="information-circle" size={16} color={COLORS.textSecondary} />
+          <Text style={styles.hint}>Not there? Check Spam or Junk.</Text>
+        </View>
+        <View style={styles.footer}>
+          <HapticPressable onPress={() => navigation.navigate('Login')} disabled={!!busy} accessibilityRole="button" style={styles.linkButton}><Text maxFontSizeMultiplier={1.4} style={styles.link}>Sign in instead</Text></HapticPressable>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -157,7 +156,7 @@ const styles = StyleSheet.create({
   digit: { ...TYPOGRAPHY.h1, lineHeight: 36, color: COLORS.primaryDark, fontVariant: ['tabular-nums'] },
   emptyDigit: { width: 5, height: 5, borderRadius: RADIUS.full, backgroundColor: COLORS.borderGreenStrong },
   caret: { width: 2, height: 22, borderRadius: 1, backgroundColor: COLORS.primary },
-  codeInput: { ...StyleSheet.absoluteFillObject, color: 'transparent', backgroundColor: 'transparent', ...TYPOGRAPHY.h1, padding: 0 },
+  codeInput: { ...StyleSheet.absoluteFill, color: 'transparent', backgroundColor: 'transparent', ...TYPOGRAPHY.h1, padding: 0 },
   expiry: { ...TYPOGRAPHY.caption1, color: COLORS.textSecondary, textAlign: 'center', marginTop: 10 },
   error: { ...TYPOGRAPHY.bodySmall, color: COLORS.danger, marginTop: 12, textAlign: 'center' },
   notice: { ...TYPOGRAPHY.bodySmall, color: COLORS.primary, marginTop: 12, textAlign: 'center' },
