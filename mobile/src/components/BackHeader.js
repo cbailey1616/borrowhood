@@ -6,7 +6,7 @@ import HapticPressable from './HapticPressable';
 import { Ionicons } from './Icon';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../utils/config';
 
-export default function BackHeader({ navigation, title, fallbackTab = 'Feed', fallbackRoute = 'Main', rightElement }) {
+export default function BackHeader({ navigation, title, fallbackTab = 'Feed', fallbackRoute = 'Main', rightElement, backgroundColor = COLORS.background }) {
   const insets = useSafeAreaInsets();
   const reservedBottom = useTopReservedSpace();
   const goBack = () => {
@@ -15,7 +15,7 @@ export default function BackHeader({ navigation, title, fallbackTab = 'Feed', fa
   };
 
   return (
-    <View style={[styles.header, { paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg), paddingTop: insets.top, minHeight: reservedBottom }]}>
+    <View style={[styles.header, { backgroundColor, paddingLeft: Math.max(insets.left, SPACING.lg), paddingRight: Math.max(insets.right, SPACING.lg), paddingTop: insets.top, minHeight: reservedBottom }]}>
       <View style={styles.row}>
         <HapticPressable accessibilityLabel="Back" onPress={goBack} hitSlop={8} style={styles.back}>
           <Ionicons name="chevron-back" size={26} color={COLORS.primary} />
@@ -29,7 +29,7 @@ export default function BackHeader({ navigation, title, fallbackTab = 'Feed', fa
 
 // Native-stack supplies the latest options, including titles set by a screen.
 export function renderBackHeader({ navigation, options, route }) {
-  return <BackHeader navigation={navigation} title={options.title ?? route.name} />;
+  return <BackHeader navigation={navigation} backgroundColor={StyleSheet.flatten(options.headerStyle)?.backgroundColor} title={options.title ?? route.name} />;
 }
 
 const styles = StyleSheet.create({

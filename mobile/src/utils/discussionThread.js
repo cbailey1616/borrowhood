@@ -20,16 +20,6 @@ export function discussionInitials(user) {
   return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : parts[0]?.[0] || 'N').toUpperCase();
 }
 
-// Both rectangles come from measureInWindow, including the native header/safe areas.
-export function composerScrollOffset(offset, viewport, composer, margin = 8) {
-  if (!viewport || !composer || viewport.height <= 0 || composer.height <= 0) return offset;
-  const top = viewport.y + margin;
-  const bottom = viewport.y + viewport.height - margin;
-  if (composer.y + composer.height > bottom) return Math.max(0, offset + composer.y + composer.height - bottom);
-  if (composer.y < top) return Math.max(0, offset + composer.y - top);
-  return offset;
-}
-
 export { REACTION_OPTIONS as DISCUSSION_EMOJIS } from './reactions';
 
 export const DISCUSSION_DARK_COLORS = {
@@ -45,33 +35,6 @@ export function sortDiscussion(items) {
     const dates = (new Date(a.createdAt).getTime() || 0) - (new Date(b.createdAt).getTime() || 0);
     return dates || String(a.id).localeCompare(String(b.id));
   });
-}
-
-// Flatten for FlatList virtualization, keeping real ancestry separate from visual depth.
-export function flattenDiscussion(posts, replies, expanded, collapsed) {
-  const rows = [];
-  for (const root of sortDiscussion(posts)) {
-    rows.push({ ...root, rootId: root.id, depth: 0 });
-    if (!expanded.has(root.id) || collapsed.has(root.id)) continue;
-    const children = new Map();
-    const items = replies[root.id] || [];
-    const ids = new Set(items.map(item => item.id));
-    for (const item of items) {
-      const parent = item.replyToId && ids.has(item.replyToId) ? item.replyToId : root.id;
-      children.set(parent, [...(children.get(parent) || []), item]);
-    }
-    const visited = new Set([root.id]);
-    const visit = (parentId, depth) => {
-      for (const child of sortDiscussion(children.get(parentId) || [])) {
-        if (visited.has(child.id)) continue;
-        visited.add(child.id);
-        rows.push({ ...child, rootId: root.id, depth });
-        if (!collapsed.has(child.id)) visit(child.id, depth + 1);
-      }
-    };
-    visit(root.id, 1);
-  }
-  return rows;
 }
 
 // Remove the whole branch so orphaned descendants cannot reappear at the root.

@@ -47,19 +47,21 @@ it('gives a reaction toggle one selection effect and keeps opening its picker si
   expect(haptics.medium).not.toHaveBeenCalled();
 });
 
-it('uses the same line smiley for composer and reaction picker controls with each supplied color', () => {
+it('uses the send icon in public comments and keeps the emoji picker identifiable in messages', () => {
   const colors = { ...COLORS, primary: COLORS.text };
   const view = render(<>
     <DiscussionComposer value="" onChangeText={jest.fn()} disabled colors={colors} />
     <MessageReactions userId="me" onToggle={jest.fn()} onAdd={jest.fn()} colors={colors} />
   </>);
-  const smileys = view.UNSAFE_getAllByType(Image);
-  expect(smileys).toHaveLength(2);
-  const expectedDrawing = iconSvg('happy-outline', { color: colors.primary, illustrated: false, selected: false });
-  smileys.forEach(image => {
-    expect(StyleSheet.flatten(image.props.style)).toMatchObject({ width: 22, height: 22 });
-    expect(decodeURIComponent(image.props.source.uri.split(',')[1])).toBe(expectedDrawing);
-  });
+  const [send, picker] = view.UNSAFE_getAllByType(Image);
+  for (const [image, name, color, size] of [
+    [send, 'send-outline', colors.textSecondary, 21],
+    [picker, 'happy-outline', colors.primary, 22],
+  ]) {
+    expect(StyleSheet.flatten(image.props.style)).toMatchObject({ width: size, height: size });
+    const drawing = iconSvg(name, { color, illustrated: false, selected: false });
+    expect(decodeURIComponent(image.props.source.uri.split(',')[1])).toBe(drawing);
+  }
 });
 
 it.each([true, false])('respects the motion preference in both reaction modal and picker (%s)', reduceMotion => {
